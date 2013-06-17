@@ -45,7 +45,7 @@ struct cpufreq_interactive_cpuinfo {
 	u64 time_in_iowait;
 	u64 cputime_speedadj;
 	u64 cputime_speedadj_timestamp;
-	unsigned int io_consecutive;
+	u64 io_consecutive;
 	struct cpufreq_policy *policy;
 	struct cpufreq_frequency_table *freq_table;
 	spinlock_t target_freq_lock; /*protects target freq */
@@ -339,17 +339,17 @@ static u64 update_load(int cpu)
 	u64 now;
 	u64 now_idle;
 	u64 now_iowait;
-	unsigned int delta_idle;
-	unsigned int delta_iowait;
-	unsigned int delta_time;
-	unsigned int io_consecutive;
+	u64 delta_idle;
+	u64 delta_iowait;
+	u64 delta_time;
+	u64 io_consecutive;
 	u64 active_time;
 
 	now_idle = get_cpu_idle_time(cpu, &now, tunables->io_is_busy);
 	now_iowait = get_cpu_iowait_time_us(cpu, NULL);
-	delta_idle = (unsigned int)(now_idle - pcpu->time_in_idle);
-	delta_iowait = (unsigned int)(now_iowait - pcpu->time_in_iowait);
-	delta_time = (unsigned int)(now - pcpu->time_in_idle_timestamp);
+	delta_idle = (now_idle - pcpu->time_in_idle);
+	delta_iowait = (now_iowait - pcpu->time_in_iowait);
+	delta_time = (now - pcpu->time_in_idle_timestamp);
 	io_consecutive = pcpu->io_consecutive;
 
 	if (!tunables->io_is_busy) {
