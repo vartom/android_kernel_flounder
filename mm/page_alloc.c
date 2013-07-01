@@ -1485,7 +1485,7 @@ int __isolate_free_page(struct page *page, unsigned int order)
 	zone = page_zone(page);
 	mt = get_pageblock_migratetype(page);
 
-	if (!is_migrate_isolate(mt)) {
+	if (!is_migrate_isolate(mt) && !is_migrate_cma(mt)) {
 		/* Obey watermarks as if the page was being allocated */
 		watermark = low_wmark_pages(zone) + (1 << order);
 		if (!zone_watermark_ok(zone, 0, watermark, 0, 0))
