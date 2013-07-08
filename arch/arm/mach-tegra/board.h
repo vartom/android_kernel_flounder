@@ -30,6 +30,7 @@
 #include <linux/memory.h>
 
 #include <mach/tegra_smmu.h>
+#include <linux/reboot.h>
 
 /*
  * OF is always used on ARM64
@@ -94,7 +95,7 @@
 
 struct memory_accessor;
 
-void tegra_assert_system_reset(char mode, const char *cmd);
+void tegra_assert_system_reset(enum reboot_mode mode, const char *cmd);
 
 void __init tegra20_init_early(void);
 void __init tegra30_init_early(void);
