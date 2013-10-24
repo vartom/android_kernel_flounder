@@ -46,6 +46,7 @@
 #include <asm/cputype.h>
 #include <asm/elf.h>
 #include <asm/cputable.h>
+#include <asm/cpu_ops.h>
 #include <asm/sections.h>
 #include <asm/setup.h>
 #include <asm/smp_plat.h>
@@ -467,6 +468,7 @@ void __init setup_arch(char **cmdline_p)
 		arm_pm_restart = mdesc->restart;
 
 	cpu_logical_map(0) = read_cpuid_mpidr() & MPIDR_HWID_BITMASK;
+	cpu_read_bootcpu_ops();
 #ifdef CONFIG_SMP
 	smp_set_ops(machine_desc->smp);
 	smp_init_cpus();
