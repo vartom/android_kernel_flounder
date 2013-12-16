@@ -122,7 +122,7 @@ start_ns:
 	orr	x3, x3, #FLOW_CTRL_CSR_INTR_FLAG | FLOW_CTRL_CSR_EVENT_FLAG
 
 	/* enable, cluster_switch, immed, & bitmaps */
-	mov	x0, #0x3ffd
+	movz	x0, #0x3ffd
 
 	bic	x3, x3, x0
 	str	x3, [x2, x1]
