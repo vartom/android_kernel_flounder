@@ -100,7 +100,6 @@ obj-$(CONFIG_ARCH_TEGRA_13x_SOC)      += pm-tegra132.o
 endif
 
 obj-$(CONFIG_TEGRA_DYNAMIC_PWRDET)      += powerdetect.o
-obj-$(CONFIG_ARCH_TEGRA_21x_SOC)      += sleep-tegra210.o
 
 obj-${CONFIG_TEGRA_NVDUMPER}            += nvdumper.o
 obj-${CONFIG_TEGRA_NVDUMPER}            += nvdumper_regdump.o
