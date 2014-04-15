@@ -127,7 +127,6 @@ static void __iomem *pmc = IO_ADDRESS(TEGRA_PMC_BASE);
 #if defined(CONFIG_ARCH_TEGRA_14x_SOC)
 static void __iomem *tert_ictlr = IO_ADDRESS(TEGRA_TERTIARY_ICTLR_BASE);
 #endif
-static void __iomem *tmrus_reg_base = IO_ADDRESS(TEGRA_TMR1_BASE);
 static int tegra_last_pclk;
 static u64 resume_time;
 static u64 resume_entry_time;
@@ -290,7 +289,7 @@ static const char *tegra_suspend_name[TEGRA_MAX_SUSPEND_MODE] = {
 
 void tegra_log_resume_time(void)
 {
-	u64 resume_end_time = readl(tmrus_reg_base + TIMERUS_CNTR_1US);
+	u64 resume_end_time = tegra_read_usec_raw();
 
 	if (resume_entry_time > resume_end_time)
 		resume_end_time |= 1ull<<32;
@@ -299,13 +298,13 @@ void tegra_log_resume_time(void)
 
 void tegra_log_suspend_time(void)
 {
-	suspend_entry_time = readl(tmrus_reg_base + TIMERUS_CNTR_1US);
+	suspend_entry_time = tegra_read_usec_raw();
 }
 
 static void tegra_get_suspend_time(void)
 {
 	u64 suspend_end_time;
-	suspend_end_time = readl(tmrus_reg_base + TIMERUS_CNTR_1US);
+	suspend_end_time = tegra_read_usec_raw();
 
 	if (suspend_entry_time > suspend_end_time)
 		suspend_end_time |= 1ull<<32;
@@ -1433,7 +1432,7 @@ int tegra_suspend_dram(enum tegra_suspend_mode mode, unsigned int flags)
 
 	resume_entry_time = 0;
 	if (mode != TEGRA_SUSPEND_LP0)
-		resume_entry_time = readl(tmrus_reg_base + TIMERUS_CNTR_1US);
+		resume_entry_time = tegra_read_usec_raw();
 
 	tegra_init_cache(true);
 
@@ -2157,7 +2156,7 @@ void tegra_tsc_suspend(void)
 		BUG_ON(reg & PMC_DPD_ENABLE_TSC_MULT_ENABLE);
 		reg |= PMC_DPD_ENABLE_TSC_MULT_ENABLE;
 		pmc_writel(reg, PMC_DPD_ENABLE);
-		tsc_suspend_start = timer_readl(TIMERUS_CNTR_1US);
+		tsc_suspend_start = tegra_read_usec_raw();
 	}
 }
 
@@ -2176,14 +2175,14 @@ void tegra_tsc_resume(void)
 		reg &= ~PMC_DPD_ENABLE_ON;
 #endif
 		pmc_writel(reg, PMC_DPD_ENABLE);
-		tsc_resume_start = timer_readl(TIMERUS_CNTR_1US);
+		tsc_resume_start = tegra_read_usec_raw();
 	}
 }
 
 void tegra_tsc_wait_for_suspend(void)
 {
 	if (arch_timer_initialized) {
-		while ((timer_readl(TIMERUS_CNTR_1US) - tsc_suspend_start) <
+		while ((tegra_read_usec_raw() - tsc_suspend_start) <
 			TSC_TIMEOUT_US) {
 			if (pmc_readl(PMC_TSC_MULT) & PMC_TSC_MULT_FREQ_STS)
 				break;
@@ -2195,7 +2194,7 @@ void tegra_tsc_wait_for_suspend(void)
 void tegra_tsc_wait_for_resume(void)
 {
 	if (arch_timer_initialized) {
-		while ((timer_readl(TIMERUS_CNTR_1US) - tsc_resume_start) <
+		while ((tegra_read_usec_raw() - tsc_resume_start) <
 			TSC_TIMEOUT_US) {
 			if (!(pmc_readl(PMC_TSC_MULT) & PMC_TSC_MULT_FREQ_STS))
 				break;
