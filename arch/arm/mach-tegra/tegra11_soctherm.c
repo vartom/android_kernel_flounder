@@ -499,7 +499,7 @@ static int edp_irq_num;
  *
  * Writes the @value to @reg if the soctherm device is not suspended.
  */
-static inline void soctherm_writel(u32 value, u32 reg)
+static void soctherm_writel(u32 value, u32 reg)
 {
 	if (!soctherm_suspended)
 		__raw_writel(value, (void __iomem *)
@@ -512,7 +512,7 @@ static inline void soctherm_writel(u32 value, u32 reg)
  *
  * Return: 0 if SOC_THERM is suspended, else the value of the register
  */
-static inline u32 soctherm_readl(u32 reg)
+static u32 soctherm_readl(u32 reg)
 {
 	if (soctherm_suspended)
 		return 0;
@@ -534,7 +534,7 @@ static u32 clk_reset13_readl(u32 reg)
 	return __raw_readl(clk13_rst_base + reg);
 }
 
-static inline void clk_reset_writel(u32 value, u32 reg)
+static void clk_reset_writel(u32 value, u32 reg)
 {
 	if (IS_T13X) {
 		__raw_writel(value, clk13_rst_base + reg);
@@ -543,7 +543,7 @@ static inline void clk_reset_writel(u32 value, u32 reg)
 		__raw_writel(value, clk_reset_base + reg);
 }
 
-static inline u32 clk_reset_readl(u32 reg)
+static u32 clk_reset_readl(u32 reg)
 {
 	if (IS_T13X)
 		return __raw_readl(clk13_rst_base + reg);
@@ -567,7 +567,7 @@ static inline u32 clk_reset_readl(u32 reg)
  *
  * Return: temperature in millicelsius.
  */
-static inline long temp_convert(int cap, int a, int b)
+static long temp_convert(int cap, int a, int b)
 {
 	cap *= a;
 	cap >>= 10;
@@ -590,7 +590,7 @@ static inline long temp_convert(int cap, int a, int b)
  *
  * Return: The register value.
  */
-static inline u32 temp_translate_rev(long temp)
+static u32 temp_translate_rev(long temp)
 {
 	int sign;
 	int low_bit;
@@ -752,7 +752,7 @@ static int sensor2therm_b[TSENSE_SIZE];
  * Return: the quotient of a / b.
  */
 
-static inline s64 div64_s64_precise(s64 a, s32 b)
+static s64 div64_s64_precise(s64 a, s32 b)
 {
 	s64 r, al;
 
@@ -773,7 +773,7 @@ static inline s64 div64_s64_precise(s64 a, s32 b)
  *
  * Return: the translated temperature in millicelsius
  */
-static inline long temp_translate(int readback)
+static long temp_translate(int readback)
 {
 	int abs = readback >> 8;
 	int lsb = (readback & 0x80) >> 7;
@@ -955,8 +955,7 @@ static int enforce_temp_range(long trip_temp)
  *
  * Return: No return value (void).
  */
-static inline void prog_hw_shutdown(struct thermal_trip_info *trip_state,
-				    int therm)
+static void prog_hw_shutdown(struct thermal_trip_info *trip_state, int therm)
 {
 	u32 r;
 	int temp;
@@ -994,8 +993,8 @@ static inline void prog_hw_shutdown(struct thermal_trip_info *trip_state,
  * Configure sensor group @therm to engage a hardware throttling response at
  * the threshold indicated by @trip_state.
  */
-static inline void prog_hw_threshold(struct thermal_trip_info *trip_state,
-				     int therm, int throt)
+static void prog_hw_threshold(struct thermal_trip_info *trip_state, int therm,
+			      int throt)
 {
 	u32 r, reg_off;
 	int temp;
@@ -1964,8 +1963,8 @@ static irqreturn_t soctherm_thermal_thread_func(int irq, void *arg)
  * Enables a specific over-current pins @alarm to raise an interrupt if the flag
  * is set and the alarm corresponds to OC1, OC2, OC3, or OC4.
  */
-static inline void soctherm_oc_intr_enable(enum soctherm_throttle_id alarm,
-					   bool enable)
+static void soctherm_oc_intr_enable(enum soctherm_throttle_id alarm,
+				    bool enable)
 {
 	u32 r;
 
