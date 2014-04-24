@@ -30,15 +30,9 @@
 #include <linux/tegra-soc.h>
 #include <linux/tegra-fuse.h>
 #include <linux/moduleparam.h>
-#include <mach/pinmux.h>
 #include <mach/tegra_usb_pmc.h>
 #include <mach/tegra_usb_pad_ctrl.h>
 
-#ifdef CONFIG_ARCH_TEGRA_14x_SOC
-#include <mach/pinmux-t14.h>
-#else
-#include <mach/pinmux-t11.h>
-#endif
 #include "tegra_usb_phy.h"
 #include "../../../arch/arm/mach-tegra/gpio-names.h"
 
