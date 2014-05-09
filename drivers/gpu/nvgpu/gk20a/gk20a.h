@@ -206,6 +206,24 @@ struct gpu_ops {
 		int (*set_sparse)(struct vm_gk20a *vm, u64 vaddr,
 			       u32 num_pages, u32 pgsz_idx);
 	} mm;
+	struct {
+		const struct regop_offset_range* (
+				*get_global_whitelist_ranges)(void);
+		int (*get_global_whitelist_ranges_count)(void);
+		const struct regop_offset_range* (
+				*get_context_whitelist_ranges)(void);
+		int (*get_context_whitelist_ranges_count)(void);
+		const u32* (*get_runcontrol_whitelist)(void);
+		int (*get_runcontrol_whitelist_count)(void);
+		const struct regop_offset_range* (
+				*get_runcontrol_whitelist_ranges)(void);
+		int (*get_runcontrol_whitelist_ranges_count)(void);
+		const u32* (*get_qctl_whitelist)(void);
+		int (*get_qctl_whitelist_count)(void);
+		const struct regop_offset_range* (
+				*get_qctl_whitelist_ranges)(void);
+		int (*get_qctl_whitelist_ranges_count)(void);
+	} regops;
 };
 
 struct gk20a {
