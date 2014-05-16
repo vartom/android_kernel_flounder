@@ -593,13 +593,6 @@ int nvmap_page_pool_init(struct nvmap_device *dev)
 	unsigned long totalram_mb;
 	struct sysinfo info;
 	struct nvmap_page_pool *pool = &dev->pool;
-#ifdef CONFIG_NVMAP_PAGE_POOLS_INIT_FILLUP
-	struct page **pending_init_pages = NULL;
-	int i;
-	struct page *page;
-	int pages_to_fill;
-	int highmem_pages = 0;
-#endif
 
 	memset(pool, 0x0, sizeof(*pool));
 	mutex_init(&pool->lock);
@@ -635,48 +628,7 @@ int nvmap_page_pool_init(struct nvmap_device *dev)
 	if (IS_ERR_OR_NULL(background_allocator))
 		goto fail;
 
-#ifdef CONFIG_NVMAP_PAGE_POOLS_INIT_FILLUP
-	pages_to_fill = CONFIG_NVMAP_PAGE_POOLS_INIT_FILLUP_SIZE * SZ_1M /
-			PAGE_SIZE;
-	pages_to_fill = pages_to_fill ? : pool->max;
-
-	pending_init_pages = kcalloc(PENDING_PAGES_SIZE, sizeof(struct page),
-				GFP_KERNEL);
-	if (!pending_init_pages)
-		goto done;
-
-	while (pages_to_fill > 0) {
-		int pages = min_t(int, pages_to_fill, PENDING_PAGES_SIZE);
-
-		for (i = 0; i < pages; i++) {
-			page = alloc_page(GFP_NVMAP);
-			if (!page) {
-				for (i = i - 1; i >= 0; i--)
-					__free_page(pending_init_pages[i]);
-				goto done;
-			}
-			if (PageHighMem(page))
-				highmem_pages++;
-			pending_init_pages[i] = page;
-		}
-		i = nvmap_page_pool_fill_lots(pool, pending_init_pages, pages);
-		pages_to_fill -= i;
-		if (i < pages) {
-			for (; i < pages; i++)
-				__free_page(pending_init_pages[i]);
-			goto done;
-		}
-
-	}
-
-	si_meminfo(&info);
-	pr_info("highmem=%d, pool_size=%d,"
-		"totalram=%lu, freeram=%lu, totalhigh=%lu, freehigh=%lu\n",
-		highmem_pages, pool->max,
-		info.totalram, info.freeram, info.totalhigh, info.freehigh);
-done:
-	kfree(pending_init_pages);
-#endif
+	nvmap_pp_wake_up_allocator();
 	return 0;
 fail:
 	nvmap_page_pool_fini(dev);
