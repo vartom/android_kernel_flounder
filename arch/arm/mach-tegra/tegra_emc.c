@@ -48,7 +48,7 @@ u32 tegra_get_dvfs_clk_change_latency_nsec(unsigned long emc_freq_khz)
 	}
 }
 
-void __init tegra_emc_iso_usage_table_init(struct emc_iso_usage *table,
+void tegra_emc_iso_usage_table_init(struct emc_iso_usage *table,
 					   int size)
 {
 	size = min(size, TEGRA_EMC_ISO_USE_CASES_MAX_NUM);
