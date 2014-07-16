@@ -197,19 +197,6 @@ bool arch_match_cpu_phys_id(int cpu, u64 phys_id)
 	return phys_id == cpu_logical_map(cpu);
 }
 
-struct cpuinfo_arm64 {
-	struct cpu	cpu;
-	u32		reg_midr;
-};
-
-static DEFINE_PER_CPU(struct cpuinfo_arm64, cpu_data);
-
-void cpuinfo_store_cpu(void)
-{
-	struct cpuinfo_arm64 *info = this_cpu_ptr(&cpu_data);
-	info->reg_midr = read_cpuid_id();
-}
-
 static void __init setup_processor(void)
 {
 	struct cpu_info *cpu_info;
@@ -237,6 +224,7 @@ static void __init setup_processor(void)
 	 * The blocks we test below represent incremental functionality
 	 * for non-negative values. Negative values are reserved.
 	 */
+	features = read_cpuid(ID_AA64ISAR0_EL1);
 	block = (features >> 4) & 0xf;
 	if (!(block & 0x8)) {
 		switch (block) {
