@@ -317,6 +317,9 @@ int tegra30_ahub_set_rx_fifo_pack_mode(enum tegra30_ahub_rxcif rxcif,
 	int channel = rxcif - TEGRA30_AHUB_RXCIF_APBIF_RX0;
 	int reg, val;
 
+	if ((int)rxcif < 0)
+		return 0;
+
 	reg = TEGRA30_AHUB_CHANNEL_CTRL +
 	      (channel * TEGRA30_AHUB_CHANNEL_CTRL_STRIDE);
 	val = tegra30_apbif_read(reg);
@@ -340,6 +343,9 @@ int tegra30_ahub_set_tx_fifo_pack_mode(enum tegra30_ahub_txcif txcif,
 	int channel = txcif - TEGRA30_AHUB_TXCIF_APBIF_TX0;
 	int reg, val;
 
+	if ((int)txcif < 0)
+		return 0;
+
 	reg = TEGRA30_AHUB_CHANNEL_CTRL +
 	      (channel * TEGRA30_AHUB_CHANNEL_CTRL_STRIDE);
 	val = tegra30_apbif_read(reg);
@@ -362,6 +368,9 @@ int tegra30_ahub_enable_rx_fifo(enum tegra30_ahub_rxcif rxcif)
 	int channel = rxcif - TEGRA30_AHUB_RXCIF_APBIF_RX0;
 	int reg, val;
 
+	if ((int)rxcif < 0)
+		return 0;
+
 	reg = TEGRA30_AHUB_CHANNEL_CTRL +
 	      (channel * TEGRA30_AHUB_CHANNEL_CTRL_STRIDE);
 	val = tegra30_apbif_read(reg);
@@ -377,6 +386,9 @@ int tegra30_ahub_disable_rx_fifo(enum tegra30_ahub_rxcif rxcif)
 	int channel = rxcif - TEGRA30_AHUB_RXCIF_APBIF_RX0;
 	int reg, val;
 
+	if ((int)rxcif < 0)
+		return 0;
+
 	reg = TEGRA30_AHUB_CHANNEL_CTRL +
 	      (channel * TEGRA30_AHUB_CHANNEL_CTRL_STRIDE);
 	val = tegra30_apbif_read(reg);
@@ -390,6 +402,9 @@ EXPORT_SYMBOL_GPL(tegra30_ahub_disable_rx_fifo);
 int tegra30_ahub_free_rx_fifo(enum tegra30_ahub_rxcif rxcif)
 {
 	int channel = rxcif - TEGRA30_AHUB_RXCIF_APBIF_RX0;
+
+	if ((int)rxcif < 0)
+		return 0;
 
 	__clear_bit(channel, ahub->rx_usage);
 
@@ -447,6 +462,9 @@ int tegra30_ahub_enable_tx_fifo(enum tegra30_ahub_txcif txcif)
 	int channel = txcif - TEGRA30_AHUB_TXCIF_APBIF_TX0;
 	int reg, val;
 
+	if ((int)txcif < 0)
+		return 0;
+
 	reg = TEGRA30_AHUB_CHANNEL_CTRL +
 	      (channel * TEGRA30_AHUB_CHANNEL_CTRL_STRIDE);
 	val = tegra30_apbif_read(reg);
@@ -462,6 +480,9 @@ int tegra30_ahub_disable_tx_fifo(enum tegra30_ahub_txcif txcif)
 	int channel = txcif - TEGRA30_AHUB_TXCIF_APBIF_TX0;
 	int reg, val;
 
+	if ((int)txcif < 0)
+		return 0;
+
 	reg = TEGRA30_AHUB_CHANNEL_CTRL +
 	      (channel * TEGRA30_AHUB_CHANNEL_CTRL_STRIDE);
 	val = tegra30_apbif_read(reg);
@@ -475,6 +496,9 @@ EXPORT_SYMBOL_GPL(tegra30_ahub_disable_tx_fifo);
 int tegra30_ahub_free_tx_fifo(enum tegra30_ahub_txcif txcif)
 {
 	int channel = txcif - TEGRA30_AHUB_TXCIF_APBIF_TX0;
+
+	if ((int)txcif < 0)
+		return 0;
 
 	__clear_bit(channel, ahub->tx_usage);
 
@@ -516,6 +540,9 @@ int tegra30_ahub_set_rx_cif_channels(enum tegra30_ahub_rxcif rxcif,
 	int channel = rxcif - TEGRA30_AHUB_RXCIF_APBIF_RX0;
 	unsigned int reg, val;
 
+	if ((int)rxcif < 0)
+		return 0;
+
 	reg = TEGRA30_AHUB_CIF_RX_CTRL +
 	      (channel * TEGRA30_AHUB_CIF_RX_CTRL_STRIDE);
 	val = tegra30_apbif_read(reg);
@@ -533,6 +560,9 @@ int tegra30_ahub_set_rx_cif_stereo_conv(enum tegra30_ahub_rxcif rxcif)
 {
 	int channel = rxcif - TEGRA30_AHUB_RXCIF_APBIF_RX0;
 	unsigned int reg, val;
+
+	if ((int)rxcif < 0)
+		return 0;
 
 	tegra30_ahub_enable_clocks();
 
@@ -555,6 +585,9 @@ int tegra30_ahub_set_tx_cif_channels(enum tegra30_ahub_txcif txcif,
 	int channel = txcif - TEGRA30_AHUB_TXCIF_APBIF_TX0;
 	unsigned int reg, val;
 
+	if ((int)txcif < 0)
+		return 0;
+
 	reg = TEGRA30_AHUB_CIF_TX_CTRL +
 	      (channel * TEGRA30_AHUB_CIF_TX_CTRL_STRIDE);
 	val = tegra30_apbif_read(reg);
@@ -576,6 +609,9 @@ int tegra30_ahub_set_rx_cif_bits(enum tegra30_ahub_rxcif rxcif,
 	int channel = rxcif - TEGRA30_AHUB_RXCIF_APBIF_RX0;
 	unsigned int reg, val;
 
+	if ((int)rxcif < 0)
+		return 0;
+
 	reg = TEGRA30_AHUB_CIF_RX_CTRL +
 	      (channel * TEGRA30_AHUB_CIF_RX_CTRL_STRIDE);
 	val = tegra30_apbif_read(reg);
@@ -595,6 +631,9 @@ int tegra30_ahub_set_tx_cif_bits(enum tegra30_ahub_txcif txcif,
 {
 	int channel = txcif - TEGRA30_AHUB_TXCIF_APBIF_TX0;
 	unsigned int reg, val;
+
+	if ((int)txcif < 0)
+		return 0;
 
 	reg = TEGRA30_AHUB_CIF_TX_CTRL +
 	      (channel * TEGRA30_AHUB_CIF_TX_CTRL_STRIDE);
