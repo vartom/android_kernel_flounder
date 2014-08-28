@@ -76,7 +76,6 @@ unsigned int compat_elf_hwcap __read_mostly = COMPAT_ELF_HWCAP_DEFAULT;
 unsigned int compat_elf_hwcap2 __read_mostly;
 #endif
 
-static const char *cpu_name;
 static const char *machine_name;
 
 unsigned int system_rev;
@@ -209,10 +208,8 @@ static void __init setup_processor(void)
 		while (1);
 	}
 
-	cpu_name = cpu_info->cpu_name;
-
 	pr_info("CPU: %s [%08x] revision %d\n",
-	       cpu_name, read_cpuid_id(), read_cpuid_id() & 15);
+	       cpu_info->cpu_name, read_cpuid_id(), read_cpuid_id() & 15);
 
 	sprintf(init_utsname()->machine, ELF_PLATFORM);
 	elf_hwcap = 0;
@@ -509,9 +506,12 @@ static const char *hwcap_str[] = {
 static void denver_show(struct seq_file *m)
 {
 	u32 aidr;
+	struct cpu_info *cpu_info;
+
+	cpu_info = lookup_processor_type(read_cpuid_id());
 
 	seq_printf(m, "Processor\t: %s rev %d (%s)\n",
-		   cpu_name, read_cpuid_id() & 15, ELF_PLATFORM);
+		   cpu_info->cpu_name, read_cpuid_id() & 15, ELF_PLATFORM);
 	seq_printf(m, "Hardware\t: %s\n", machine_name);
 	asm volatile("mrs %0, AIDR_EL1" : "=r" (aidr) : );
 	seq_printf(m, "MTS version\t: %u\n", aidr);
@@ -556,6 +556,12 @@ static const char *compat_hwcap2_str[] = {
 static int c_show(struct seq_file *m, void *v)
 {
 	int i, j;
+	struct cpu_info *cpu_info;
+
+	cpu_info = lookup_processor_type(read_cpuid_id());
+
+	seq_printf(m, "Processor\t: %s rev %d (%s)\n",
+		   cpu_info->cpu_name, read_cpuid_id() & 15, ELF_PLATFORM);
 
 	for_each_online_cpu(i) {
 		struct cpuinfo_arm64 *cpuinfo = &per_cpu(cpu_data, i);
