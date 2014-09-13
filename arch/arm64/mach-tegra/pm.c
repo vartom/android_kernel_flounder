@@ -225,6 +225,11 @@ static const char *tegra_suspend_name[TEGRA_MAX_SUSPEND_MODE] = {
 	[TEGRA_SUSPEND_LP0]	= "lp0",
 };
 
+int tegra_is_lp0_suspend_mode(void)
+{
+	return (current_suspend_mode == TEGRA_SUSPEND_LP0);
+}
+
 void tegra_log_resume_time(void)
 {
 	u64 resume_end_time = readl(tmrus_reg_base + TIMERUS_CNTR_1US);
