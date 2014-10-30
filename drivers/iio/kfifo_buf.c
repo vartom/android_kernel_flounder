@@ -23,6 +23,9 @@ static inline int __iio_allocate_kfifo(struct iio_kfifo *buf,
 	if ((length == 0) || (bytes_per_datum == 0))
 		return -EINVAL;
 
+	if (buf->buffer.kfifo_use_vmalloc)
+		return __kfifo_valloc((struct __kfifo *)&buf->kf, length,
+			     bytes_per_datum);
 	return __kfifo_alloc((struct __kfifo *)&buf->kf, length,
 			     bytes_per_datum, GFP_KERNEL);
 }
@@ -160,6 +163,8 @@ struct iio_buffer *iio_kfifo_allocate(struct iio_dev *indio_dev)
 	kf->buffer.access = &kfifo_access_funcs;
 	kf->buffer.length = 2;
 	mutex_init(&kf->user_lock);
+	kf->buffer.kfifo_use_vmalloc
+		= !!(indio_dev->modes & INDIO_KFIFO_USE_VMALLOC);
 	return &kf->buffer;
 }
 EXPORT_SYMBOL(iio_kfifo_allocate);
