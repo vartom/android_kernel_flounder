@@ -33,6 +33,9 @@
 #include <linux/of_platform.h>
 #include <linux/sched.h>
 #include <linux/workqueue.h>
+#include <linux/pm_wakeup.h>
+
+#define VBUS_WAKEUPSOURCE_TIMEOUT 3000
 
 #define PALMAS_USB_ID_STATE_CONNECTED		1
 
@@ -217,6 +220,7 @@ static irqreturn_t palmas_vbus_irq_handler(int irq, void *_palmas_usb)
 		if (palmas_usb->vbus_linkstat != PALMAS_USB_STATE_VBUS) {
 			palmas_usb->vbus_linkstat = PALMAS_USB_STATE_VBUS;
 			extcon_set_cable_state(&palmas_usb->edev, "USB", true);
+			pm_wakeup_event(palmas_usb->dev, VBUS_WAKEUPSOURCE_TIMEOUT);
 			dev_info(palmas_usb->dev, "USB cable is attached\n");
 			if (palmas_usb->enable_id_detect_on_vbus) {
 				schedule_delayed_work(
@@ -405,6 +409,7 @@ static int palmas_usb_probe(struct platform_device *pdev)
 
 	palmas_enable_irq(palmas_usb);
 	device_set_wakeup_capable(&pdev->dev, true);
+	device_init_wakeup(palmas_usb->dev, true);
 	return 0;
 
 fail_extcon:
