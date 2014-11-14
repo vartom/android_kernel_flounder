@@ -47,6 +47,7 @@
 #include <asm/cputype.h>
 #include <asm/elf.h>
 #include <asm/cputable.h>
+#include <asm/cpufeature.h>
 #include <asm/cpu_ops.h>
 #include <asm/sections.h>
 #include <asm/setup.h>
@@ -89,6 +90,9 @@ unsigned int system_serial_high;
 EXPORT_SYMBOL(system_serial_high);
 
 struct machine_desc *machine_desc __initdata;
+
+DECLARE_BITMAP(cpu_hwcaps, NCAPS);
+
 phys_addr_t __fdt_pointer __initdata;
 
 /*
