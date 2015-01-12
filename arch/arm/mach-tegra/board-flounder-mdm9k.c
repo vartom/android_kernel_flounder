@@ -309,6 +309,7 @@ struct tegra_usb_platform_data tegra_ehci2_hsic_modem_pdata = {
 		.hot_plug = false,
 		.remote_wakeup_supported = false,
 		.power_off_on_suspend = true,
+		.skip_resume = true,
 	},
 /* In flounder native design, the following are hard code
 	.u_cfg.hsic = {
