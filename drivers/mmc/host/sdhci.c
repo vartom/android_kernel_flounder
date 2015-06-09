@@ -82,7 +82,25 @@
 #define IS_32_BIT(x)	(x < (1ULL << 32))
 #endif
 
-static unsigned int debug_quirks = 0;
+#define MIN_SDMMC_FREQ 400000
+
+/* Response error index for SD Host controller spec
+ * defined errors listed in next comment
+ */
+#define RESP_ERROR_INDEX(x) ((x & SDHCI_INT_CRC) << 1 | \
+			(x & SDHCI_INT_TIMEOUT))
+
+/* based on the SD Host controller spec these three errors are logged
+ * CommandCRC Error     Command Timeout Error         Kinds of error
+ * 0                    0                             No Error
+ * 0                    1                             Response Timeout Error
+ * 1                    0                             Response CRC Error
+ * 1                    1                             CMD line conflict
+ */
+static char *resp_error[4] = {"No error", "Response TIMEOUT error",
+				"Reaponse CRC error",
+				"CMD LINE CONFLICT error"};
+static unsigned int debug_quirks  = 0;
 static unsigned int debug_quirks2;
 
 static void sdhci_finish_data(struct sdhci_host *);
@@ -2767,10 +2785,13 @@ static void sdhci_cmd_irq(struct sdhci_host *host, u32 intmask)
 		host->cmd->error = -EILSEQ;
 		sdhci_dumpregs(host);
 		if (intmask & SDHCI_INT_INDEX)
-			pr_err("%s: Command END bit error, intmask: %x Interface clock = %uHz\n",
+			pr_err("%s: Command INDEX error, intmask: %x Interface clock = %uHz\n",
 			mmc_hostname(host->mmc), intmask, host->max_clk);
-		else
+		else if (intmask & SDHCI_INT_CRC)
 			pr_err("%s: Command CRC error, intmask: %x Interface clock = %uHz\n",
+			mmc_hostname(host->mmc), intmask, host->max_clk);
+		else if (intmask & SDHCI_INT_END_BIT)
+			pr_err("%s: Command END BIT error, intmask: %x Interface clock = %uHz\n",
 			mmc_hostname(host->mmc), intmask, host->max_clk);
 	}
 
@@ -3016,9 +3037,19 @@ again:
 	intmask &= ~SDHCI_INT_ERROR;
 
 	if (intmask & SDHCI_INT_BUS_POWER) {
+		pr_err("%s: Current limit error, intmask: %x Interface clock = %uHz\n",
+			mmc_hostname(host->mmc), intmask, host->max_clk);
 		pr_err("%s: Card is consuming too much power!\n",
 			mmc_hostname(host->mmc));
 		sdhci_writel(host, SDHCI_INT_BUS_POWER, SDHCI_INT_STATUS);
+	}
+
+	/* print the errors based on the SD Host controller spec */
+	if ((intmask & SDHCI_INT_TIMEOUT) || (intmask & SDHCI_INT_CRC)) {
+		pr_err("%s: %s, intmask: %x Interface clock = %uHz\n",
+			mmc_hostname(host->mmc),
+			resp_error[RESP_ERROR_INDEX(intmask)],
+			intmask, host->max_clk);
 	}
 
 	intmask &= ~SDHCI_INT_BUS_POWER;
