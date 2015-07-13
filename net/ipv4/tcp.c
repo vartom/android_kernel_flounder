@@ -3602,6 +3602,9 @@ restart:
 				if (!inet->pinet6)
 					continue;
 
+				if (sk->sk_family == AF_INET)
+					continue;
+
 				s6 = &inet->pinet6->rcv_saddr;
 				if (ipv6_addr_type(s6) == IPV6_ADDR_MAPPED)
 					continue;
