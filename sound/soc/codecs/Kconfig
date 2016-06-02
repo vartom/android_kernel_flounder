@@ -62,6 +62,8 @@ config SND_SOC_ALL_CODECS
 	select SND_SOC_RT5639 if I2C
 	select SND_SOC_RT5640 if I2C
 	select SND_SOC_RT5645 if I2C
+	select SND_SOC_RT5677 if I2C
+	select SND_SOC_RT5506 if I2C
 	select SND_SOC_RT5659 if I2C
 	select SND_SOC_SGTL5000 if I2C
 	select SND_SOC_SI476X if MFD_SI476X_CORE
@@ -319,6 +321,9 @@ config SND_SOC_RT5645
 	tristate
 
 config SND_SOC_RT5659
+	tristate
+
+config SND_SOC_RT5677
 	tristate
 
 #Freescale sgtl5000 codec
@@ -583,3 +588,19 @@ config SND_SOC_TAS2552
 
 config SND_SOC_TPA6130A2
 	tristate
+config SND_SOC_RT5506
+	tristate
+
+config AMP_TFA9895
+	tristate "NXP TFA9895 Speaker AMP Driver"
+	depends on I2C=y
+	help
+	  NXP TFA9895 Speaker AMP Driver
+	  implemented by HTC.
+
+config AMP_TFA9895L
+	tristate "NXP TFA9895L Speaker AMP Driver"
+	depends on I2C=y
+	help
+	  NXP TFA9895L Speaker AMP Driver
+	  implemented by HTC.

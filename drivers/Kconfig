@@ -176,6 +176,8 @@ source "drivers/edp/Kconfig"
 
 source "drivers/gpu/nvgpu/Kconfig"
 
+source "drivers/htc_debug/stability/Kconfig"
+
 source "drivers/phy/Kconfig"
 
 source "drivers/android/Kconfig"
