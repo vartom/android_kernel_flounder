@@ -53,13 +53,14 @@ void tegra_cpu_die(unsigned int cpu)
 		/* Synchronize with CPU0 */
 		while (secondary_holding_pen_release != cpu)
 			cpu_relax();
-	}
-	else {
+	} else {
+		pmstate = T132_CORE_C6;
+
 		do {
 			asm volatile (
 			"	msr actlr_el1, %0\n"
 			"	wfi\n"
-			: : "r" (T132_CORE_C6));
+			: : "r" (pmstate));
 		} while (secondary_holding_pen_release != cpu);
 	}
 
