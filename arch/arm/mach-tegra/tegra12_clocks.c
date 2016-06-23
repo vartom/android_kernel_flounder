@@ -9294,7 +9294,7 @@ struct tegra_cpufreq_table_data *tegra_cpufreq_table_get(void)
 		return NULL;
 	}
 
-	cpu_min_freq = 204000;
+	cpu_min_freq = 510000;
 
 	cpu_clk_g->min_rate = cpu_min_freq*1000;
 
