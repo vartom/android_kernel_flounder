@@ -548,108 +548,6 @@ void destroy_flush_cmd_control(struct f2fs_sb_info *sbi)
 	SM_I(sbi)->cmd_control_info = NULL;
 }
 
-void f2fs_balance_fs_bg(struct f2fs_sb_info *sbi)
-{
-	/* check the # of cached NAT entries and prefree segments */
-	if (try_to_free_nats(sbi, NAT_ENTRY_PER_BLOCK) ||
-				excess_prefree_segs(sbi))
-		f2fs_sync_fs(sbi->sb, true);
-}
-
-static int issue_flush_thread(void *data)
-{
-	struct f2fs_sb_info *sbi = data;
-	struct flush_cmd_control *fcc = SM_I(sbi)->cmd_control_info;
-	wait_queue_head_t *q = &fcc->flush_wait_queue;
-repeat:
-	if (kthread_should_stop())
-		return 0;
-
-	if (!llist_empty(&fcc->issue_list)) {
-		struct bio *bio = bio_alloc(GFP_NOIO, 0);
-		struct flush_cmd *cmd, *next;
-		int ret;
-
-		fcc->dispatch_list = llist_del_all(&fcc->issue_list);
-		fcc->dispatch_list = llist_reverse_order(fcc->dispatch_list);
-
-		bio->bi_bdev = sbi->sb->s_bdev;
-		ret = submit_bio_wait(WRITE_FLUSH, bio);
-
-		llist_for_each_entry_safe(cmd, next,
-					  fcc->dispatch_list, llnode) {
-			cmd->ret = ret;
-			complete(&cmd->wait);
-		}
-		bio_put(bio);
-		fcc->dispatch_list = NULL;
-	}
-
-	wait_event_interruptible(*q,
-		kthread_should_stop() || !llist_empty(&fcc->issue_list));
-	goto repeat;
-}
-
-int f2fs_issue_flush(struct f2fs_sb_info *sbi)
-{
-	struct flush_cmd_control *fcc = SM_I(sbi)->cmd_control_info;
-	struct flush_cmd cmd;
-
-	trace_f2fs_issue_flush(sbi->sb, test_opt(sbi, NOBARRIER),
-					test_opt(sbi, FLUSH_MERGE));
-
-	if (test_opt(sbi, NOBARRIER))
-		return 0;
-
-	if (!test_opt(sbi, FLUSH_MERGE))
-		return blkdev_issue_flush(sbi->sb->s_bdev, GFP_KERNEL, NULL);
-
-	init_completion(&cmd.wait);
-
-	llist_add(&cmd.llnode, &fcc->issue_list);
-
-	if (!fcc->dispatch_list)
-		wake_up(&fcc->flush_wait_queue);
-
-	wait_for_completion(&cmd.wait);
-
-	return cmd.ret;
-}
-
-int create_flush_cmd_control(struct f2fs_sb_info *sbi)
-{
-	dev_t dev = sbi->sb->s_bdev->bd_dev;
-	struct flush_cmd_control *fcc;
-	int err = 0;
-
-	fcc = kzalloc(sizeof(struct flush_cmd_control), GFP_KERNEL);
-	if (!fcc)
-		return -ENOMEM;
-	init_waitqueue_head(&fcc->flush_wait_queue);
-	init_llist_head(&fcc->issue_list);
-	SM_I(sbi)->cmd_control_info = fcc;
-	fcc->f2fs_issue_flush = kthread_run(issue_flush_thread, sbi,
-				"f2fs_flush-%u:%u", MAJOR(dev), MINOR(dev));
-	if (IS_ERR(fcc->f2fs_issue_flush)) {
-		err = PTR_ERR(fcc->f2fs_issue_flush);
-		kfree(fcc);
-		SM_I(sbi)->cmd_control_info = NULL;
-		return err;
-	}
-
-	return err;
-}
-
-void destroy_flush_cmd_control(struct f2fs_sb_info *sbi)
-{
-	struct flush_cmd_control *fcc = SM_I(sbi)->cmd_control_info;
-
-	if (fcc && fcc->f2fs_issue_flush)
-		kthread_stop(fcc->f2fs_issue_flush);
-	kfree(fcc);
-	SM_I(sbi)->cmd_control_info = NULL;
-}
-
 static void __locate_dirty_segment(struct f2fs_sb_info *sbi, unsigned int segno,
 		enum dirty_type dirty_type)
 {
@@ -926,7 +824,6 @@ static void update_sit_entry(struct f2fs_sb_info *sbi, block_t blkaddr, int del)
 	struct seg_entry *se;
 	unsigned int segno, offset;
 	long int new_vblocks;
-	bool check_map = false;
 
 	segno = GET_SEGNO(sbi, blkaddr);
 
@@ -937,6 +834,7 @@ static void update_sit_entry(struct f2fs_sb_info *sbi, block_t blkaddr, int del)
 	f2fs_bug_on(sbi, (new_vblocks >> (sizeof(unsigned short) << 3) ||
 				(new_vblocks > sbi->blocks_per_seg)));
 
+	se->valid_blocks = new_vblocks;
 	se->mtime = get_mtime(sbi);
 	SIT_I(sbi)->max_mtime = se->mtime;
 
@@ -952,30 +850,6 @@ static void update_sit_entry(struct f2fs_sb_info *sbi, block_t blkaddr, int del)
 		if (f2fs_test_and_clear_bit(offset, se->discard_map))
 			sbi->discard_blks++;
 	}
-
-	if (unlikely(check_map)) {
-		int i;
-		long int vblocks = 0;
-
-		f2fs_msg(sbi->sb, KERN_ERR,
-				"cannot %svalidate block %u in segment %u with %hu valid blocks",
-				(del < 0) ? "in" : "",
-				offset, segno, se->valid_blocks);
-
-		/* assume the count was stale to start */
-		del = 0;
-		for (i = 0; i < sbi->blocks_per_seg; i++)
-			if (f2fs_test_bit(i, se->cur_valid_map))
-				vblocks++;
-		if (vblocks != se->valid_blocks) {
-			f2fs_msg(sbi->sb, KERN_INFO, "correcting valid block "
-				"counts %d -> %ld", se->valid_blocks, vblocks);
-			/* make accounting corrections */
-			del = vblocks - se->valid_blocks;
-		}
-	}
-	se->valid_blocks += del;
-
 	if (!f2fs_test_bit(offset, se->ckpt_valid_map))
 		se->ckpt_valid_blocks += del;
 
@@ -1006,12 +880,6 @@ void invalidate_blocks(struct f2fs_sb_info *sbi, block_t addr)
 	f2fs_bug_on(sbi, addr == NULL_ADDR);
 	if (addr == NEW_ADDR)
 		return;
-
-	if (segno >= TOTAL_SEGS(sbi)) {
-		f2fs_msg(sbi->sb, KERN_ERR, "invalid segment number %u", segno);
-		if (f2fs_handle_error(sbi))
-			return;
-	}
 
 	/* add it into sit main buffer */
 	mutex_lock(&sit_i->sentry_lock);

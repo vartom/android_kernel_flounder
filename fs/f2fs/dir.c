@@ -169,7 +169,6 @@ static struct f2fs_dir_entry *find_in_level(struct inode *dir,
 	unsigned int bidx, end_block;
 	struct page *dentry_page;
 	struct f2fs_dir_entry *de = NULL;
-	struct f2fs_sb_info *sbi = F2FS_SB(dir->i_sb);
 	bool room = false;
 	int max_slots;
 	f2fs_hash_t namehash;
@@ -184,8 +183,6 @@ static struct f2fs_dir_entry *find_in_level(struct inode *dir,
 	end_block = bidx + nblock;
 
 	for (; bidx < end_block; bidx++) {
-		bool nocase = false;
-
 		/* no need to allocate new dentry pages to all the indices */
 		dentry_page = find_data_page(dir, bidx);
 		if (IS_ERR(dentry_page)) {
@@ -907,8 +904,8 @@ static int f2fs_readdir(struct file *file, void *dirent, filldir_t filldir)
 		}
 
 		bit_pos = 0;
-		kunmap(dentry_page);
 		file->f_pos = (n + 1) * NR_DENTRY_IN_BLOCK;
+		kunmap(dentry_page);
 		f2fs_put_page(dentry_page, 1);
 	}
 	err = 0;

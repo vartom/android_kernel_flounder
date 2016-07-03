@@ -584,11 +584,6 @@ int get_dnode_of_data(struct dnode_of_data *dn, pgoff_t index, int mode)
 		goto release_out;
 	}
 
-	if (!npage[0]) {
-		npage[0] = get_node_page(sbi, nids[0]);
-		if (IS_ERR(npage[0]))
-			return PTR_ERR(npage[0]);
-	}
 	parent = npage[0];
 	if (level != 0)
 		nids[1] = get_nid(parent, offset[0], true);
@@ -1580,48 +1575,6 @@ int wait_on_node_pages_writeback(struct f2fs_sb_info *sbi, nid_t ino)
 	return ret;
 }
 
-int wait_on_node_pages_writeback(struct f2fs_sb_info *sbi, nid_t ino)
-{
-	pgoff_t index = 0, end = LONG_MAX;
-	struct pagevec pvec;
-	int ret2 = 0, ret = 0;
-
-	pagevec_init(&pvec, 0);
-
-	while (index <= end) {
-		int i, nr_pages;
-		nr_pages = pagevec_lookup_tag(&pvec, NODE_MAPPING(sbi), &index,
-				PAGECACHE_TAG_WRITEBACK,
-				min(end - index, (pgoff_t)PAGEVEC_SIZE-1) + 1);
-		if (nr_pages == 0)
-			break;
-
-		for (i = 0; i < nr_pages; i++) {
-			struct page *page = pvec.pages[i];
-
-			/* until radix tree lookup accepts end_index */
-			if (unlikely(page->index > end))
-				continue;
-
-			if (ino && ino_of_node(page) == ino) {
-				f2fs_wait_on_page_writeback(page, NODE);
-				if (TestClearPageError(page))
-					ret = -EIO;
-			}
-		}
-		pagevec_release(&pvec);
-		cond_resched();
-	}
-
-	if (unlikely(test_and_clear_bit(AS_ENOSPC, &NODE_MAPPING(sbi)->flags)))
-		ret2 = -ENOSPC;
-	if (unlikely(test_and_clear_bit(AS_EIO, &NODE_MAPPING(sbi)->flags)))
-		ret2 = -EIO;
-	if (!ret)
-		ret = ret2;
-	return ret;
-}
-
 static int f2fs_write_node_page(struct page *page,
 				struct writeback_control *wbc)
 {
@@ -1943,9 +1896,6 @@ void alloc_nid_done(struct f2fs_sb_info *sbi, nid_t nid)
 	struct f2fs_nm_info *nm_i = NM_I(sbi);
 	struct free_nid *i;
 
-	if (!nid)
-		return;
-
 	spin_lock(&nm_i->free_nid_list_lock);
 	i = __lookup_free_nid_list(nm_i, nid);
 	f2fs_bug_on(sbi, !i || i->state != NID_ALLOC);
@@ -2078,9 +2028,6 @@ int recover_inode_page(struct f2fs_sb_info *sbi, struct page *page)
 	nid_t ino = ino_of_node(page);
 	struct node_info old_ni, new_ni;
 	struct page *ipage;
-	int err;
-
-	get_node_info(sbi, ino, &old_ni);
 
 	get_node_info(sbi, ino, &old_ni);
 
@@ -2116,34 +2063,7 @@ int recover_inode_page(struct f2fs_sb_info *sbi, struct page *page)
 	inc_valid_inode_count(sbi);
 	set_page_dirty(ipage);
 	f2fs_put_page(ipage, 1);
-	return err;
-}
-
-/*
- * ra_sum_pages() merge contiguous pages into one bio and submit.
- * these pre-readed pages are alloced in bd_inode's mapping tree.
- */
-static int ra_sum_pages(struct f2fs_sb_info *sbi, struct page **pages,
-				int start, int nrpages)
-{
-	struct inode *inode = sbi->sb->s_bdev->bd_inode;
-	struct address_space *mapping = inode->i_mapping;
-	int i, page_idx = start;
-	struct f2fs_io_info fio = {
-		.type = META,
-		.rw = READ_SYNC | REQ_META | REQ_PRIO
-	};
-
-	for (i = 0; page_idx < start + nrpages; page_idx++, i++) {
-		/* alloc page in bd_inode for reading node summary info */
-		pages[i] = grab_cache_page(mapping, page_idx);
-		if (!pages[i])
-			break;
-		f2fs_submit_page_mbio(sbi, pages[i], page_idx, &fio);
-	}
-
-	f2fs_submit_merged_bio(sbi, META, READ);
-	return i;
+	return 0;
 }
 
 int restore_node_summary(struct f2fs_sb_info *sbi,

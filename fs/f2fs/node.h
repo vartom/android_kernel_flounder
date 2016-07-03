@@ -54,13 +54,6 @@ struct node_info {
 	unsigned char flag;	/* for node information bits */
 };
 
-enum {
-	IS_CHECKPOINTED,	/* is it checkpointed before? */
-	HAS_FSYNCED_INODE,	/* is the inode fsynced before? */
-	HAS_LAST_FSYNC,		/* has the latest node fsync mark? */
-	IS_DIRTY,		/* this nat entry is dirty? */
-};
-
 struct nat_entry {
 	struct list_head list;	/* for clean or dirty nat list */
 	struct node_info ni;	/* in-memory node information */

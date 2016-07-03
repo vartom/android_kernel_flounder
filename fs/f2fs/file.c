@@ -244,8 +244,6 @@ go_write:
 	up_read(&fi->i_sem);
 
 	if (need_cp) {
-		nid_t pino;
-
 		/* all the dirty node pages should be flushed for POR */
 		ret = f2fs_sync_fs(inode->i_sb, 1);
 
@@ -707,8 +705,6 @@ int f2fs_setattr(struct dentry *dentry, struct iattr *attr)
 {
 	struct inode *inode = dentry->d_inode;
 	struct f2fs_inode_info *fi = F2FS_I(inode);
-	struct f2fs_inode_info *pfi = F2FS_I(dentry->d_parent->d_inode);
-	struct f2fs_sb_info *sbi = F2FS_SB(inode->i_sb);
 	int err;
 
 	err = inode_change_ok(inode, attr);
@@ -1545,7 +1541,6 @@ static int f2fs_ioc_release_volatile_write(struct file *filp)
 		ret = truncate_partial_data_page(inode, 0, true);
 		goto out;
 	}
-	f2fs_unlock_op(sbi);
 
 	ret = punch_hole(inode, 0, F2FS_BLKSIZE);
 out:
@@ -1923,7 +1918,6 @@ do_map:
 			cnt++;
 			total++;
 		}
-	}
 
 		map.m_lblk = idx;
 

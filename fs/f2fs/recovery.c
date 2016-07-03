@@ -317,12 +317,6 @@ static int check_index_in_prev_nodes(struct f2fs_sb_info *sbi,
 	block_t bidx;
 	int i;
 
-	if (segno >= TOTAL_SEGS(sbi)) {
-		f2fs_msg(sbi->sb, KERN_ERR, "invalid segment number %u", segno);
-		if (f2fs_handle_error(sbi))
-			return -EIO;
-	}
-
 	sentry = get_seg_entry(sbi, segno);
 	if (!f2fs_test_bit(blkoff, sentry->cur_valid_map))
 		return 0;
@@ -599,24 +593,14 @@ int recover_fsync_data(struct f2fs_sb_info *sbi, bool check_only)
 	blkaddr = NEXT_FREE_BLKADDR(sbi, curseg);
 
 	/* step #1: find fsynced inode numbers */
-	sbi->por_doing = true;
-
-	/* prevent checkpoint */
-	mutex_lock(&sbi->cp_mutex);
-
-	blkaddr = NEXT_FREE_BLKADDR(sbi, curseg);
-
 	err = find_fsync_dnodes(sbi, &inode_list);
 	if (err || list_empty(&inode_list))
 		goto out;
-	}
 
 	if (check_only) {
 		ret = 1;
 		goto out;
 	}
-
-	need_writecp = true;
 
 	need_writecp = true;
 
