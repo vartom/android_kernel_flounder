@@ -1525,15 +1525,14 @@ static int soctherm_unbind(struct thermal_zone_device *thz,
  *
  * Return: 0
  */
-static int soctherm_get_temp(struct thermal_zone_device *thz,
-			     unsigned long *temp)
+static int soctherm_get_temp(struct thermal_zone_device *thz, long *temp)
 {
 	struct soctherm_therm *therm = thz->devdata;
 	ptrdiff_t index = therm - plat_data.therm;
 
 	if (index != THERM_CPU && index != THERM_GPU && index != THERM_MEM &&
 	    index != THERM_PLL) {
-		WARN(1, "Unknown thermal sensor index %d", index);
+		WARN(1, "Unknown thermal sensor index %d", (int)index);
 		index = THERM_PLL;
 	}
 
