@@ -80,6 +80,10 @@ GRTAGS
 GSYMS
 GTAGS
 
+out/*
+working/*
+*.log
+*.sh
 *.orig
 *~
 \#*#
