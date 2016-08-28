@@ -184,13 +184,8 @@ config QCT_9K_MODEM
        select MSM_SYSMON_COMM
        select MSM_RMNET_USB
        select RMNET_DATA
-       select RMNET_DATA_DEBUG_PKT
-       select USB_QCOM_DIAG_BRIDGE
        select USB_QCOM_MDM_BRIDGE
        select USB_QCOM_KS_BRIDGE
-       select DIAG_CHAR
-       select DIAG_OVER_USB
-       select DIAG_HSIC_PIPE
        select USB_ANDROID_DIAG
        select USB_ANDROID_RMNET
        select MSM_RMNET_BAM
