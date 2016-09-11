@@ -3257,7 +3257,7 @@ static int soctherm_pm_suspend(struct notifier_block *nb,
 {
 	if (event == PM_SUSPEND_PREPARE) {
 		soctherm_suspend(NULL);
-		pr_info("tegra_soctherm: suspended\n");
+		pr_debug("tegra_soctherm: suspended\n");
 	}
 	return NOTIFY_OK;
 }
@@ -3277,7 +3277,7 @@ static int soctherm_pm_resume(struct notifier_block *nb,
 {
 	if (event == PM_POST_SUSPEND) {
 		soctherm_resume(NULL);
-		pr_info("tegra_soctherm: resumed\n");
+		pr_debug("tegra_soctherm: resumed\n");
 	}
 	return NOTIFY_OK;
 }

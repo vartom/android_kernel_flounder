@@ -105,10 +105,10 @@ static void pmc_32kwritel(u32 val, unsigned long offs)
 
 static inline void write_pmc_wake_mask(u64 value)
 {
-	pr_info("Wake[31-0] enable=0x%x\n", (u32)(value & 0xFFFFFFFF));
+	pr_err("Wake[31-0] enable=0x%x\n", (u32)(value & 0xFFFFFFFF));
 	writel((u32)value, tegra_pmc_base + PMC_WAKE_MASK);
 #ifndef CONFIG_ARCH_TEGRA_2x_SOC
-	pr_info("Tegra3 wake[63-32] enable=0x%x\n", (u32)((value >> 32) &
+	pr_err("Tegra3 wake[63-32] enable=0x%x\n", (u32)((value >> 32) &
 		0xFFFFFFFF));
 	__raw_writel((u32)(value >> 32), tegra_pmc_base + PMC_WAKE2_MASK);
 #endif
@@ -129,10 +129,10 @@ static inline u64 read_pmc_wake_level(void)
 
 static inline void write_pmc_wake_level(u64 value)
 {
-	pr_info("Wake[31-0] level=0x%x\n", (u32)(value & 0xFFFFFFFF));
+	pr_err("Wake[31-0] level=0x%x\n", (u32)(value & 0xFFFFFFFF));
 	writel((u32)value, tegra_pmc_base + PMC_WAKE_LEVEL);
 #ifndef CONFIG_ARCH_TEGRA_2x_SOC
-	pr_info("Tegra3 wake[63-32] level=0x%x\n", (u32)((value >> 32) &
+	pr_err("Tegra3 wake[63-32] level=0x%x\n", (u32)((value >> 32) &
 		0xFFFFFFFF));
 	__raw_writel((u32)(value >> 32), tegra_pmc_base + PMC_WAKE2_LEVEL);
 #endif
@@ -163,18 +163,18 @@ static inline u64 read_pmc_sw_wake_status(void)
 #ifdef CONFIG_ARCH_TEGRA_2x_SOC
 	reg = readl(tegra_pmc_base + PMC_SW_WAKE_STATUS);
 #ifdef DEBUG_WAKE_SOURCE
-	pr_info("PMC_SW_WAKE_STATUS[31-0] level=0x%x\n",
+	pr_err("PMC_SW_WAKE_STATUS[31-0] level=0x%x\n",
 		(u32)(reg & 0xFFFFFFFF));
 #endif
 #else
 	reg = __raw_readl(tegra_pmc_base + PMC_SW_WAKE_STATUS);
 #ifdef DEBUG_WAKE_SOURCE
-	pr_info("PMC_SW_WAKE_STATUS[31-0] level=0x%x\n",
+	pr_err("PMC_SW_WAKE_STATUS[31-0] level=0x%x\n",
 		(u32)(reg & 0xFFFFFFFF));
 #endif
 	reg |= ((u64)readl(tegra_pmc_base + PMC_SW_WAKE2_STATUS)) << 32;
 #ifdef DEBUG_WAKE_SOURCE
-	pr_info("PMC_SW_WAKE_STATUS[63-32] level=0x%x\n",
+	pr_err("PMC_SW_WAKE_STATUS[63-32] level=0x%x\n",
 		(u32)((reg >> 32) & 0xFFFFFFFF));
 #endif
 #endif
@@ -244,19 +244,19 @@ static void tegra_pm_irq_syscore_resume_helper(
 	for_each_set_bit(wake, &wake_status, sizeof(wake_status) * 8) {
 		irq = tegra_wake_to_irq(wake + 32 * index);
 		if (!irq) {
-			pr_info("Resume caused by WAKE%d\n",
+			pr_err("Resume caused by WAKE%d\n",
 				(wake + 32 * index));
 			continue;
 		}
 
 		desc = irq_to_desc(irq);
 		if (!desc || !desc->action || !desc->action->name) {
-			pr_info("Resume caused by WAKE%d, irq %d\n",
+			pr_err("Resume caused by WAKE%d, irq %d\n",
 				(wake + 32 * index), irq);
 			continue;
 		}
 
-		pr_info("Resume caused by WAKE%d, %s\n", (wake + 32 * index),
+		pr_err("Resume caused by WAKE%d, %s\n", (wake + 32 * index),
 			desc->action->name);
 
 		tegra_wake_irq_count[wake + 32 * index]++;
@@ -269,10 +269,10 @@ static void tegra_pm_irq_syscore_resume(void)
 {
 	unsigned long long wake_status = read_pmc_wake_status();
 
-	pr_info(" legacy wake status=0x%x\n", (u32)wake_status);
+	pr_err(" legacy wake status=0x%x\n", (u32)wake_status);
 	tegra_pm_irq_syscore_resume_helper((unsigned long)wake_status, 0);
 #ifndef CONFIG_ARCH_TEGRA_2x_SOC
-	pr_info(" tegra3 wake status=0x%x\n", (u32)(wake_status >> 32));
+	pr_err(" tegra3 wake status=0x%x\n", (u32)(wake_status >> 32));
 	tegra_pm_irq_syscore_resume_helper(
 		(unsigned long)(wake_status >> 32), 1);
 #endif
@@ -281,8 +281,8 @@ static void tegra_pm_irq_syscore_resume(void)
 #ifdef DEBUG_WAKE_SOURCE
 static void print_val64(char *name, u64 val)
 {
-	pr_info("%s[31-0]=%#x\n", name, (u32)(val & 0xFFFFFFFF));
-	pr_info("%s[63-32]=%#x\n", name, (u32)((val >> 32) & 0xFFFFFFFF));
+	pr_err("%s[31-0]=%#x\n", name, (u32)(val & 0xFFFFFFFF));
+	pr_err("%s[63-32]=%#x\n", name, (u32)((val >> 32) & 0xFFFFFFFF));
 }
 #endif
 
@@ -338,7 +338,7 @@ static void handle_first_wake(u64 *wak_lvl, u64 *wak_enb, u32 indx)
 
 	lvl_tmp = (*wak_lvl & (1ULL << indx)) ?  1 : 0;
 #ifdef DEBUG_WAKE_SOURCE
-	pr_info("%s: wake_src_index=%d, level=%d\n", __func__, indx, lvl_tmp);
+	pr_err("%s: wake_src_index=%d, level=%d\n", __func__, indx, lvl_tmp);
 #endif
 	/* ID cable disconnected LP0 entry case */
 	/* or VBUS cable connected LP0 entry case */
@@ -409,10 +409,10 @@ static int tegra_pm_irq_syscore_suspend(void)
 #ifdef DEBUG_WAKE_SOURCE
 	if ((test_wake_src_index > 0) &&
 		(test_wake_src_index < PMC_MAX_WAKE_COUNT)) {
-		pr_info("%s: wake_src_index=%ld, should wake with wake level=%d as per sw_wake_status\n",
+		pr_err("%s: wake_src_index=%ld, should wake with wake level=%d as per sw_wake_status\n",
 			__func__, test_wake_src_index,
 			(status & (1ULL << test_wake_src_index)) ? 1 : 0);
-		pr_info("%s: wake_src_index=%ld, desired polarity=%ld, old level=%d\n",
+		pr_err("%s: wake_src_index=%ld, desired polarity=%ld, old level=%d\n",
 			__func__, test_wake_src_index, test_wake_src_polarity,
 			((wake_level & (1ULL << test_wake_src_index)) ? 1 : 0));
 	}
@@ -439,7 +439,7 @@ static int tegra_pm_irq_syscore_suspend(void)
 	for (j = 0; j < any_wake_count; j++) {
 		if (wake_enb && (1ULL << *(any_wake + j))) {
 #ifdef DEBUG_WAKE_SOURCE
-			pr_info("%s: wake level ANY sources: WAKE%d=%s\n",
+			pr_err("%s: wake level ANY sources: WAKE%d=%s\n",
 				__func__, *(any_wake + j),
 				((wake_enb && (1ULL << *(any_wake + j))) ?
 				"enabled" : "disabled"));
@@ -461,13 +461,13 @@ static int tegra_pm_irq_syscore_suspend(void)
 	if ((test_wake_src_index > 0) &&
 		(test_wake_src_index < PMC_MAX_WAKE_COUNT)) {
 		if (test_wake_src_polarity == WAKE_LEVEL_HI) {
-			pr_info("Test wake level HI\n");
+			pr_err("Test wake level HI\n");
 			wake_level |= (1ULL << test_wake_src_index);
 		} else if (test_wake_src_polarity == WAKE_LEVEL_LO) {
-			pr_info("Test wake level LO\n");
+			pr_err("Test wake level LO\n");
 			wake_level &= ~(1ULL << test_wake_src_index);
 		} else if (test_wake_src_polarity == WAKE_LEVEL_ANY) {
-			pr_info("Test wake level ANY\n");
+			pr_err("Test wake level ANY\n");
 			handle_first_wake(&wake_level, &wake_enb,
 				test_wake_src_index);
 		}

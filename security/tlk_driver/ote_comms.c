@@ -912,7 +912,7 @@ void te_open_session_compat(struct te_opensession_compat *cmd,
 	       &cmd->dest_uuid,
 	       sizeof(struct te_service_id));
 
-	pr_info("OPEN_CLIENT_SESSION_COMPAT: 0x%x 0x%x 0x%x 0x%x\n",
+	pr_debug("OPEN_CLIENT_SESSION_COMPAT: 0x%x 0x%x 0x%x 0x%x\n",
 		request->dest_uuid[0],
 		request->dest_uuid[1],
 		request->dest_uuid[2],

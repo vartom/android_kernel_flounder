@@ -1299,7 +1299,7 @@ static int tegra_dvfs_pm_suspend(struct notifier_block *nb,
 	if (event == PM_SUSPEND_PREPARE) {
 		if (tegra_dvfs_suspend())
 			return NOTIFY_STOP;
-		pr_info("tegra_dvfs: suspended\n");
+		pr_debug("tegra_dvfs: suspended\n");
 	}
 	return NOTIFY_OK;
 };
@@ -1309,7 +1309,7 @@ static int tegra_dvfs_pm_resume(struct notifier_block *nb,
 {
 	if (event == PM_POST_SUSPEND) {
 		tegra_dvfs_resume();
-		pr_info("tegra_dvfs: resumed\n");
+		pr_debug("tegra_dvfs: resumed\n");
 	}
 	return NOTIFY_OK;
 };

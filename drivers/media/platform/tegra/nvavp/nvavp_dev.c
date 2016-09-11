@@ -1305,7 +1305,7 @@ static int nvavp_load_os(struct nvavp_info *nvavp, char *fw_os_file)
 	memcpy(os_info->data, os_info->os_bin, os_info->size);
 	os_info->reset_addr = os_info->phys + os_info->entry_offset;
 
-	dev_info(&nvavp->nvhost_dev->dev,
+	dev_dbg(&nvavp->nvhost_dev->dev,
 		"AVP os at vaddr=%p paddr=%llx reset_addr=%llx\n",
 		os_info->data, (u64)(os_info->phys), (u64)os_info->reset_addr);
 	return 0;
@@ -1348,7 +1348,7 @@ static int nvavp_os_init(struct nvavp_info *nvavp)
 #elif defined(CONFIG_TEGRA_AVP_KERNEL_ON_SMMU) /* Tegra3 with SMMU */
 	/* paddr is any address behind SMMU */
 	/* vaddr is TEGRA_SMMU_BASE */
-	dev_info(&nvavp->nvhost_dev->dev,
+	dev_dbg(&nvavp->nvhost_dev->dev,
 		"using SMMU at %lx to load AVP kernel\n",
 		(unsigned long)nvavp->os_info.phys);
 	BUG_ON(nvavp->os_info.phys != 0xeff00000
@@ -1446,7 +1446,7 @@ static void nvavp_uninit(struct nvavp_info *nvavp)
 	audio_initialized = nvavp_get_audio_init_status(nvavp);
 #endif
 
-	pr_err("nvavp_uninit video_initialized(%d) audio_initialized(%d)\n",
+	pr_debug("nvavp_uninit video_initialized(%d) audio_initialized(%d)\n",
 		video_initialized, audio_initialized);
 
 	/* Video and Audio both are uninitialized */
@@ -1456,7 +1456,7 @@ static void nvavp_uninit(struct nvavp_info *nvavp)
 	nvavp->init_task = current;
 
 	if (video_initialized) {
-		pr_err("nvavp_uninit nvavp->video_initialized\n");
+		pr_debug("nvavp_uninit nvavp->video_initialized\n");
 		nvavp_halt_vde(nvavp);
 		nvavp_set_video_init_status(nvavp, 0);
 		video_initialized = 0;
@@ -1472,7 +1472,7 @@ static void nvavp_uninit(struct nvavp_info *nvavp)
 
 	/* Video and Audio both becomes uninitialized */
 	if (!video_initialized && !audio_initialized) {
-		pr_err("nvavp_uninit both channels uninitialized\n");
+		pr_debug("nvavp_uninit both channels uninitialized\n");
 
 		clk_disable_unprepare(nvavp->sclk);
 		clk_disable_unprepare(nvavp->emc_clk);
@@ -2041,13 +2041,13 @@ static int tegra_nvavp_open(struct nvavp_info *nvavp,
 	struct nvavp_clientctx *clientctx;
 	int ret = 0;
 
-	dev_err(&nvavp->nvhost_dev->dev, "%s: ++\n", __func__);
+	dev_dbg(&nvavp->nvhost_dev->dev, "%s: ++\n", __func__);
 
 	clientctx = kzalloc(sizeof(*clientctx), GFP_KERNEL);
 	if (!clientctx)
 		return -ENOMEM;
 
-	pr_err("tegra_nvavp_open channel_id (%d)\n", channel_id);
+	pr_debug("tegra_nvavp_open channel_id (%d)\n", channel_id);
 
 	clientctx->channel_id = channel_id;
 
@@ -2076,7 +2076,7 @@ static int tegra_nvavp_video_open(struct inode *inode, struct file *filp)
 	struct nvavp_clientctx *clientctx;
 	int ret = 0;
 
-	pr_err("tegra_nvavp_video_open NVAVP_VIDEO_CHANNEL\n");
+	pr_debug("tegra_nvavp_video_open NVAVP_VIDEO_CHANNEL\n");
 
 	nonseekable_open(inode, filp);
 
@@ -2096,7 +2096,7 @@ static int tegra_nvavp_audio_open(struct inode *inode, struct file *filp)
 	struct nvavp_clientctx *clientctx;
 	int ret = 0;
 
-	pr_err("tegra_nvavp_audio_open NVAVP_AUDIO_CHANNEL\n");
+	pr_debug("tegra_nvavp_audio_open NVAVP_AUDIO_CHANNEL\n");
 
 	nonseekable_open(inode, filp);
 
@@ -2129,7 +2129,7 @@ static int tegra_nvavp_release(struct nvavp_clientctx *clientctx,
 	struct nvavp_info *nvavp = clientctx->nvavp;
 	int ret = 0;
 
-	dev_err(&nvavp->nvhost_dev->dev, "%s: ++\n", __func__);
+	dev_dbg(&nvavp->nvhost_dev->dev, "%s: ++\n", __func__);
 
 	if (!nvavp->refcount) {
 		dev_err(&nvavp->nvhost_dev->dev,

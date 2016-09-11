@@ -119,7 +119,7 @@ int rt5506_headset_detect(int on)
 				rt5506_write_reg(1, 0xc7);
 			}
 
-			pr_info("%s: OFF\n", __func__);
+			pr_err("%s: OFF\n", __func__);
 
 			rt5506_query.rt5506_status = STATUS_SUSPEND;
 		}
@@ -147,7 +147,7 @@ int rt5506_headset_detect(int on)
 				rt5506_write_reg(1, 0xc7);
 			}
 
-			pr_info("%s: OFF\n", __func__);
+			pr_err("%s: OFF\n", __func__);
 
 			rt5506_query.rt5506_status = STATUS_SUSPEND;
 		}
@@ -155,7 +155,7 @@ int rt5506_headset_detect(int on)
 			int closegpio = 0;
 
 			if (rt5506_query.gpiostatus == AMP_GPIO_OFF) {
-				pr_info("%s: enable gpio %d\n", __func__,
+				pr_debug("%s: enable gpio %d\n", __func__,
 				pdata->rt5506_enable);
 				gpio_set_value(pdata->rt5506_enable, 1);
 				closegpio = 1;
@@ -337,7 +337,7 @@ static void hs_imp_gpio_off(struct work_struct *work)
 {
 	wake_lock(&rt5506_query.gpio_wake_lock);
 	mutex_lock(&rt5506_query.gpiolock);
-	pr_info("%s: disable gpio %d\n", __func__, pdata->rt5506_enable);
+	pr_debug("%s: disable gpio %d\n", __func__, pdata->rt5506_enable);
 	gpio_set_value(pdata->rt5506_enable, 0);
 	rt5506_query.gpiostatus = AMP_GPIO_OFF;
 	mutex_unlock(&rt5506_query.gpiolock);
@@ -368,7 +368,7 @@ static void hs_imp_detec_func(struct work_struct *work)
 	}
 
 	if (hs->gpiostatus == AMP_GPIO_OFF) {
-		pr_info("%s: enable gpio %d\n", __func__,
+		pr_debug("%s: enable gpio %d\n", __func__,
 		pdata->rt5506_enable);
 		gpio_set_value(pdata->rt5506_enable, 1);
 		rt5506_query.gpiostatus = AMP_GPIO_ON;
@@ -530,7 +530,7 @@ static void volume_ramp_func(struct work_struct *work)
 
 static void set_amp(int on, struct rt5506_config *i2c_command)
 {
-	pr_info("%s: %d\n", __func__, on);
+	pr_err("%s: %d\n", __func__, on);
 	mutex_lock(&rt5506_query.mlock);
 	mutex_lock(&hp_amp_lock);
 
@@ -541,7 +541,7 @@ static void set_amp(int on, struct rt5506_config *i2c_command)
 		rt5506_query.rt5506_status = STATUS_PLAYBACK;
 		if (rt5506_i2c_write(i2c_command->reg,
 			i2c_command->reg_len) == 0) {
-			pr_info("%s: ON\n", __func__);
+			pr_err("%s: ON\n", __func__);
 		}
 	} else {
 		if (high_imp) {
@@ -551,7 +551,7 @@ static void set_amp(int on, struct rt5506_config *i2c_command)
 			rt5506_write_reg(1, 0xc7);
 		}
 		if (rt5506_query.rt5506_status == STATUS_PLAYBACK)
-			pr_info("%s: OFF\n", __func__);
+			pr_err("%s: OFF\n", __func__);
 		rt5506_query.rt5506_status = STATUS_OFF;
 		rt5506_query.curmode = PLAYBACK_MODE_OFF;
 	}
@@ -569,7 +569,7 @@ int rt5506_dump_reg(void)
 	int ret = 0, rt5506_already_enabled = 0, i = 0;
 	unsigned char temp[2];
 
-	pr_info("%s:current gpio %d value %d\n", __func__,
+	pr_err("%s:current gpio %d value %d\n", __func__,
 	pdata->rt5506_enable, gpio_get_value(pdata->rt5506_enable));
 
 	if (gpio_get_value(pdata->rt5506_enable) == 1) {
@@ -605,7 +605,7 @@ int set_rt5506_hp_en(bool on)
 {
 	if (!rt5506Connect)
 		return 0;
-	pr_info("%s: %d\n", __func__, on);
+	pr_debug("%s: %d\n", __func__, on);
 	mutex_lock(&rt5506_query.actionlock);
 	rt5506_query.gpio_off_cancel = 1;
 
@@ -614,7 +614,7 @@ int set_rt5506_hp_en(bool on)
 	mutex_lock(&rt5506_query.gpiolock);
 	if (on) {
 		if (rt5506_query.gpiostatus == AMP_GPIO_OFF) {
-			pr_info("%s: enable gpio %d\n", __func__,
+			pr_debug("%s: enable gpio %d\n", __func__,
 			pdata->rt5506_enable);
 			gpio_set_value(pdata->rt5506_enable, 1);
 			rt5506_query.gpiostatus = AMP_GPIO_ON;
@@ -639,7 +639,7 @@ int set_rt5506_amp(int on, int dsp)
 	if (!rt5506Connect)
 		return 0;
 
-	pr_info("%s: %d\n", __func__, on);
+	pr_debug("%s: %d\n", __func__, on);
 	mutex_lock(&rt5506_query.actionlock);
 	rt5506_query.gpio_off_cancel = 1;
 
@@ -649,7 +649,7 @@ int set_rt5506_amp(int on, int dsp)
 
 	if (on) {
 		if (rt5506_query.gpiostatus == AMP_GPIO_OFF) {
-			pr_info("%s: enable gpio %d\n", __func__,
+			pr_debug("%s: enable gpio %d\n", __func__,
 			pdata->rt5506_enable);
 			gpio_set_value(pdata->rt5506_enable, 1);
 			rt5506_query.gpiostatus = AMP_GPIO_ON;
@@ -1101,7 +1101,7 @@ static void rt5506_shutdown(struct i2c_client *client)
 	mutex_lock(&rt5506_query.mlock);
 
 	if (rt5506_query.gpiostatus == AMP_GPIO_OFF) {
-		pr_info("%s: enable gpio %d\n", __func__,
+		pr_debug("%s: enable gpio %d\n", __func__,
 		pdata->rt5506_enable);
 
 		gpio_set_value(pdata->rt5506_enable, 1);

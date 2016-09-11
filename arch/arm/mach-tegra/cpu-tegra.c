@@ -852,7 +852,7 @@ static int tegra_pm_notify(struct notifier_block *nb, unsigned long event,
 		is_suspended = true;
 		if (cpu_reg_idle_limits)
 			reg_mode_force_normal = true;
-		pr_info("Tegra cpufreq suspend: setting frequency to %d kHz\n",
+		pr_debug("Tegra cpufreq suspend: setting frequency to %d kHz\n",
 			freq_table[suspend_index].frequency);
 		tegra_update_cpu_speed(freq_table[suspend_index].frequency);
 		tegra_auto_hotplug_governor(
@@ -866,7 +866,7 @@ static int tegra_pm_notify(struct notifier_block *nb, unsigned long event,
 		reg_mode_force_normal = false;
 		tegra_cpu_edp_init(true);
 		tegra_cpu_set_speed_cap_locked(&freq);
-		pr_info("Tegra cpufreq resume: restoring frequency to %d kHz\n",
+		pr_debug("Tegra cpufreq resume: restoring frequency to %d kHz\n",
 			freq);
 		mutex_unlock(&tegra_cpu_lock);
 
