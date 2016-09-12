@@ -30,6 +30,7 @@
 #include <linux/mfd/max77660/max77660-core.h>
 #include <linux/tegra-fuse.h>
 #include <linux/random.h>
+#include <linux/dma-mapping.h>
 
 #include <asm/mach-types.h>
 #include <mach/irqs.h>
@@ -157,6 +158,8 @@ static struct embedded_sdio_data embedded_sdio_data0 = {
 };
 #endif
 
+static u64 tegra_sdhci_dmamask = DMA_BIT_MASK(64);
+
 static struct tegra_sdhci_platform_data tegra_sdhci_platform_data0 = {
 	.mmc_data = {
 		.register_status_notify	= flounder_wifi_status_register,
@@ -202,6 +205,8 @@ static struct platform_device tegra_sdhci_device0 = {
 	.resource	= sdhci_resource0,
 	.num_resources	= ARRAY_SIZE(sdhci_resource0),
 	.dev = {
+		.dma_mask = &tegra_sdhci_dmamask,
+		.coherent_dma_mask = DMA_BIT_MASK(64),
 		.platform_data = &tegra_sdhci_platform_data0,
 	},
 };
@@ -212,6 +217,8 @@ static struct platform_device tegra_sdhci_device3 = {
 	.resource	= sdhci_resource3,
 	.num_resources	= ARRAY_SIZE(sdhci_resource3),
 	.dev = {
+		.dma_mask = &tegra_sdhci_dmamask,
+		.coherent_dma_mask = DMA_BIT_MASK(64),
 		.platform_data = &tegra_sdhci_platform_data3,
 	},
 };
