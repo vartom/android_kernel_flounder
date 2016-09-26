@@ -395,7 +395,7 @@ static void __init tegra_t210ref_reserve(void)
 	ulong fb1_size = SZ_64M + SZ_8M;
 	ulong vpr_size = 364 * SZ_1M;
 	if (of_flat_dt_is_compatible(of_get_flat_dt_root(), "nvidia,foster-e"))
-		vpr_size = 672 * SZ_1M;
+		vpr_size = 750 * SZ_1M;
 
 #ifdef CONFIG_FRAMEBUFFER_CONSOLE
 	/* support FBcon on 4K monitors */
