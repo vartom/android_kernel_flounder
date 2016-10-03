@@ -1055,7 +1055,7 @@ static int __init flounder_touch_init(void)
 
 	if (of_find_node_by_path("/spi@7000d800/synaptics_dsx@0") == NULL) {
 		pr_info("[TP] %s init maxim spi touch\n", __func__);
-		(void)touch_init_maxim_sti(&maxim_sti_spi_board);
+	/*	(void)touch_init_maxim_sti(&maxim_sti_spi_board);*/
 	} else {
 		pr_info("[TP] synaptics device tree found\n");
 	}
