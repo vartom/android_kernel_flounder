@@ -309,6 +309,7 @@ done:
 		adf_buffer_mapping_cleanup(mapping, buf);
 		memset(mapping, 0, sizeof(*mapping));
 	}
+
 	return ret;
 }
 

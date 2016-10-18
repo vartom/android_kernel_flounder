@@ -1861,8 +1861,6 @@ skip_cmaint:
 
 	return 0;
 fail:
-	pg_iommu_unmap(mapping->domain, iova_base, count * PAGE_SIZE,
-		       (ulong)attrs);
 	__free_iova(mapping, iova_base, size, attrs);
 	return ret;
 }
