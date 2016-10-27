@@ -9363,27 +9363,24 @@ unsigned long tegra_emc_to_cpu_ratio(unsigned long cpu_rate)
 /* EMC/CPU frequency operational requirement limit */
 unsigned long tegra_emc_cpu_limit(unsigned long cpu_rate)
 {
-	static unsigned long last_emc_rate;
-	unsigned long emc_rate;
+	static unsigned long emc_max_rate;
+
+	if (emc_max_rate == 0)
+		emc_max_rate = clk_round_rate(
+			tegra_get_clock_by_name("emc"), ULONG_MAX);
 
 	/* Vote on memory bus frequency based on cpu frequency;
 	   cpu rate is in kHz, emc rate is in Hz */
-
-	if ((tegra_revision != TEGRA_REVISION_A01) &&
-	    (tegra_revision != TEGRA_REVISION_A02))
-		return 68000000; /* 68MHz floor for A03+ all the time */
-
-	if (cpu_rate > 1020000)
-		emc_rate = 600000000;	/* cpu > 1.02GHz, emc 600MHz */
+	if (cpu_rate >= 1300000)
+		return emc_max_rate;	/* cpu >= 1.3GHz, emc max */
+	else if (cpu_rate >= 975000)
+		return 600000000;	/* cpu >= 975 MHz, emc 600 MHz */
+	else if (cpu_rate >= 725000)
+		return  396000000;	/* cpu >= 725 MHz, emc 396 MHz */
+	else if (cpu_rate >= 500000)
+		return  204000000;	/* cpu >= 500 MHz, emc 204 MHz */
 	else
-		emc_rate = 300000000;	/* 300MHz floor always */
-
-	/* When going down, allow some time for CPU DFLL to settle */
-	if (emc_rate < last_emc_rate)
-		udelay(200);		/* FIXME: to be characterized */
-
-	last_emc_rate = emc_rate;
-	return emc_rate;
+		return 204000000;		/* emc min */
 }
 #endif
 
