@@ -1085,7 +1085,7 @@ static int camera_remove(struct platform_device *dev)
 
 static int camera_probe(struct platform_device *dev)
 {
-	struct camera_platform_data *pd;
+	struct camera_platform_data *pd = NULL;
 
 	dev_dbg(&dev->dev, "%s\n", __func__);
 	if (atomic_xchg(&cam_desc.in_use, 1)) {
@@ -1098,7 +1098,7 @@ static int camera_probe(struct platform_device *dev)
 	if (dev->dev.of_node) {
 		pd = of_camera_create_pdata(dev);
 		if (IS_ERR(pd))
-			return (int)pd;
+			return PTR_ERR(pd);
 		cam_desc.pdata = pd;
 	} else if (dev->dev.platform_data) {
 		cam_desc.pdata = dev->dev.platform_data;
