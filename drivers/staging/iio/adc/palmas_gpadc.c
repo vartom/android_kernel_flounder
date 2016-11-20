@@ -738,7 +738,7 @@ static ssize_t auto_conv_val_read(struct file *file,
 	if (ret < 0)
 		return ret;
 
-	ret = snprintf(buf, sizeof(buf), "%d\n", ret);
+	ret = snprintf(buf, sizeof(buf), "%zu\n", ret);
 	return simple_read_from_buffer(user_buf, count, ppos, buf, ret);
 }
 
