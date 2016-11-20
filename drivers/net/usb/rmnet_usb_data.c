@@ -353,7 +353,7 @@ static int rmnet_ioctl_extended(struct net_device *dev, struct ifreq *ifr)
 			return -EINVAL;
 
 		unet->rx_urb_size = (size_t) ext_cmd.u.data;
-		DBG0("[%s] rmnet_ioctl(): SET MRU to %u\n", dev->name,
+		DBG0("[%s] rmnet_ioctl(): SET MRU to %lu\n", dev->name,
 				unet->rx_urb_size);
 		break;
 
@@ -511,7 +511,7 @@ static int rmnet_usb_data_status(struct seq_file *s, void *unused)
 	seq_printf(s, "RMNET_MODE_QOS:     %d\n",
 			test_bit(RMNET_MODE_QOS, &unet->data[0]));
 	seq_printf(s, "Net MTU:            %u\n", unet->net->mtu);
-	seq_printf(s, "rx_urb_size:        %u\n", unet->rx_urb_size);
+	seq_printf(s, "rx_urb_size:        %lu\n", unet->rx_urb_size);
 	seq_printf(s, "rx skb q len:       %u\n", unet->rxq.qlen);
 	seq_printf(s, "rx skb done q len:  %u\n", unet->done.qlen);
 	seq_printf(s, "rx errors:          %lu\n", unet->net->stats.rx_errors);
