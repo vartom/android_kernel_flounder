@@ -412,7 +412,7 @@ static int drv201_set_focuser_capabilities(struct drv201_info *info,
 {
 	if (copy_from_user(&info->cfg_usr,
 		MAKE_CONSTUSER_PTR(params->p_value), sizeof(info->cfg_usr))) {
-			dev_err(info->dev, "%s Err: copy_from_user bytes %d\n",
+			dev_err(info->dev, "%s Err: copy_from_user bytes %lu\n",
 			__func__, sizeof(info->cfg_usr));
 			return -EFAULT;
 	}
@@ -452,7 +452,7 @@ static int drv201_set_focuser_capabilities(struct drv201_info *info,
 			info->cfg_usr.focuser_set[0].settle_time;
 
 	dev_dbg(info->dev,
-		"%s: copy_from_user bytes %d info->cap.settle_time %d\n",
+		"%s: copy_from_user bytes %zu info->cap.settle_time %d\n",
 		__func__, sizeof(struct nv_focuser_config),
 		info->cap.settle_time);
 
