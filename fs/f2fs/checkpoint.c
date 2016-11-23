@@ -243,6 +243,7 @@ static int f2fs_write_meta_page(struct page *page,
 	if (unlikely(f2fs_cp_error(sbi)))
 		goto redirty_out;
 
+	f2fs_wait_on_page_writeback(page, META);
 	write_meta_page(sbi, page);
 	dec_page_count(sbi, F2FS_DIRTY_META);
 
@@ -515,7 +516,8 @@ void add_orphan_inode(struct f2fs_sb_info *sbi, nid_t ino)
 	__add_ino_entry(sbi, ino, ORPHAN_INO);
 }
 
-void remove_orphan_inode(struct f2fs_sb_info *sbi, nid_t ino)
+/* mode should be APPEND_INO or UPDATE_INO */
+bool exist_written_data(struct f2fs_sb_info *sbi, nid_t ino, int mode)
 {
 	/* remove orphan entry from orphan list */
 	__remove_ino_entry(sbi, ino, ORPHAN_INO);
@@ -542,13 +544,15 @@ static int recover_orphan_inode(struct f2fs_sb_info *sbi, nid_t ino)
 	return 0;
 }
 
-int recover_orphan_inodes(struct f2fs_sb_info *sbi)
+void recover_orphan_inodes(struct f2fs_sb_info *sbi)
 {
 	block_t start_blk, orphan_blocks, i, j;
 	int err;
 
 	if (!is_set_ckpt_flags(F2FS_CKPT(sbi), CP_ORPHAN_PRESENT_FLAG))
-		return 0;
+		return;
+
+	sbi->por_doing = true;
 
 	start_blk = __start_cp_addr(sbi) + 1 + __cp_payload(sbi);
 	orphan_blocks = __start_sum_addr(sbi) - 1 - __cp_payload(sbi);

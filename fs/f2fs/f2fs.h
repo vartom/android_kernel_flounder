@@ -377,6 +377,8 @@ enum {
 /* vector size for gang look-up from extent cache that consists of radix tree */
 #define EXT_TREE_VEC_SIZE	64
 
+#define MAX_DIR_RA_PAGES	4	/* maximum ra pages of dir */
+
 /* for in-memory extent cache entry */
 #define F2FS_MIN_EXTENT_LEN	64	/* minimum extent length */
 
@@ -619,6 +621,19 @@ enum {
 	CURSEG_COLD_NODE,	/* indirect node blocks */
 	NO_CHECK_TYPE,
 	CURSEG_DIRECT_IO,	/* to use for the direct IO path */
+};
+
+struct flush_cmd {
+	struct completion wait;
+	struct llist_node llnode;
+	int ret;
+};
+
+struct flush_cmd_control {
+	struct task_struct *f2fs_issue_flush;	/* flush thread */
+	wait_queue_head_t flush_wait_queue;	/* waiting queue for wake-up */
+	struct llist_head issue_list;		/* list for command issue */
+	struct llist_node *dispatch_list;	/* list for command dispatch */
 };
 
 struct flush_cmd {
@@ -1063,6 +1078,11 @@ static inline unsigned long long cur_cp_version(struct f2fs_checkpoint *cp)
 	return le64_to_cpu(cp->checkpoint_ver);
 }
 
+static inline unsigned long long cur_cp_version(struct f2fs_checkpoint *cp)
+{
+	return le64_to_cpu(cp->checkpoint_ver);
+}
+
 static inline bool is_set_ckpt_flags(struct f2fs_checkpoint *cp, unsigned int f)
 {
 	unsigned int ckpt_flags = le32_to_cpu(cp->ckpt_flags);
@@ -1235,6 +1255,11 @@ static inline s64 get_pages(struct f2fs_sb_info *sbi, int count_type)
 static inline s64 get_dirty_pages(struct inode *inode)
 {
 	return percpu_counter_sum_positive(&F2FS_I(inode)->dirty_pages);
+}
+
+static inline int get_dirty_pages(struct inode *inode)
+{
+	return atomic_read(&F2FS_I(inode)->dirty_pages);
 }
 
 static inline int get_blocktype_secs(struct f2fs_sb_info *sbi, int block_type)
@@ -1994,7 +2019,7 @@ int acquire_orphan_inode(struct f2fs_sb_info *);
 void release_orphan_inode(struct f2fs_sb_info *);
 void add_orphan_inode(struct f2fs_sb_info *, nid_t);
 void remove_orphan_inode(struct f2fs_sb_info *, nid_t);
-int recover_orphan_inodes(struct f2fs_sb_info *);
+void recover_orphan_inodes(struct f2fs_sb_info *);
 int get_valid_checkpoint(struct f2fs_sb_info *);
 void update_dirty_page(struct inode *, struct page *);
 void remove_dirty_inode(struct inode *);
@@ -2033,6 +2058,7 @@ int f2fs_release_page(struct page *, gfp_t);
 /*
  * gc.c
  */
+void move_data_page(struct inode *, struct page *, int);
 int start_gc_thread(struct f2fs_sb_info *);
 void stop_gc_thread(struct f2fs_sb_info *);
 block_t start_bidx_of_node(unsigned int, struct inode *);

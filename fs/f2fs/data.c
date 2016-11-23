@@ -14,6 +14,7 @@
 #include <linux/mpage.h>
 #include <linux/aio.h>
 #include <linux/writeback.h>
+#include <linux/mount.h>
 #include <linux/backing-dev.h>
 #include <linux/pagevec.h>
 #include <linux/blkdev.h>
@@ -935,6 +936,8 @@ next:
 		ret = fiemap_fill_next_extent(fieinfo, logical,
 				phys, size, flags);
 	}
+	if (dn.data_blkaddr == NEW_ADDR && !fiemap)
+		goto put_out;
 
 	if (start_blk > last_blk || ret)
 		goto out;
@@ -1612,6 +1615,10 @@ static int f2fs_write_begin(struct file *file, struct address_space *mapping,
 			goto fail;
 	}
 repeat:
+	err = f2fs_convert_inline_data(inode, pos + len, NULL);
+	if (err)
+		goto fail;
+
 	page = grab_cache_page_write_begin(mapping, index, flags);
 	if (!page) {
 		err = -ENOMEM;
@@ -1694,6 +1701,30 @@ out_update:
 out_clear:
 	clear_cold_data(page);
 	return 0;
+fail:
+	f2fs_write_failed(mapping, pos + len);
+	return err;
+}
+
+static int f2fs_write_end(struct file *file,
+			struct address_space *mapping,
+			loff_t pos, unsigned len, unsigned copied,
+			struct page *page, void *fsdata)
+{
+	struct inode *inode = page->mapping->host;
+
+	trace_f2fs_write_end(inode, pos, len, copied);
+
+	if (is_inode_flag_set(F2FS_I(inode), FI_ATOMIC_FILE))
+		get_page(page);
+	else
+		set_page_dirty(page);
+
+	if (pos + copied > i_size_read(inode)) {
+		i_size_write(inode, pos + copied);
+		mark_inode_dirty(inode);
+		update_inode_page(inode);
+	}
 
 fail:
 	f2fs_put_page(page, 1);
