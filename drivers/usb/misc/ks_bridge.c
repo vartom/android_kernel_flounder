@@ -1076,7 +1076,7 @@ dev_free:
 
 static void __exit ksb_exit(void)
 {
-	struct ks_bridge *ksb;
+	struct ks_bridge *ksb = NULL;
 	int i;
 
 #ifdef CONFIG_QCT_9K_MODEM
