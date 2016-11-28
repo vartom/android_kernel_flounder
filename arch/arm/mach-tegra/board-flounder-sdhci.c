@@ -163,7 +163,7 @@ static struct tegra_sdhci_platform_data tegra_sdhci_platform_data0 = {
 	.uhs_mask = MMC_UHS_MASK_DDR50,
 	.calib_3v3_offsets = 0x7676,
 	.calib_1v8_offsets = 0x7676,
-	.default_drv_type = 204000000,
+	.max_clk_limit = 204000000,
 };
 
 static struct tegra_sdhci_platform_data tegra_sdhci_platform_data3 = {
@@ -506,13 +506,9 @@ int __init flounder_sdhci_init(void)
 		tegra_sdhci_platform_data3.boot_vcore_mv = boot_vcore_mv;
 	}
 
-	/*tegra_sdhci_platform_data0.max_clk_limit = 204000000;*/
-
 	speedo = tegra_fuse_readl(FUSE_SOC_SPEEDO_0);
 	tegra_sdhci_platform_data0.cpu_speedo = speedo;
 	tegra_sdhci_platform_data3.cpu_speedo = speedo;
-
-	/*tegra_sdhci_platform_data3.max_clk_limit = 200000000;*/
 
 	platform_device_register(&tegra_sdhci_device3);
 	platform_device_register(&tegra_sdhci_device0);
