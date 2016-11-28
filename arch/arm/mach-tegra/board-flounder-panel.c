@@ -142,9 +142,11 @@ static struct resource flounder_disp2_resources[] = {
 	},
 };
 
+static struct tegra_dc_sd_settings sd_settings;
 
 static struct tegra_dc_out flounder_disp1_out = {
 	.type		= TEGRA_DC_OUT_DSI,
+	.sd_settings	= &sd_settings,
 };
 
 static int flounder_hdmi_enable(struct device *dev)
@@ -194,6 +196,7 @@ static int flounder_hdmi_disable(struct device *dev)
 		regulator_put(flounder_hdmi_pll);
 		flounder_hdmi_pll = NULL;
 	}
+
 	return 0;
 }
 
@@ -213,13 +216,11 @@ static int flounder_hdmi_hotplug_init(struct device *dev)
 		flounder_hdmi_vddio = regulator_get(dev, "vdd_hdmi_5v0");
 		if (WARN_ON(IS_ERR(flounder_hdmi_vddio))) {
 			pr_err("%s: couldn't get regulator vdd_hdmi_5v0: %ld\n",
-				__func__, PTR_ERR(flounder_hdmi_vddio));
+					__func__, PTR_ERR(flounder_hdmi_vddio));
 				flounder_hdmi_vddio = NULL;
-		} else {
+		} else 
 			return regulator_enable(flounder_hdmi_vddio);
-		}
 	}
-
 	return 0;
 }
 
@@ -427,6 +428,9 @@ static void flounder_panel_select(void)
 	panel = flounder_panel_configure(&board, &dsi_instance);
 
 	if (panel) {
+		if (panel->init_sd_settings)
+			panel->init_sd_settings(&sd_settings);
+
 		if (panel->init_dc_out) {
 			panel->init_dc_out(&flounder_disp1_out);
 			if (flounder_disp1_out.type == TEGRA_DC_OUT_DSI) {
@@ -436,7 +440,7 @@ static void flounder_panel_select(void)
 					DSI_PANEL_RST_GPIO;
 				flounder_disp1_out.dsi->dsi_panel_bl_pwm_gpio =
 					DSI_PANEL_BL_PWM_GPIO;
-				flounder_disp1_out.dsi->te_gpio = TEGRA_GPIO_PR6;
+				tegra_dsi_update_init_cmd_gpio_rst(&flounder_disp1_out);
 			}
 		}
 
@@ -469,11 +473,6 @@ int __init flounder_panel_init(void)
 	int err = 0;
 	struct resource __maybe_unused *res;
 	struct platform_device *phost1x = NULL;
-
-	struct device_node *dc1_node = NULL;
-	struct device_node *dc2_node = NULL;
-
-	find_dc_node(&dc1_node, &dc2_node);
 
 #ifdef CONFIG_NVMAP_USE_CMA_FOR_CARVEOUT
 	struct dma_declare_info vpr_dma_info;
@@ -568,25 +567,17 @@ int __init flounder_panel_init(void)
 	res->end = tegra_fb2_start + tegra_fb2_size - 1;
 
 	flounder_disp1_device.dev.parent = &phost1x->dev;
-	flounder_disp2_device.dev.parent = &phost1x->dev;
-	flounder_disp2_out.hdmi_out = &flounder_hdmi_out;
+	err = platform_device_register(&flounder_disp1_device);
+	if (err) {
+		pr_err("disp1 device registration failed\n");
+		return err;
+	}
 
-	if (!of_have_populated_dt() || !dc1_node ||
-		!of_device_is_available(dc1_node)) {
-		err = platform_device_register(&flounder_disp1_device);
-		if (err) {
-			pr_err("disp1 device registration failed\n");
-			return err;
-		}
-	}
-	if (!of_have_populated_dt() || !dc2_node ||
-		!of_device_is_available(dc2_node)) {
-		err = platform_device_register(&flounder_disp2_device);
-		if (err) {
-			pr_err("disp2 device registration failed\n");
-			return err;
-		}
-	}
+	flounder_disp2_device.dev.parent = &phost1x->dev;
+	err = platform_device_register(&flounder_disp2_device);
+	if (err)
+		return err;
+
 #ifdef CONFIG_TEGRA_NVAVP
 	nvavp_device.dev.parent = &phost1x->dev;
 	err = platform_device_register(&nvavp_device);
