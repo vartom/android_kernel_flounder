@@ -113,7 +113,6 @@ dtb-$(CONFIG_MACH_T132_FLOUNDER) += tegra132-flounder-xaxb.dtb
 dtb-$(CONFIG_MACH_T132_FLOUNDER) += tegra132-flounder-xc.dtb
 dtb-$(CONFIG_MACH_T132_FLOUNDER) += tegra132-flounder-xdxepvt.dtb
 dtb-$(CONFIG_MACH_T132_FLOUNDER) += tegra132-flounder_lte-xaxbxcxdpvt.dtb
-targets += $(dtb-y)
 
 DTC_FLAGS := -i $(srctree)/arch/arm/boot/dts
 ifeq ($(CONFIG_ARCH_TEGRA_18x_SOC),y)
@@ -133,6 +132,6 @@ DTB_LIST := $(dtb-y)
 endif
 targets += $(DTB_LIST)
 
-dtbs: $(addprefix $(obj)/, $(dtb-y))
+dtbs: $(addprefix $(obj)/, $(DTB_LIST))
 
 clean-files := dts/*.dtb *.dtb
