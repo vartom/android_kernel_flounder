@@ -46,7 +46,7 @@ TEXT_OFFSET := 0x00080000
 
 export	TEXT_OFFSET GZFLAGS
 
-subdir-ccflags-y += -Werror
+# subdir-ccflags-y += -Werror
 core-y		+= arch/arm64/kernel/ arch/arm64/mm/
 
 core-$(CONFIG_ARCH_TEGRA)	+= arch/arm64/mach-tegra/
@@ -64,7 +64,7 @@ endif
 
 KBUILD_DTBS	:= dtbs
 
-all:	$(KBUILD_IMAGE) $(KBUILD_DTBS) zImage
+all:	$(KBUILD_IMAGE) $(KBUILD_DTBS)
 
 boot := arch/arm64/boot
 
