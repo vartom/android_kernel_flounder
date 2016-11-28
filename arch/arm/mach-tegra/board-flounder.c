@@ -197,7 +197,7 @@ static noinline void __init flounder_setup_bluedroid_pm(void)
 	platform_device_register(&flounder_bluedroid_pm_device);
 }
 
-static struct tfa9895_platform_data tfa9895_data = {
+/*static struct tfa9895_platform_data tfa9895_data = {
 	.tfa9895_power_enable = TEGRA_GPIO_PX5,
 };
 struct rt5677_priv rt5677_data = {
@@ -214,7 +214,7 @@ static struct i2c_board_info __initdata tfa9895_board_info = {
 };
 static struct i2c_board_info __initdata tfa9895l_board_info = {
 	I2C_BOARD_INFO("tfa9895l", 0x35),
-};
+};*/
 
 static struct bcm2079x_platform_data bcm2079x_pdata = {
 	.irq_gpio = TEGRA_GPIO_PR7,
@@ -351,15 +351,15 @@ struct max1187x_pdata max1187x_platdata = {
 
 static void flounder_i2c_init(void)
 {
-	i2c_register_board_info(1, &rt5677_board_info, 1);
+/*	i2c_register_board_info(1, &rt5677_board_info, 1);
 	i2c_register_board_info(1, &tfa9895_board_info, 1);
-	i2c_register_board_info(1, &tfa9895l_board_info, 1);
+	i2c_register_board_info(1, &tfa9895l_board_info, 1);*/
 
 	bcm2079x_board_info.irq = gpio_to_irq(TEGRA_GPIO_PR7),
 	i2c_register_board_info(0, &bcm2079x_board_info, 1);
 }
 
-static struct tegra_asoc_platform_data flounder_audio_pdata_rt5677 = {
+/*static struct tegra_asoc_platform_data flounder_audio_pdata_rt5677 = {
 	.gpio_hp_det = -1,
 	.gpio_ldo1_en = TEGRA_GPIO_PK0,
 	.gpio_ldo2_en = TEGRA_GPIO_PQ3,
@@ -390,9 +390,9 @@ static struct tegra_asoc_platform_data flounder_audio_pdata_rt5677 = {
 		.audio_port_id = 3,
 		.is_i2s_master = 1,
 		.i2s_mode = TEGRA_DAIFMT_DSP_A,
-	},
+	},*/
 	/* Add for MI2S driver to get GPIO */
-	.i2s_set[HIFI_CODEC*4 + 0] = {
+/*	.i2s_set[HIFI_CODEC*4 + 0] = {
 		.name = "I2S1_LRCK",
 		.id   = TEGRA_GPIO_PA2,
 	},
@@ -432,9 +432,9 @@ static struct tegra_asoc_platform_data flounder_audio_pdata_rt5677 = {
 		.name = "extperiph1_clk",
 		.id   = TEGRA_GPIO_PW4,
 	}
-};
+};*/
 
-static void flounder_audio_init(void)
+/*static void flounder_audio_init(void)
 {
 	flounder_audio_pdata_rt5677.use_codec_jd_irq = true;
 	flounder_audio_pdata_rt5677.gpio_hp_det_active_high = 0;
@@ -450,7 +450,7 @@ static struct platform_device flounder_audio_device_rt5677 = {
 	.dev = {
 		.platform_data = &flounder_audio_pdata_rt5677,
 	},
-};
+};*/
 
 static struct platform_device *flounder_devices[] __initdata = {
 	&tegra_rtc_device,
@@ -465,12 +465,12 @@ static struct platform_device *flounder_devices[] __initdata = {
 	&tegra_i2s_device2,
 	&tegra_i2s_device3,
 	&tegra_i2s_device4,
-	&flounder_audio_device_rt5677,
+/*	&flounder_audio_device_rt5677,*/
 	&tegra_spdif_device,
 	&spdif_dit_device,
 	&bluetooth_dit_device,
 	&tegra_offload_device,
-	&tegra30_avp_audio_device,
+/*	&tegra30_avp_audio_device,*/
 };
 
 static struct tegra_usb_platform_data tegra_udc_pdata = {
@@ -816,7 +816,7 @@ static int __init flounder_touch_init(void)
 #define	AUD_REMO_TX TEGRA_GPIO_PJ7
 #define	AUD_REMO_RX TEGRA_GPIO_PB0
 
-static void headset_init(void)
+/*static void headset_init(void)
 {
 	int ret ;
 
@@ -873,7 +873,7 @@ static int headset_get_debug(void)
 #endif*/
 
 /* HTC_HEADSET_PMIC Driver */ 
-static struct htc_headset_pmic_platform_data htc_headset_pmic_data = {
+/*static struct htc_headset_pmic_platform_data htc_headset_pmic_data = {
 	.driver_flag		= DRIVER_HS_PMIC_ADC,
 	.hpin_gpio		= EARPHONE_DET,
 	.hpin_irq		= 0,
@@ -914,8 +914,8 @@ static struct platform_device htc_headset_one_wire = {
 	.dev	= {
 		.platform_data	= &htc_headset_1wire_data,
 	},
-};
-
+};*/
+/*
 static void uart_tx_gpo(int mode)
 {
 	pr_info("[HS_BOARD] (%s) Set uart_tx_gpo mode = %d\n", __func__, mode);
@@ -936,14 +936,14 @@ static void uart_lv_shift_en(int enable)
 {
 	pr_info("[HS_BOARD] (%s) Set uart_lv_shift_en %d\n", __func__, enable);
 	gpio_direction_output(AUD_REMO_TX_OE, enable);
-}
+}*/
 
 /* HTC_HEADSET_MGR Driver */
-static struct platform_device *headset_devices[] = {
+/*static struct platform_device *headset_devices[] = {
 	&htc_headset_pmic,
-	&htc_headset_one_wire,
-	 Please put the headset detection driver on the last 
-};
+	&htc_headset_one_wire,*/
+	/* Please put the headset detection driver on the last */
+/*};
 
 static struct headset_adc_config htc_headset_mgr_config[] = {
 	{
@@ -965,10 +965,10 @@ static struct htc_headset_mgr_platform_data htc_headset_mgr_data = {
 	.headset_config_num	= ARRAY_SIZE(htc_headset_mgr_config),
 	.headset_config		= htc_headset_mgr_config,
 	.headset_init		= headset_init,
-	.headset_power		= headset_power,
-	.uart_tx_gpo		= uart_tx_gpo,
-	.uart_lv_shift_en	= uart_lv_shift_en,
-};
+	.headset_power		= headset_power,*/
+/*	.uart_tx_gpo		= uart_tx_gpo,
+	.uart_lv_shift_en	= uart_lv_shift_en,*/
+/*};
 
 static struct platform_device htc_headset_mgr = {
 	.name	= "HTC_HEADSET_MGR",
@@ -983,7 +983,7 @@ static int __init flounder_headset_init(void)
 	pr_info("[HS]%s Headset device register enter\n", __func__);
 	platform_device_register(&htc_headset_mgr);
 	return 0;
-}
+}*/
 
 static struct device *gps_dev;
 static struct class *gps_class;
@@ -1100,14 +1100,16 @@ static struct tegra_io_dpd pexclk2_io = {
 
 static void __init tegra_flounder_late_init(void)
 {
-
+	flounder_display_init();
 	flounder_usb_init();
 	if(is_mdm_modem())
 		flounder_mdm_9k_init();
+#ifdef CONFIG_TEGRA_XUSB_PLATFORM
 	flounder_xusb_init();
+#endif
 	flounder_i2c_init();
 	flounder_spi_init();
-	flounder_audio_init();
+/*	flounder_audio_init();*/
 	platform_add_devices(flounder_devices, ARRAY_SIZE(flounder_devices));
 
 	tegra_io_dpd_init();
@@ -1118,8 +1120,7 @@ static void __init tegra_flounder_late_init(void)
 
 	isomgr_init();
 	flounder_touch_init();
-	flounder_headset_init();
-	flounder_display_init();
+/*	flounder_headset_init();*/
 	flounder_panel_init();
 	flounder_kbc_init();
 	flounder_gps_init();
