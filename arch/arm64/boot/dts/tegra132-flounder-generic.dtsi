@@ -12,9 +12,11 @@
 #include "tegra132-flounder-emc.dtsi"
 #include "tegra132-tn8-dfll.dtsi"
 #include "tegra132-flounder-touch.dtsi"
+#include <tegra132-platforms/tegra132-flounder-pinmux.dtsi>
+#include <tegra132-platforms/tegra132-flounder-gpio-default.dtsi>
 
 / {
-	model = "Flounder";
+	model = "flounder";
 
 	nvidia-boardids = "1780:1100:2:B:7","1794:1000:0:A:6";
 	#address-cells = <2>;
@@ -26,98 +28,6 @@
 		linux,initrd-end = <0x851bc400>;
 	};
 
-	pinmux {
-		status = "disable";
-	};
-
-	gpio: gpio@6000d000 {
-		gpio-init-names = "default";
-		gpio-init-0 = <&gpio_default>;
-
-		gpio_default: default {
-			gpio-input = <  TEGRA_GPIO(C, 7)
-					TEGRA_GPIO(A, 7)
-					TEGRA_GPIO(G, 2)
-					TEGRA_GPIO(G, 3)
-					TEGRA_GPIO(I, 5)
-					TEGRA_GPIO(I, 6)
-					TEGRA_GPIO(J, 0)
-					TEGRA_GPIO(K, 2)
-					TEGRA_GPIO(K, 3)
-					TEGRA_GPIO(N, 4)
-					TEGRA_GPIO(O, 2)
-					TEGRA_GPIO(O, 3)
-					TEGRA_GPIO(O, 5)
-					TEGRA_GPIO(O, 7)
-					TEGRA_GPIO(Q, 1)
-					TEGRA_GPIO(Q, 6)
-					TEGRA_GPIO(Q, 7)
-					TEGRA_GPIO(R, 4)
-					TEGRA_GPIO(S, 0)
-					TEGRA_GPIO(S, 1)
-					TEGRA_GPIO(S, 4)
-					TEGRA_GPIO(U, 5)
-					TEGRA_GPIO(U, 6)
-					TEGRA_GPIO(V, 0)
-					TEGRA_GPIO(V, 1)
-					TEGRA_GPIO(W, 2)
-/*key*/
-					TEGRA_GPIO(Q, 0)
-					TEGRA_GPIO(Q, 5)
-					TEGRA_GPIO(V, 2)
-/*key*/
-/*headset*/
-					TEGRA_GPIO(S, 2)
-					TEGRA_GPIO(W, 3)
-/*headset*/
-					TEGRA_GPIO(BB, 6)
-					TEGRA_GPIO(CC, 1)
-					TEGRA_GPIO(CC, 2)>;
-			gpio-output-low = <TEGRA_GPIO(H, 2)
-					TEGRA_GPIO(H, 3)
-					TEGRA_GPIO(H, 6)
-					TEGRA_GPIO(H, 7)
-					TEGRA_GPIO(I, 0)
-/*headset*/
-					TEGRA_GPIO(J, 7)
-					TEGRA_GPIO(S, 3)
-/*headset*/
-					TEGRA_GPIO(K, 0)
-					TEGRA_GPIO(K, 1)
-					TEGRA_GPIO(K, 5)
-					TEGRA_GPIO(O, 0)
-					TEGRA_GPIO(O, 6)
-					TEGRA_GPIO(Q, 3)
-					TEGRA_GPIO(R, 1)
-					TEGRA_GPIO(R, 2)
-					TEGRA_GPIO(R, 5)
-					TEGRA_GPIO(S, 3)
-					TEGRA_GPIO(S, 6)
-					TEGRA_GPIO(U, 3)
-					TEGRA_GPIO(V, 3)
-					TEGRA_GPIO(X, 1)
-					TEGRA_GPIO(X, 3)
-					TEGRA_GPIO(X, 4)
-					TEGRA_GPIO(X, 5)
-					TEGRA_GPIO(X, 7)
-					TEGRA_GPIO(BB, 3)
-					TEGRA_GPIO(BB, 5)
-					TEGRA_GPIO(BB, 7)
-					TEGRA_GPIO(EE, 1)>;
-			gpio-output-high = <TEGRA_GPIO(B, 4)
-/*key*/
-					TEGRA_GPIO(I, 3)
-/*key*/
-					TEGRA_GPIO(S, 5)
-					TEGRA_GPIO(R, 0)
-					TEGRA_GPIO(H, 5)
-					TEGRA_GPIO(Q, 2)
-/*headset*/
-					TEGRA_GPIO(Q, 4)
-/*headset*/
-					>;
-		};
-	};
 
         host1x {
                 dsi {
