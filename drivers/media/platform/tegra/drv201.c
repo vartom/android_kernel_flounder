@@ -167,6 +167,9 @@ static int drv201_i2c_wr8(struct drv201_info *info, u8 reg, u8 val)
 	return 0;
 }
 
+#ifdef TEGRA_12X_OR_HIGHER_CONFIG
+
+#else
 static int drv201_i2c_wr16(struct drv201_info *info, u8 reg, u16 val)
 {
 	struct i2c_msg msg;
@@ -182,6 +185,7 @@ static int drv201_i2c_wr16(struct drv201_info *info, u8 reg, u16 val)
 		return -EIO;
 	return 0;
 }
+#endif
 
 void drv201_set_arc_mode(struct drv201_info *info)
 {
