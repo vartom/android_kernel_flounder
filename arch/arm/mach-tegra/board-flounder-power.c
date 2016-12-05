@@ -87,6 +87,7 @@ static struct tegra_suspend_platform_data flounder_suspend_data = {
 
 static struct power_supply_extcon_plat_data extcon_pdata = {
 	.extcon_name = "tegra-udc",
+	.y_cable_extcon_name = "tegra-otg",
 };
 
 static struct platform_device power_supply_extcon_device = {
@@ -147,9 +148,29 @@ static struct tegra_cl_dvfs_platform_data e1736_cl_dvfs_data = {
 
 	.cfg_param = &e1736_flounder_cl_dvfs_param,
 };
+
+static const struct of_device_id dfll_of_match[] = {
+	{ .compatible	= "nvidia,tegra124-dfll", },
+	{ .compatible	= "nvidia,tegra132-dfll", },
+	{ },
+};
+
 static int __init flounder_cl_dvfs_init(void)
 {
 	struct tegra_cl_dvfs_platform_data *data = NULL;
+	struct device_node *dn = of_find_matching_node(NULL, dfll_of_match);
+
+	/*
+	 * flounder platforms maybe used with different DT variants. Some of them
+	 * include DFLL data in DT, some - not. Check DT here, and continue with
+	 * platform device registration only if DT DFLL node is not present.
+	 */
+	if (dn) {
+		bool available = of_device_is_available(dn);
+		of_node_put(dn);
+		if (available)
+			return 0;
+	}
 
 	e1736_fill_reg_map();
 	data = &e1736_cl_dvfs_data;
@@ -189,6 +210,9 @@ int __init flounder_regulator_init(void)
 
 	platform_device_register(&power_supply_extcon_device);
 
+#ifdef CONFIG_ARCH_TEGRA_HAS_CL_DVFS
+	flounder_cl_dvfs_init();
+#endif
 	return 0;
 }
 
