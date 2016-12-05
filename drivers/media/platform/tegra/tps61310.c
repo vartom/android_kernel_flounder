@@ -871,7 +871,6 @@ static int tps61310_probe(
 	const struct i2c_device_id *id)
 {
 	struct tps61310_info *info;
-	int err;
 
 	dev_dbg(&client->dev, "%s\n", __func__);
 	info = devm_kzalloc(&client->dev, sizeof(*info), GFP_KERNEL);
