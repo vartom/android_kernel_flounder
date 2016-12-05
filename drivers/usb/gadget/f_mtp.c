@@ -976,7 +976,7 @@ static long mtp_ioctl(struct file *fp, unsigned code, unsigned long value)
 			ret = -EFAULT;
 		else {
 			event.length = event_32.length;
-			event.data = (void *)(event_32.data);
+			event.data = compat_ptr(event_32.data);
 			ret = mtp_send_event(dev, &event);
 		}
 		goto out;
