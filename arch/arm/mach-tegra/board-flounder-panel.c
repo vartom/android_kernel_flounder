@@ -138,7 +138,6 @@ static struct resource flounder_disp2_resources[] = {
 	},
 };
 
-
 static struct tegra_dc_out flounder_disp1_out = {
 	.type		= TEGRA_DC_OUT_DSI,
 };
@@ -259,25 +258,6 @@ struct tegra_hdmi_out flounder_hdmi_out = {
 	.n_tmds_config = ARRAY_SIZE(flounder_tmds_config),
 };
 
-
-#ifdef CONFIG_FRAMEBUFFER_CONSOLE
-static struct tegra_dc_mode hdmi_panel_modes[] = {
-	{
-		.pclk =			KHZ2PICOS(25200),
-		.h_ref_to_sync =	1,
-		.v_ref_to_sync =	1,
-		.h_sync_width =		96,	/* hsync_len */
-		.v_sync_width =		2,	/* vsync_len */
-		.h_back_porch =		48,	/* left_margin */
-		.v_back_porch =		33,	/* upper_margin */
-		.h_active =		640,	/* xres */
-		.v_active =		480,	/* yres */
-		.h_front_porch =	16,	/* right_margin */
-		.v_front_porch =	10,	/* lower_margin */
-	},
-};
-#endif /* CONFIG_FRAMEBUFFER_CONSOLE */
-
 static struct tegra_dc_out flounder_disp2_out = {
 	.type		= TEGRA_DC_OUT_HDMI,
 	.flags		= TEGRA_DC_OUT_HOTPLUG_HIGH,
@@ -289,11 +269,6 @@ static struct tegra_dc_out flounder_disp2_out = {
 
 	/* TODO: update max pclk to POR */
 	.max_pixclock	= KHZ2PICOS(297000),
-#ifdef CONFIG_FRAMEBUFFER_CONSOLE
-	.modes = hdmi_panel_modes,
-	.n_modes = ARRAY_SIZE(hdmi_panel_modes),
-	.depth = 24,
-#endif /* CONFIG_FRAMEBUFFER_CONSOLE */
 
 	.align		= TEGRA_DC_ALIGN_MSB,
 	.order		= TEGRA_DC_ORDER_RED_BLUE,
@@ -405,7 +380,7 @@ static struct tegra_panel *flounder_panel_configure(struct board_info *board_out
 
 	panel = &dsi_j_qxga_8_9;
 	dsi_instance = DSI_INSTANCE_0;
-	/*tegra_io_dpd_enable(&dsic_io);
+/*	tegra_io_dpd_enable(&dsic_io);
 	tegra_io_dpd_enable(&dsid_io);
 	if (board_out->board_id == BOARD_E1813)
 		panel = &dsi_s_wqxga_10_1;*/
@@ -470,6 +445,7 @@ int __init flounder_panel_init(void)
 	struct dma_declare_info vpr_dma_info;
 	struct dma_declare_info generic_dma_info;
 #endif
+
 	flounder_panel_select();
 
 #ifdef CONFIG_TEGRA_NVMAP
@@ -486,17 +462,19 @@ int __init flounder_panel_init(void)
 
 	vpr_dma_info.name = "vpr";
 	vpr_dma_info.base = tegra_vpr_start;
+	vpr_dma_info.size = tegra_vpr_size;
+	vpr_dma_info.resize = false;
+	vpr_dma_info.cma_dev = NULL;
+
+	flounder_carveouts[1].cma_dev = &tegra_generic_cma_dev;
+	flounder_carveouts[1].resize = false;
+	flounder_carveouts[2].cma_dev = &tegra_vpr_cma_dev;
+	flounder_carveouts[2].resize = true;
+
 	vpr_dma_info.size = SZ_32M;
 	vpr_dma_info.resize = true;
 	vpr_dma_info.cma_dev = &tegra_vpr_cma_dev;
 	vpr_dma_info.notifier.ops = &vpr_dev_ops;
-
-	carveout_linear_set(&tegra_generic_cma_dev);
-	flounder_carveouts[1].cma_dev = &tegra_generic_cma_dev;
-	flounder_carveouts[1].resize = false;
-	carveout_linear_set(&tegra_vpr_cma_dev);
-	flounder_carveouts[2].cma_dev = &tegra_vpr_cma_dev;
-	flounder_carveouts[2].resize = true;
 
 
 	if (tegra_carveout_size) {
@@ -551,10 +529,6 @@ int __init flounder_panel_init(void)
 		return err;
 	}
 
-	err = tegra_init_hdmi(&flounder_disp2_device, phost1x);
-	if (err)
-		return err;
-
 #ifdef CONFIG_TEGRA_NVAVP
 	nvavp_device.dev.parent = &phost1x->dev;
 	err = platform_device_register(&nvavp_device);
@@ -563,6 +537,7 @@ int __init flounder_panel_init(void)
 		return err;
 	}
 #endif
+
 	return err;
 }
 
@@ -573,7 +548,7 @@ int __init flounder_display_init(void)
 	struct tegra_panel *panel;
 	struct board_info board;
 	long disp1_rate = 0;
-	long disp2_rate;
+	long disp2_rate = 0;
 
 	if (WARN_ON(IS_ERR(disp1_clk))) {
 		if (disp2_clk && !IS_ERR(disp2_clk))
