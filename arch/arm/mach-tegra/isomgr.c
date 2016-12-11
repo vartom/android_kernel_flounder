@@ -58,8 +58,8 @@
 			t += isomgr_clients[idx].margin_bw; \
 	} \
 	if (t + isomgr.avail_bw != isomgr.max_iso_bw) { \
-		pr_err("bw mismatch, line=%d", __LINE__); \
-		pr_err("t+isomgr.avail_bw=%d, isomgr.max_iso_bw=%d", \
+		pr_err("bw mismatch, line=%d\n", __LINE__); \
+		pr_err("t+isomgr.avail_bw=%d, isomgr.max_iso_bw=%d\n", \
 			t + isomgr.avail_bw, isomgr.max_iso_bw); \
 		BUG(); \
 	} \
@@ -72,7 +72,7 @@
 do { \
 	if (unlikely(!cp || !is_client_valid(client) || \
 		     cp->magic != ISOMGR_MAGIC)) { \
-		pr_err("bad handle %p", handle); \
+		pr_err("bad handle %p\n", handle); \
 		goto validation_fail; \
 	} \
 } while (0)
@@ -80,7 +80,7 @@ do { \
 #define VALIDATE_CLIENT() \
 do { \
 	if (unlikely(!is_client_valid(client))) { \
-		pr_err("invalid client %d", client); \
+		pr_err("invalid client %d\n", client); \
 		goto validation_fail; \
 	} \
 } while (0)
@@ -496,16 +496,16 @@ static tegra_isomgr_handle __tegra_isomgr_register(
 		isomgr.avail_bw += dedi_bw + isomgr.dedi_bw -
 				   isomgr.max_iso_bw;
 		isomgr.max_iso_bw = dedi_bw + isomgr.dedi_bw;
-		pr_info("ISO BW usage:");
+		pr_info("ISO BW usage:\n");
 		for (i = 0; i < TEGRA_ISO_CLIENT_COUNT; i++) {
 			if (!client_valid[i])
 				continue;
-			pr_info("client=%s, iso dedi bw=%dKB",
+			pr_info("client=%s, iso dedi bw=%dKB\n",
 				cname[i],
 				(client == i) ? dedi_bw :
 				isomgr_clients[i].dedi_bw);
 		}
-		pr_info("revisit BW usage of iso clients");
+		pr_info("revisit BW usage of iso clients\n");
 #else
 		pr_err("iso bandwidth %uKB is not available, client %s\n",
 			dedi_bw, cname[client]);
@@ -1103,11 +1103,11 @@ int __init isomgr_init(void)
 
 	if (!isomgr.max_iso_bw) {
 		max_emc_clk = clk_round_rate(isomgr.emc_clk, ULONG_MAX) / 1000;
-		pr_info("iso emc max clk=%dKHz", max_emc_clk);
+		pr_info("iso emc max clk=%dKHz\n", max_emc_clk);
 		max_emc_bw = tegra_emc_freq_req_to_bw(max_emc_clk);
 		/* ISO clients can use iso_bw_percentage of max emc bw. */
 		isomgr.max_iso_bw = max_emc_bw * iso_bw_percentage / 100;
-		pr_info("max_iso_bw=%dKB", isomgr.max_iso_bw);
+		pr_info("max_iso_bw=%dKB\n", isomgr.max_iso_bw);
 		isomgr.avail_bw = isomgr.max_iso_bw;
 	}
 
