@@ -974,7 +974,7 @@ static struct of_dev_auxdata flounder_auxdata_lookup[] __initdata = {
 	OF_DEV_AUXDATA("nvidia,tegra124-se", 0x70012000, "tegra12-se", NULL),
 	OF_DEV_AUXDATA("nvidia,tegra124-host1x", TEGRA_HOST1X_BASE, "host1x",
 		NULL),
-		OF_DEV_AUXDATA("nvidia,tegra124-gk20a", TEGRA_GK20A_BAR0_BASE,
+	OF_DEV_AUXDATA("nvidia,tegra124-gk20a", TEGRA_GK20A_BAR0_BASE,
 			"gk20a.0", NULL),
 #ifdef CONFIG_ARCH_TEGRA_VIC
 	OF_DEV_AUXDATA("nvidia,tegra124-vic", TEGRA_VIC_BASE, "vic03.0", NULL),
@@ -1007,6 +1007,8 @@ static struct of_dev_auxdata flounder_auxdata_lookup[] __initdata = {
 				NULL),
 	OF_DEV_AUXDATA("nvidia,tegra124-xhci", 0x70090000, "tegra-xhci",
 				&xusb_pdata),
+	OF_DEV_AUXDATA("nvidia,tegra124-nvavp", 0x60001000, "nvavp",
+				NULL),
 	OF_DEV_AUXDATA("nvidia,tegra124-camera", 0, "pcl-generic",
 				NULL),
 	OF_DEV_AUXDATA("nvidia,tegra124-dfll", 0x70110000, "tegra_cl_dvfs",
@@ -1372,6 +1374,10 @@ static void __init tegra_flounder_init_early(void)
 static void __init tegra_flounder_dt_init(void)
 {
 	tegra_flounder_early_init();
+#ifdef CONFIG_NVMAP_USE_CMA_FOR_CARVEOUT
+	carveout_linear_set(&tegra_generic_cma_dev);
+	carveout_linear_set(&tegra_vpr_cma_dev);
+#endif
 #ifdef CONFIG_USE_OF
 	flounder_camera_auxdata(flounder_auxdata_lookup);
 	of_platform_populate(NULL,
