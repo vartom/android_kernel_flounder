@@ -105,11 +105,8 @@ static inline void arch_counter_set_user_access(void)
 {
 	u32 cntkctl = arch_timer_get_cntkctl();
 
-	/* Disable user access to everything except the virtual counter */
-	cntkctl &= ~((3 << 8) | (5 << 0));
-
-	/* Enable user access to the virtual counter */
-	cntkctl |= (1 << 1);
+	/* disable user access to everything */
+	cntkctl &= ~((3 << 8) | (7 << 0));
 
 	arch_timer_set_cntkctl(cntkctl);
 }
