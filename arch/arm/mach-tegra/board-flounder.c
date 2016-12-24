@@ -116,7 +116,7 @@
 #include "../../../sound/soc/codecs/tfa9895.h"
 #include "../../../sound/soc/codecs/rt5677-spi.h"
 
-static unsigned int flounder_hw_rev;
+/*static unsigned int flounder_hw_rev;
 static unsigned int flounder_eng_id;
 
 static int __init flounder_hw_revision(char *id)
@@ -155,7 +155,7 @@ int flounder_get_hw_revision(void)
 int flounder_get_eng_id(void)
 {
 	return flounder_eng_id;
-}
+}*/
 
 static struct resource flounder_bluedroid_pm_resources[] = {
 	[0] = {
@@ -266,87 +266,6 @@ static __initdata struct tegra_clk_init_table flounder_clk_init_table[] = {
 	{ "uartc",	"pll_p",	408000000,	false},
 	{ "uartd",	"pll_p",	408000000,	false},
 	{ NULL,		NULL,		0,		0},
-};
-
-struct max1187x_board_config max1187x_config_data[] = {
-	{
-		.config_id = 0x03E7,
-		.chip_id = 0x75,
-		.major_ver = 1,
-		.minor_ver = 10,
-		.protocol_ver = 8,
-		.config_touch = {
-			0x03E7, 0x141F, 0x0078, 0x001E, 0x0A01, 0x0100, 0x0302, 0x0504,
-			0x0706, 0x0908, 0x0B0A, 0x0D0C, 0x0F0E, 0x1110, 0x1312, 0x1514,
-			0x1716, 0x1918, 0x1B1A, 0x1D1C, 0xFF1E, 0xFFFF, 0xFFFF, 0xFFFF,
-			0xFFFF, 0x0100, 0x0302, 0x0504, 0x0706, 0x0908, 0x0B0A, 0x0D0C,
-			0x0F0E, 0x1110, 0x1312, 0xFFFF, 0xFFFF, 0xFFFF, 0xFFFF, 0xFFFF,
-			0xFFFF, 0x0EFF, 0x895F, 0xFF13, 0x0000, 0x1402, 0x04B0, 0x04B0,
-			0x04B0, 0x0514, 0x00B4, 0x1A00, 0x0A08, 0x00B4, 0x0082, 0xFFFF,
-			0xFFFF, 0x03E8, 0xFFFF, 0xFFFF, 0xFFFF, 0xFFFF, 0xFFFF, 0xFFFF,
-			0x5046
-		},
-		.config_cal = {
-			0xFFF5, 0xFFEA, 0xFFDF, 0x001E, 0x001E, 0x001E, 0x001E, 0x001E,
-			0x001E, 0x001E, 0x001E, 0x001E, 0x001E, 0x001E, 0x001E, 0x001E,
-			0x001E, 0x001E, 0x001E, 0x001E, 0x001E, 0x001E, 0x001E, 0x001E,
-			0x001E, 0x001E, 0x001E, 0x000F, 0x000F, 0x000F, 0x000F, 0x000F,
-			0x000F, 0x000F, 0x000F, 0x000F, 0x000F, 0x000F, 0x000F, 0x000F,
-			0x000F, 0x000F, 0x000F, 0x000F, 0x000F, 0x000F, 0x000F, 0x000F,
-			0x000F, 0x000F, 0x000F, 0xFFFF, 0xFF1E, 0x00FF, 0x00FF, 0x00FF,
-			0x00FF, 0x00FF, 0x00FF, 0x00FF, 0x00FF, 0x00FF, 0x000A, 0x0001,
-			0x0001, 0x0002, 0x0002, 0x0003, 0x0001, 0x0001, 0x0002, 0x0002,
-			0x0003, 0x0C26
-		},
-		.config_private = {
-			0x0118, 0x0069, 0x0082, 0x0038, 0xF0FF, 0x1428, 0x001E, 0x0190,
-			0x03B6, 0x00AA, 0x00C8, 0x0018, 0x04E2, 0x003C, 0x0000, 0xB232,
-			0xFEFE, 0xFFFF, 0xFFFF, 0xFFFF, 0x00FF, 0xFF64, 0x4E21, 0x1403,
-			0x78C8, 0x524C, 0xFFFF, 0xFFFF, 0xFFFF, 0xFFFF, 0xFFFF, 0xFFFF,
-			0xFFFF, 0xF22F
-		},
-		.config_lin_x = {
-			0x002B, 0x3016, 0x644C, 0x8876, 0xAA99, 0xCBBB, 0xF0E0, 0x8437
-		},
-		.config_lin_y = {
-			0x0030, 0x2E17, 0x664B, 0x8F7D, 0xAE9F, 0xCABC, 0xEADA, 0x8844
-		},
-	},
-	{
-		.config_id = 0,
-		.chip_id = 0x75,
-		.major_ver = 0,
-		.minor_ver = 0,
-	},
-};
-
-struct max1187x_pdata max1187x_platdata = {
-	.fw_config = max1187x_config_data,
-	.gpio_tirq = TEGRA_GPIO_PK2,
-	.gpio_reset = TEGRA_GPIO_PX6,
-	.num_fw_mappings = 1,
-	.fw_mapping[0] = {.chip_id = 0x75, .filename = "max11876.bin", .filesize = 0xC000, .file_codesize = 0xC000},
-	.defaults_allow = 1,
-	.default_config_id = 0x5800,
-	.default_chip_id = 0x75,
-	.i2c_words = 128,
-	.coordinate_settings = 0,
-	.panel_min_x = 0,
-	.panel_max_x = 3840,
-	.panel_min_y = 0,
-	.panel_max_y = 2600,
-	.lcd_x = 2560,
-	.lcd_y = 1600,
-	.num_rows = 32,
-	.num_cols = 20,
-	.input_protocol = MAX1187X_PROTOCOL_B,
-	.update_feature = MAX1187X_UPDATE_CONFIG,
-	.tw_mask = 0xF,
-	.button_code0 = KEY_HOME,
-	.button_code1 = KEY_BACK,
-	.button_code2 = KEY_RESERVED,
-	.button_code3 = KEY_RESERVED,
-	.report_mode = MAX1187X_REPORT_MODE_EXTEND,
 };
 
 static void flounder_i2c_init(void)
@@ -465,12 +384,11 @@ static struct platform_device *flounder_devices[] __initdata = {
 	&tegra_i2s_device2,
 	&tegra_i2s_device3,
 	&tegra_i2s_device4,
-/*	&flounder_audio_device_rt5677,*/
 	&tegra_spdif_device,
 	&spdif_dit_device,
 	&bluetooth_dit_device,
 	&tegra_offload_device,
-/*	&tegra30_avp_audio_device,*/
+	&tegra30_avp_audio_device
 };
 
 static struct tegra_usb_platform_data tegra_udc_pdata = {
@@ -599,8 +517,6 @@ static void flounder_usb_init(void)
 	tegra_ehci1_utmi_pdata.id_det_type = TEGRA_USB_PMU_ID;
 	tegra_ehci1_utmi_pdata.id_extcon_dev_name = "palmas-extcon";
 
-	if (!is_mdm_modem())
-		tegra_ehci1_utmi_pdata.u_cfg.utmi.xcvr_setup_offset = -3;
 	/*
 	 * Set the maximum voltage that can be supplied
 	 * over USB vbus that the board supports if we use
@@ -619,13 +535,13 @@ static void flounder_usb_init(void)
 		tegra_otg_pdata.is_xhci = true;
 		tegra_udc_pdata.u_data.dev.is_xhci = true;
 	}
-	if (!is_mdm_modem())
-		tegra_udc_pdata.u_cfg.utmi.xcvr_setup_offset = -3;
 
 	tegra_otg_device.dev.platform_data = &tegra_otg_pdata;
 	platform_device_register(&tegra_otg_device);
+
 	/* Setup the udc platform data */
 	tegra_udc_device.dev.platform_data = &tegra_udc_pdata;
+
 
 	platform_device_register(&tegra_udc_device);
 
@@ -765,50 +681,7 @@ static struct of_dev_auxdata flounder_auxdata_lookup[] __initdata = {
 };
 #endif
 
-static struct maxim_sti_pdata maxim_sti_pdata = {
-	.touch_fusion         = "/vendor/bin/touch_fusion",
-	.config_file          = "/vendor/firmware/touch_fusion.cfg",
-	.fw_name              = "maxim_fp35.bin",
-	.nl_family            = TF_FAMILY_NAME,
-	.nl_mc_groups         = 5,
-	.chip_access_method   = 2,
-	.default_reset_state  = 0,
-	.tx_buf_size          = 4100,
-	.rx_buf_size          = 4100,
-	.gpio_reset           = TOUCH_GPIO_RST_MAXIM_STI_SPI,
-	.gpio_irq             = TOUCH_GPIO_IRQ_MAXIM_STI_SPI
-};
-
-static struct tegra_spi_device_controller_data maxim_dev_cdata = {
-	.rx_clk_tap_delay = 0,
-	.is_hw_based_cs = true,
-	.tx_clk_tap_delay = 0,
-};
-
-static struct spi_board_info maxim_sti_spi_board = {
-	.modalias = MAXIM_STI_NAME,
-	.bus_num = TOUCH_SPI_ID,
-	.chip_select = TOUCH_SPI_CS,
-	.max_speed_hz = 12 * 1000 * 1000,
-	.mode = SPI_MODE_0,
-	.platform_data = &maxim_sti_pdata,
-	.controller_data = &maxim_dev_cdata,
-};
-
-static int __init flounder_touch_init(void)
-{
-	pr_info("%s init synaptics spi touch\n", __func__);
-
-	if (of_find_node_by_path("/spi@7000d800/synaptics_dsx@0") == NULL) {
-		pr_info("[TP] %s init maxim spi touch\n", __func__);
-		(void)touch_init_maxim_sti(&maxim_sti_spi_board);
-	} else {
-		pr_info("[TP] synaptics device tree found\n");
-	}
-	return 0;
-}
-
-
+/*
 #define	EARPHONE_DET TEGRA_GPIO_PW3
 #define	HSMIC_2V85_EN TEGRA_GPIO_PS3
 #define AUD_REMO_PRES TEGRA_GPIO_PS2
@@ -816,7 +689,7 @@ static int __init flounder_touch_init(void)
 #define	AUD_REMO_TX TEGRA_GPIO_PJ7
 #define	AUD_REMO_RX TEGRA_GPIO_PB0
 
-/*static void headset_init(void)
+static void headset_init(void)
 {
 	int ret ;
 
@@ -985,101 +858,12 @@ static int __init flounder_headset_init(void)
 	return 0;
 }*/
 
-static struct device *gps_dev;
-static struct class *gps_class;
-
-extern int tegra_get_hw_rev(void);
-
-#define GPS_HOSTWAKE_GPIO 69
-static struct bcm_gps_hostwake_platform_data gps_hostwake_data = {
-	.gpio_hostwake = GPS_HOSTWAKE_GPIO,
-};
-
-static struct platform_device bcm_gps_hostwake = {
-	.name   = "bcm-gps-hostwake",
-	.id     = -1,
-	.dev    = {
-		.platform_data  = &gps_hostwake_data,
-	},
-};
-
-#define PRJ_F	302
-static int __init flounder_gps_init(void)
-{
-
-	int ret;
-	int gps_onoff;
-	int product_id;
-
-	pr_info("[GPS]%s init gps onoff\n", __func__);
-	of_property_read_u32(
-		of_find_node_by_path("/chosen/board_info"),
-		"pid",
-		&product_id);
-
-	if (product_id == PRJ_F && flounder_get_hw_revision() <= FLOUNDER_REV_EVT1_1  ){
-		gps_onoff = TEGRA_GPIO_PH5; // XB
-	} else {
-		gps_onoff = TEGRA_GPIO_PB4; // XC
-	}
-
-	gps_class = class_create(THIS_MODULE, "gps");
-	if (IS_ERR(gps_class)){
-		pr_err("[GPS] %s: gps class create fail \n", __func__);
-		return PTR_ERR(gps_class);
-	}
-
-	gps_dev = device_create(gps_class, NULL, 0, NULL, "bcm47521");
-	if (IS_ERR(gps_dev)){
-		pr_err("[GPS] %s: gps device create fail \n", __func__);
-		return PTR_ERR(gps_dev);
-	}
-
-	ret = gpio_request(gps_onoff, "gps_onoff");
-	if (ret < 0){
-		pr_err("[GPS] %s: gpio_request failed for gpio %s\n",
-			__func__, "gps_onoff");
-	}
-
-	gpio_direction_output(gps_onoff, 0);
-	gpio_export (gps_onoff, 1);
-	gpio_export_link(gps_dev,"gps_onoff", gps_onoff);
-
-	if (product_id == PRJ_F) {
-		pr_info("GPS: init gps hostwake\n");
-		platform_device_register(&bcm_gps_hostwake);
-	}
-
-	return 0;
-}
-#undef PRJ_F
-
-static void __init sysedp_init(void)
-{
-	flounder_new_sysedp_init();
-}
-
-static void __init sysedp_dynamic_capping_init(void)
-{
-	flounder_sysedp_dynamic_capping_init();
-}
-
 static void __init tegra_flounder_early_init(void)
 {
-	sysedp_init();
+	flounder_new_sysedp_init();
 	tegra_clk_init_from_table(flounder_clk_init_table);
 	tegra_clk_verify_parents();
 	tegra_soc_device_init("flounder");
-}
-
-static struct tegra_dtv_platform_data flounder_dtv_pdata = {
-	.dma_req_selector = 11,
-};
-
-static void __init flounder_dtv_init(void)
-{
-	tegra_dtv_device.dev.platform_data = &flounder_dtv_pdata;
-	platform_device_register(&tegra_dtv_device);
 }
 
 static struct tegra_io_dpd pexbias_io = {
@@ -1100,10 +884,9 @@ static struct tegra_io_dpd pexclk2_io = {
 
 static void __init tegra_flounder_late_init(void)
 {
-	flounder_display_init();
 	flounder_usb_init();
-	if(is_mdm_modem())
-		flounder_mdm_9k_init();
+/*	if(is_mdm_modem())
+		flounder_mdm_9k_init();*/
 #ifdef CONFIG_TEGRA_XUSB_PLATFORM
 	flounder_xusb_init();
 #endif
@@ -1111,7 +894,7 @@ static void __init tegra_flounder_late_init(void)
 	flounder_spi_init();
 /*	flounder_audio_init();*/
 	platform_add_devices(flounder_devices, ARRAY_SIZE(flounder_devices));
-
+/*	platform_device_register(&flounder_audio_device_rt5677);*/
 	tegra_io_dpd_init();
 	flounder_sdhci_init();
 	flounder_regulator_init();
@@ -1119,24 +902,22 @@ static void __init tegra_flounder_late_init(void)
 	flounder_emc_init();
 
 	isomgr_init();
-	flounder_touch_init();
 /*	flounder_headset_init();*/
-	flounder_panel_init();
+/*	flounder_panel_init();*/
 	flounder_kbc_init();
-	flounder_gps_init();
 
 	/* put PEX pads into DPD mode to save additional power */
 	tegra_io_dpd_enable(&pexbias_io);
 	tegra_io_dpd_enable(&pexclk1_io);
 	tegra_io_dpd_enable(&pexclk2_io);
 
-	flounder_sensors_init();
+/*	flounder_sensors_init();*/
 
 	flounder_soctherm_init();
 
 	flounder_setup_bluedroid_pm();
-	sysedp_dynamic_capping_init();
-	flounder_dtv_init();
+
+	flounder_sysedp_dynamic_capping_init();
 
 
 }
