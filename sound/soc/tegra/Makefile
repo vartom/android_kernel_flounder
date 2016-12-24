@@ -5,7 +5,7 @@ subdir-ccflags-y := -Werror
 # Tegra platform Support
 snd-soc-tegra-pcm-objs := tegra_pcm.o
 snd-soc-tegra-offload-objs := tegra_offload.o
-snd-soc-tegra-utils-objs += tegra_asoc_utils.o
+snd-soc-tegra-utils-objs := tegra_asoc_utils.o
 snd-soc-tegra20-das-objs := tegra20_das.o
 snd-soc-tegra20-i2s-objs := tegra20_i2s.o
 snd-soc-tegra20-spdif-objs := tegra20_spdif.o
@@ -17,7 +17,7 @@ snd-soc-tegra30-avp-objs := tegra30_avp.o
 snd-soc-tegra-dmic-objs := tegra_dmic.o
 snd-soc-tegra210-adma-objs := tegra210_adma.o
 snd-soc-tegra210-axbar-objs := tegra210_axbar.o
-snd-soc-tegra210-axbar-objs += tegra210_ahub_utils.o
+snd-soc-tegra210-axbar-objs := tegra210_ahub_utils.o
 snd-soc-tegra210-admaif-objs := tegra210_admaif.o
 snd-soc-tegra210-ope-objs := tegra210_ope.o
 snd-soc-tegra210-peq-objs := tegra210_peq.o

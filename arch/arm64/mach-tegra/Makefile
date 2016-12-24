@@ -24,7 +24,7 @@ ccflags-y += -I$(srctree)/arch/arm/mach-tegra/include \
              -I$(srctree)/arch/arm/mach-tegra
 asflags-y += -I$(srctree)/arch/arm/mach-tegra/include \
              -I$(srctree)/arch/arm/mach-tegra
-subdir-ccflags-y := -Werror
+# subdir-ccflags-y := -Werror
 
 # Assemblies
 obj-y += reset-handler.o trampoline.o
@@ -90,7 +90,7 @@ obj-${CONFIG_MACH_T132_FLOUNDER}        += htc_awb_cal.o
 obj-${CONFIG_MACH_T132_FLOUNDER}        += board-flounder-bootparams.o
 obj-${CONFIG_MACH_T132_FLOUNDER}        += board-flounder-mdm9k.o
 
-obj-y                                   += board-touch-maxim_sti-spi.o
+obj-${CONFIG_MACH_T132REF}               += board-touch-maxim_sti-spi.o
 
 ifeq ($(CONFIG_HOTPLUG_CPU),y)
 obj-$(CONFIG_DENVER_CPU)              += hotplug-denver.o
