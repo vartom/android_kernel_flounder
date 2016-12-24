@@ -62,7 +62,7 @@
 #define PMC_CTRL                0x0
 #define PMC_CTRL_INTR_LOW       (1 << 17)
 
-static void flounder_board_suspend(int state, enum suspend_stage stage)
+/*static void flounder_board_suspend(int state, enum suspend_stage stage)
 {
 	static int request = 0;
 
@@ -75,7 +75,7 @@ static void flounder_board_suspend(int state, enum suspend_stage stage)
 
 		request = 1;
 	}
-}
+}*/
 
 static struct tegra_suspend_platform_data flounder_suspend_data = {
 	.cpu_timer      = 500,
@@ -91,7 +91,6 @@ static struct tegra_suspend_platform_data flounder_suspend_data = {
 	.min_residency_ncpu_slow = 5000,
 	.min_residency_mclk_stop = 5000,
 	.min_residency_crail = 20000,
-	.board_suspend = flounder_board_suspend,
 };
 
 static struct power_supply_extcon_plat_data extcon_pdata = {
@@ -166,6 +165,19 @@ static const struct of_device_id dfll_of_match[] = {
 static int __init flounder_cl_dvfs_init(void)
 {
 	struct tegra_cl_dvfs_platform_data *data = NULL;
+	struct device_node *dn = of_find_matching_node(NULL, dfll_of_match);
+
+	/*
+	 * flounder platforms maybe used with different DT variants. Some of them
+	 * include DFLL data in DT, some - not. Check DT here, and continue with
+	 * platform device registration only if DT DFLL node is not present.
+	 */
+	if (dn) {
+		bool available = of_device_is_available(dn);
+		of_node_put(dn);
+		if (available)
+			return 0;
+	}
 
 	e1736_fill_reg_map();
 	data = &e1736_cl_dvfs_data;
@@ -194,15 +206,15 @@ int __init flounder_rail_alignment_init(void)
 
 int __init flounder_regulator_init(void)
 {
-	void __iomem *pmc = IO_ADDRESS(TEGRA_PMC_BASE);
+/*	void __iomem *pmc = IO_ADDRESS(TEGRA_PMC_BASE);
 	u32 pmc_ctrl;
 
-	/* TPS65913: Normal state of INT request line is LOW.
+	* TPS65913: Normal state of INT request line is LOW.
 	 * configure the power management controller to trigger PMU
 	 * interrupts when HIGH.
-	 */
+	 *
 	pmc_ctrl = readl(pmc + PMC_CTRL);
-	writel(pmc_ctrl | PMC_CTRL_INTR_LOW, pmc + PMC_CTRL);
+	writel(pmc_ctrl | PMC_CTRL_INTR_LOW, pmc + PMC_CTRL);*/
 
 	platform_device_register(&power_supply_extcon_device);
 
