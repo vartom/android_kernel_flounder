@@ -529,6 +529,10 @@ int __init flounder_panel_init(void)
 		return err;
 	}
 
+	err = tegra_init_hdmi(&flounder_disp2_device, phost1x);
+	if (err)
+		return err;
+
 	return err;
 }
 
