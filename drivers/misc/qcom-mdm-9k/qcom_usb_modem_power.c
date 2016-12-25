@@ -317,8 +317,7 @@ static irqreturn_t qcom_usb_modem_wake_thread(int irq, void *data)
 		wake_lock_timeout(&modem->wake_lock,
 				  WAKELOCK_TIMEOUT_FOR_REMOTE_WAKE);
 
-		dev_info(&modem->pdev->dev, "remote wake (%u)\n",
-			 ++(modem->wake_cnt));
+		dev_info(&modem->pdev->dev, "remote wake E\n");
 
 		if (!modem->system_suspend) {
 			mutex_unlock(&modem->lock);
@@ -639,7 +638,7 @@ static void device_add_handler(struct qcom_usb_modem *modem,
 		modem->intf = intf;
 		modem->vid = desc->idVendor;
 		modem->pid = desc->idProduct;
-		modem->wake_cnt = 0;
+/*		modem->wake_cnt = 0;*/
 		mutex_unlock(&modem->lock);
 
 		pr_info("persist_enabled: %u\n", udev->persist_enabled);
@@ -722,12 +721,12 @@ static int mdm_pm_notifier(struct notifier_block *notifier,
 
 		modem->system_suspend = 1;
 #ifdef CONFIG_PM
-		if (modem->udev && modem->pdata->short_autosuspend_delay > 0 &&
+		if (modem->udev && modem->pdata->autosuspend_delay > 0 &&
 		    modem->udev->state != USB_STATE_NOTATTACHED) {
 			pm_runtime_set_autosuspend_delay(&modem->udev->dev,
-					modem->pdata->short_autosuspend_delay);
-			modem->short_autosuspend_enabled = 1;
-			pr_info("%s: modem->short_autosuspend_enabled: %d (ms)\n", __func__, modem->pdata->short_autosuspend_delay);
+					modem->pdata->autosuspend_delay);
+			modem->short_autosuspend_enabled = 0;
+			pr_info("%s: modem->autosuspend_enabled: %d (ms)\n", __func__, modem->pdata->autosuspend_delay);
 		}
 #endif
 		mutex_unlock(&modem->lock);
