@@ -2117,7 +2117,7 @@ tegra_dsi_mipi_calibration_status(struct tegra_dc_dsi_data *dsi)
 		MIPI_CAL_CIL_MIPI_CAL_STATUS_0);
 		if (!(val & MIPI_CAL_ACTIVE(0x1)) &&
 			(val & MIPI_AUTO_CAL_DONE(0x1))) {
-				dev_info(&dsi->dc->ndev->dev, "DSI pad calibration done\n");
+/*				dev_info(&dsi->dc->ndev->dev, "DSI pad calibration done\n");*/
 				break;
 		}
 		usleep_range(10, 100);
@@ -3223,7 +3223,7 @@ int tegra_dsi_start_host_cmd_v_blank_video(struct tegra_dc_dsi_data *dsi,
 	u8 i;
 
 	if (!dsi->enabled) {
-		dev_err(&dsi->dc->ndev->dev, "DSI controller suspended\n");
+/*		dev_err(&dsi->dc->ndev->dev, "DSI controller suspended\n");*/
 		return -EINVAL;
 	}
 
@@ -3262,7 +3262,7 @@ int tegra_dsi_end_host_cmd_v_blank_video(struct tegra_dc *dc,
 					struct tegra_dc_dsi_data *dsi)
 {
 	if (!dsi->enabled) {
-		dev_err(&dsi->dc->ndev->dev, "DSI controller suspended\n");
+/*		dev_err(&dsi->dc->ndev->dev, "DSI controller suspended\n");*/
 		return -EINVAL;
 	}
 
@@ -3700,7 +3700,7 @@ int tegra_dsi_read_data(struct tegra_dc *dc,
 	static struct tegra_dsi_cmd temp_cmd;
 
 	if (!dsi->enabled) {
-		dev_err(&dc->ndev->dev, "DSI controller suspended\n");
+/*		dev_err(&dc->ndev->dev, "DSI controller suspended\n");*/
 		return -EINVAL;
 	}
 	tegra_dc_dsi_hold_host(dc);
@@ -3804,7 +3804,7 @@ int tegra_dsi_panel_sanity_check(struct tegra_dc *dc,
 			DSI_CMD_SHORT(0x05, 0x0, 0x0);
 
 	if (!dsi->enabled) {
-		dev_err(&dc->ndev->dev, "DSI controller suspended\n");
+/*		dev_err(&dc->ndev->dev, "DSI controller suspended\n");*/
 		return -EINVAL;
 	}
 	tegra_dc_dsi_hold_host(dc);

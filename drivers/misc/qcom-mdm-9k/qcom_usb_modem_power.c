@@ -317,7 +317,7 @@ static irqreturn_t qcom_usb_modem_wake_thread(int irq, void *data)
 		wake_lock_timeout(&modem->wake_lock,
 				  WAKELOCK_TIMEOUT_FOR_REMOTE_WAKE);
 
-		dev_info(&modem->pdev->dev, "remote wake E\n");
+/*		dev_info(&modem->pdev->dev, "remote wake E\n");*/
 
 		if (!modem->system_suspend) {
 			mutex_unlock(&modem->lock);

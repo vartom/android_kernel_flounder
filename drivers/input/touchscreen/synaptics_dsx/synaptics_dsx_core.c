@@ -2547,7 +2547,7 @@ static int synaptics_rmi4_force_cal(struct synaptics_rmi4_data *rmi4_data)
 	int retval;
 	unsigned char command = 0x02;
 
-	dev_info(rmi4_data->pdev->dev.parent, " %s\n", __func__);
+/*	dev_info(rmi4_data->pdev->dev.parent, " %s\n", __func__);*/
 	retval = synaptics_rmi4_reg_write(rmi4_data,
 			rmi4_data->f54_cmd_base_addr,
 			&command,
