@@ -105,15 +105,15 @@ void log_wakeup_reason(int irq)
 	struct irq_desc *desc;
 	desc = irq_to_desc(irq);
 	if (desc && desc->action && desc->action->name)
-		pr_debug(KERN_INFO "Resume caused by IRQ %d, %s\n", irq,
+		printk(KERN_INFO "Resume caused by IRQ %d, %s\n", irq,
 				desc->action->name);
 	else
-		pr_debug(KERN_INFO "Resume caused by IRQ %d\n", irq);
+		printk(KERN_INFO "Resume caused by IRQ %d\n", irq);
 
 	spin_lock(&resume_reason_lock);
 	if (irqcount == MAX_WAKEUP_REASON_IRQS) {
 		spin_unlock(&resume_reason_lock);
-		pr_debug(KERN_WARNING "Resume caused by more than %d IRQs\n",
+		printk(KERN_WARNING "Resume caused by more than %d IRQs\n",
 				MAX_WAKEUP_REASON_IRQS);
 		return;
 	}
