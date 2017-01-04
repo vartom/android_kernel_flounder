@@ -161,5 +161,5 @@ obj-$(CONFIG_NTB)		+= ntb/
 obj-$(CONFIG_MIPI_BIF)		+= mipi_bif/
 
 # HTC stability files
-obj-$(CONFIG_ARCH_TEGRA_13x_SOC)	+= htc_debug/stability/
+obj-y += htc_debug/stability/
 obj-$(CONFIG_ANDROID)		+= android/
