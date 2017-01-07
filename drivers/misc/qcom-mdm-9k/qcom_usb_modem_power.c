@@ -306,6 +306,10 @@ static void cpu_freq_boost(struct work_struct *ws)
 static irqreturn_t qcom_usb_modem_wake_thread(int irq, void *data)
 {
 	struct qcom_usb_modem *modem = (struct qcom_usb_modem *)data;
+	unsigned long start_time = jiffies;
+
+	if (modem->mdm_debug_on)
+		pr_info("%s start\n", __func__);
 
 	mutex_lock(&modem->lock);
 
@@ -320,7 +324,10 @@ static irqreturn_t qcom_usb_modem_wake_thread(int irq, void *data)
 			mutex_unlock(&modem->lock);
 			usb_lock_device(modem->udev);
 			if (usb_autopm_get_interface(modem->intf) == 0)
+			{
+				pr_info("%s(%d) usb_autopm_get_interface OK %u ms\n", __func__, __LINE__, jiffies_to_msecs(jiffies-start_time));
 				usb_autopm_put_interface_async(modem->intf);
+			}
 			usb_unlock_device(modem->udev);
 			mutex_lock(&modem->lock);
 		}
@@ -328,16 +335,18 @@ static irqreturn_t qcom_usb_modem_wake_thread(int irq, void *data)
 			modem->hsic_wakeup_pending = true;
 
 #ifdef CONFIG_PM
-		if (modem->short_autosuspend_enabled) {
+		if (modem->short_autosuspend_enabled && modem->pdata->autosuspend_delay > 0) {
 			pm_runtime_set_autosuspend_delay(&modem->udev->dev,
 					modem->pdata->autosuspend_delay);
 			modem->short_autosuspend_enabled = 0;
-			pr_info("enable autosuspend 342 for %s\n", __func__);
 		}
 #endif
 	}
 
 	mutex_unlock(&modem->lock);
+
+	if (modem->mdm_debug_on)
+		pr_info("%s end\n", __func__);
 
 	return IRQ_HANDLED;
 }
@@ -640,11 +649,11 @@ static void device_add_handler(struct qcom_usb_modem *modem,
 		{
 			pm_runtime_set_autosuspend_delay(&udev->dev,
 					modem->pdata->autosuspend_delay);
-			modem->short_autosuspend_enabled = 0;
 			usb_enable_autosuspend(udev);
-			pr_info("enable autosuspend 653 for %s %s\n",
+			pr_info("enable autosuspend for %s %s\n",
 				udev->manufacturer, udev->product);
 		}
+		modem->short_autosuspend_enabled = 0;
 
 		/* allow the device to wake up the system */
 		if (udev->actconfig->desc.bmAttributes &
@@ -713,12 +722,12 @@ static int mdm_pm_notifier(struct notifier_block *notifier,
 
 		modem->system_suspend = 1;
 #ifdef CONFIG_PM
-		if (modem->udev &&
+		if (modem->udev && modem->pdata->short_autosuspend_delay > 0 &&
 		    modem->udev->state != USB_STATE_NOTATTACHED) {
 			pm_runtime_set_autosuspend_delay(&modem->udev->dev,
-					modem->pdata->autosuspend_delay);
+					modem->pdata->short_autosuspend_delay);
 			modem->short_autosuspend_enabled = 1;
-			pr_info("%s: modem->autosuspend_enabled 730: %d (ms)\n", __func__, modem->pdata->autosuspend_delay);
+			pr_info("%s: modem->short_autosuspend_enabled: %d (ms)\n", __func__, modem->pdata->short_autosuspend_delay);
 		}
 #endif
 		mutex_unlock(&modem->lock);
@@ -1010,11 +1019,10 @@ static void mdm_post_remote_wakeup(void)
 #ifdef CONFIG_PM
 	if (modem->udev &&
 	    modem->udev->state != USB_STATE_NOTATTACHED &&
-	    modem->short_autosuspend_enabled) {
+	    modem->short_autosuspend_enabled && modem->pdata->autosuspend_delay > 0) {
 		pm_runtime_set_autosuspend_delay(&modem->udev->dev,
 				modem->pdata->autosuspend_delay);
 		modem->short_autosuspend_enabled = 0;
-			pr_info("enable autosuspend 1028 for %s\n", __func__);
 	}
 #endif
 	wake_lock_timeout(&modem->wake_lock, WAKELOCK_TIMEOUT_FOR_REMOTE_WAKE);
