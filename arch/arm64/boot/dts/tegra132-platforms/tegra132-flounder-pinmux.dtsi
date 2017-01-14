@@ -1119,7 +1119,7 @@
 				nvidia,tristate = <TEGRA_PIN_DISABLE>;
 			};
 
-			ulpi_data5_po5 {
+			ulpi_data4_po5 {
 				nvidia,pins = "ulpi_data4_po5";
 				nvidia,function = "safe";
 				nvidia,enable-input = <TEGRA_PIN_ENABLE>;
