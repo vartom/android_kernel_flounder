@@ -1327,6 +1327,12 @@ static const char * const flounder_dt_board_compat[] = {
 	NULL
 };
 
+static const char * const tn8_dt_board_compat[] = {
+	"nvidia,tn8",
+	NULL
+};
+
+
 DT_MACHINE_START(FLOUNDER, "flounder")
 	.atag_offset	= 0x100,
 	.smp		= smp_ops(tegra_smp_ops),
@@ -1338,5 +1344,19 @@ DT_MACHINE_START(FLOUNDER, "flounder")
 	.init_machine	= tegra_flounder_dt_init,
 	.restart	= tegra_assert_system_reset,
 	.dt_compat	= flounder_dt_board_compat,
+	.init_late      = tegra_init_late
+MACHINE_END
+
+DT_MACHINE_START(TN8, "tn8")
+	.atag_offset	= 0x100,
+	.smp		= smp_ops(tegra_smp_ops),
+	.map_io		= tegra_map_common_io,
+	.reserve	= tegra_flounder_reserve,
+	.init_early	= tegra_flounder_init_early,
+	.init_irq	= irqchip_init,
+	.init_time	= clocksource_of_init,
+	.init_machine	= tegra_flounder_dt_init,
+	.restart	= tegra_assert_system_reset,
+	.dt_compat	= tn8_dt_board_compat,
 	.init_late      = tegra_init_late
 MACHINE_END
