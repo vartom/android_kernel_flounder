@@ -9371,10 +9371,18 @@ unsigned long tegra_emc_cpu_limit(unsigned long cpu_rate)
 
 	/* Vote on memory bus frequency based on cpu frequency;
 	   cpu rate is in kHz, emc rate is in Hz */
-	if (cpu_rate >= 1300000)
-		return emc_max_rate;	/* cpu >= 1.3GHz, emc max */
-	else if (cpu_rate >= 975000)
-		return 600000000;	/* cpu >= 975 MHz, emc 600 MHz */
+	if (cpu_rate >= 1734000)
+		return emc_max_rate;	/* cpu >= 1.734GHz, emc max */
+	else if (cpu_rate >= 1326000)
+		return 792000000;	/* cpu >= 1.362GHz, emc 792 MHz */
+	else if (cpu_rate >= 1224000)
+		return 600000000;	/* cpu >= 1.224GHz, emc 600 MHz */
+	else if (cpu_rate >= 1044000)
+		return 528000000;	/* cpu >= 1.044GHz, emc 528 MHz */
+	else if (cpu_rate >= 960000)
+		return 396000000;	/* cpu >= 960 MHz, emc 396 MHz */
+	else if (cpu_rate >= 828000)
+		return 396000000;	/* cpu >= 828 MHz, emc 396 MHz */
 	else if (cpu_rate >= 725000)
 		return  396000000;	/* cpu >= 725 MHz, emc 396 MHz */
 	else if (cpu_rate >= 500000)
