@@ -49,9 +49,7 @@ int gk20a_init_hal(struct gpu_ops *gops)
 	gk20a_init_fifo(gops);
 	gk20a_init_gr_ctx(gops);
 	gk20a_init_mm(gops);
-#if defined(CONFIG_TEGRA_GK20A_DEBUG_SESSION)
 	gk20a_init_regops(gops);
-#endif
 	gops->name = "gk20a";
 
 	return 0;
