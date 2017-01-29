@@ -1244,8 +1244,10 @@ static void __init tegra_flounder_late_init(void)
 	flounder_display_init();
 	flounder_uart_init();
 	flounder_usb_init();
+#ifdef CONFIG_QCT_9K_MODEM
 	if(is_mdm_modem())
 		flounder_mdm_9k_init();
+#endif
 	flounder_xusb_init();
 	flounder_i2c_init();
 	flounder_spi_init();

@@ -78,7 +78,7 @@ obj-${CONFIG_MACH_T132_FLOUNDER}        += board-flounder-sysedp.o
 obj-${CONFIG_MACH_T132_FLOUNDER}        += htc_awb_cal.o
 
 obj-${CONFIG_MACH_T132_FLOUNDER}        += board-flounder-bootparams.o
-obj-${CONFIG_MACH_T132_FLOUNDER}        += board-flounder-mdm9k.o
+obj-${CONFIG_QCT_9K_MODEM}        += board-flounder-mdm9k.o
 
 obj-${CONFIG_MACH_T132REF}              += board-touch-maxim_sti-spi.o
 
