@@ -447,7 +447,7 @@ static void tegra_get_tegraid_from_hw(void)
 #ifndef CONFIG_ARM64
 	cid = tegra_read_chipid();
 	nlist = tegra_read_apb_misc_reg(0x860);
-#elif defined(CONFIG_ARCH_TEGRA_13x_SOC) || defined(CONFIG_ARCH_TEGRA_21x_SOC)
+#elif defined(CONFIG_ARCH_TEGRA_13x_SOC)
 	void __iomem *chip_id;
 	void __iomem *netlist;
 
