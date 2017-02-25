@@ -754,12 +754,12 @@ void quadd_hrt_get_state(struct quadd_module_state *state)
 
 static void init_arch_timer(void)
 {
-	u32 cntkctl = arch_timer_get_cntkctl();
+/*	u32 cntkctl = arch_timer_get_cntkctl();
 
 	if (cntkctl & ARCH_TIMER_USR_VCT_ACCESS_EN)
 		hrt.tc = arch_timer_get_timecounter();
-	else
-		hrt.tc = NULL;
+	else*/
+	hrt.tc = NULL;
 }
 
 struct quadd_hrt_ctx *quadd_hrt_init(struct quadd_ctx *ctx)

@@ -219,7 +219,7 @@ static struct cpu_cvb_dvfs cpu_cvb_dvfs_table[] = {
 			{      0 , 	{      0,      0,   0}, {      0, 0, 0}},
 		},
 		.vmin_trips_table = { 20, 35, 55, 75, },
-		.therm_floors_table = { 900, 800, 790, 770, },
+		.therm_floors_table = { 900, 800, 800, 800, },
 	},
 	/* A02 DVFS table */
 	{

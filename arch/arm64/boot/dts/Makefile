@@ -10,12 +10,23 @@ dtb-$(CONFIG_MACH_T132REF) += tegra132-bowmore-ers-s.dtb
 dtb-$(CONFIG_MACH_T132REF) += tegra132-bowmore-ers.dtb
 dtb-$(CONFIG_MACH_T132REF) += tegra132-tn8-p1761-1270-a03-battery.dtb
 dtb-$(CONFIG_MACH_T132REF) += tegra132-tn8-p1761-1270-a03.dtb
-targets += $(dtb-y)
+dtb-$(CONFIG_MACH_T132_FLOUNDER) += tegra132-flounder-xaxb.dtb
+dtb-$(CONFIG_MACH_T132_FLOUNDER) += tegra132-flounder-xc.dtb
+dtb-$(CONFIG_MACH_T132_FLOUNDER) += tegra132-flounder-xdxepvt.dtb
+dtb-$(CONFIG_MACH_T132_FLOUNDER) += tegra132-flounder_lte-xaxbxcxdpvt.dtb
+
+DTB_NAMES := $(subst $\",,$(CONFIG_BUILD_ARM64_APPENDED_DTB_IMAGE_NAMES))
+ifneq ($(DTB_NAMES),)
+DTB_LIST := $(addsuffix .dtb,$(DTB_NAMES))
+else
+DTB_LIST := $(dtb-y)
+endif
+targets += $(DTB_LIST)
 
 DTC_FLAGS := -i $(srctree)/arch/arm/boot/dts
 
 DTCCPP_FLAGS := -I$(srctree)/arch/arm/boot/dts
 
-dtbs: $(addprefix $(obj)/, $(dtb-y))
+dtbs: $(addprefix $(obj)/, $(DTB_LIST))
 
-clean-files := *.dtb
+clean-files := dts/*.dtb *.dtb

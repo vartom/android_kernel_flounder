@@ -66,7 +66,28 @@ obj-${CONFIG_MACH_T132REF}              += panel-s-wqxga-10-1.o
 obj-${CONFIG_MACH_T132REF}              += panel-i-edp-1080p-11-6.o
 
 
-obj-y                                   += board-touch-maxim_sti-spi.o
+obj-${CONFIG_MACH_T132_FLOUNDER}        += board-flounder.o
+obj-${CONFIG_MACH_T132_FLOUNDER}        += board-flounder-gps.o
+obj-${CONFIG_MACH_T132_FLOUNDER}        += board-flounder-kbc.o
+obj-${CONFIG_MACH_T132_FLOUNDER}        += board-flounder-sdhci.o
+obj-${CONFIG_MACH_T132_FLOUNDER}        += board-flounder-sensors.o
+obj-${CONFIG_MACH_T132_FLOUNDER}        += board-flounder-panel.o
+obj-${CONFIG_MACH_T132_FLOUNDER}        += board-flounder-memory.o
+obj-${CONFIG_MACH_T132_FLOUNDER}        += board-flounder-power.o
+obj-${CONFIG_MACH_T132_FLOUNDER}        += panel-j-qxga-8-9.o
+obj-${CONFIG_MACH_T132_FLOUNDER}        += flounder-bdaddress.o
+obj-${CONFIG_MACH_T132_FLOUNDER}        += board-flounder-sysedp.o
+obj-${CONFIG_MACH_T132_FLOUNDER}              += panel-p-wuxga-10-1.o
+obj-${CONFIG_MACH_T132_FLOUNDER}              += panel-lgd-wxga-7-0.o
+obj-${CONFIG_MACH_T132_FLOUNDER}              += panel-s-wqxga-10-1.o
+
+#CAM
+obj-${CONFIG_MACH_T132_FLOUNDER}        += htc_awb_cal.o
+
+obj-${CONFIG_MACH_T132_FLOUNDER}        += board-flounder-bootparams.o
+#obj-${CONFIG_MACH_T132_FLOUNDER}        += board-flounder-mdm9k.o
+
+obj-${CONFIG_MACH_T132REF}              += board-touch-maxim_sti-spi.o
 
 
 ifeq ($(CONFIG_HOTPLUG_CPU),y)

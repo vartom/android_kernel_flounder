@@ -255,10 +255,12 @@ void __nvmap_kunmap(struct nvmap_handle *h, unsigned int pagenum,
 void *__nvmap_mmap(struct nvmap_handle *h)
 {
 	pgprot_t prot;
+	void *vaddr = NULL;
 	unsigned long adj_size;
 	unsigned long offs;
 	struct vm_struct *v;
 	void *p;
+	struct page **pages;
 
 	if (!virt_addr_valid(h))
 		return NULL;
@@ -270,8 +272,8 @@ void *__nvmap_mmap(struct nvmap_handle *h)
 	nvmap_kmaps_inc(h);
 	prot = nvmap_pgprot(h, PG_PROT_KERNEL);
 
+
 #ifdef NVMAP_LAZY_VFREE
-	struct page **pages;
 	if (h->heap_pgalloc) {
 		if (!h->vaddr) {
 			pages = nvmap_pages(h->pgalloc.pages,
