@@ -764,7 +764,6 @@ static int pm_suspend_clear_status(struct notifier_block *nb,
 		temp = readl(pmc + PMC_WAKE2_STATUS);
 		if (temp)
 			pmc_32kwritel(temp, PMC_WAKE2_STATUS);
-#endif
 	}
 	return NOTIFY_OK;
 }
