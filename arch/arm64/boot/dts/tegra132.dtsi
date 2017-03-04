@@ -37,7 +37,8 @@
 			device_type = "cpu";
 			compatible = "nvidia,denver", "arm,armv8";
 			reg = <0x0 0x0>;
-			enable-method = "psci";
+			enable-method = "spin-table";
+			cpu-release-addr = <0x0 0x8000fff8>;
 			power-states = <&power_states>;
 			// The currents(uA) correspond to the frequencies in the
 			// frequency table.
@@ -95,7 +96,8 @@
 			device_type = "cpu";
 			compatible = "nvidia,denver", "arm,armv8";
 			reg = <0x0 0x1>;
-			enable-method = "psci";
+			enable-method = "spin-table";
+			cpu-release-addr = <0x0 0x8000fff8>;
 			power-states = <&power_states>;
 			// The currents(uA) correspond to the frequencies in the
 			// frequency table.
@@ -149,11 +151,6 @@
 			            1746960>; //2499000 kHz
 
 		};
-	};
-
-	psci {
-		compatible = "arm,psci-0.2";
-		method = "smc";
 	};
 
 	intc: interrupt-controller {
