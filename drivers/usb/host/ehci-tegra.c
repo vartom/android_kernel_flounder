@@ -108,11 +108,9 @@ static int tegra_ehci_port_speed(struct ehci_hcd *ehci)
 
 static void tegra_ehci_notify_event(struct tegra_ehci_hcd *tegra, int event)
 {
-	if (!IS_ERR_OR_NULL(tegra->transceiver)) {
-		tegra->transceiver->last_event = event;
-		atomic_notifier_call_chain(&tegra->transceiver->notifier, event,
-				tegra->transceiver->otg->gadget);
-	}
+	tegra->transceiver->last_event = event;
+	atomic_notifier_call_chain(&tegra->transceiver->notifier, event,
+					 tegra->transceiver->otg->gadget);
 }
 
 static void free_align_buffer(struct urb *urb, struct usb_hcd *hcd)
