@@ -22,6 +22,7 @@
 #include <mach/pinmux-t12.h>
 #include <mach/pinmux.h>
 #include <linux/platform_data/qcom_usb_modem_power.h>
+#include <linux/irqchip/tegra.h>
 
 #include "cpu-tegra.h"
 #include "devices.h"
@@ -307,7 +308,7 @@ struct tegra_usb_platform_data tegra_ehci2_hsic_modem_pdata = {
 	.u_data.host = {
 		.vbus_gpio = -1,
 		.hot_plug = false,
-		.remote_wakeup_supported = false,
+		.remote_wakeup_supported = true,
 		.power_off_on_suspend = true,
 		.skip_resume = true,
 	},
@@ -329,7 +330,7 @@ static struct qcom_usb_modem_power_platform_data mdm_pdata = {
 	.ap2mdm_errfatal_gpio = AP2MDM_ERRFATAL,
 	.mdm2ap_status_gpio = MDM2AP_STATUS,
 	.ap2mdm_status_gpio = AP2MDM_STATUS,
-	.mdm2ap_wakeup_gpio = MDM2AP_WAKEUP,
+	.mdm2ap_wakeup_gpio = -1,
 	.ap2mdm_wakeup_gpio = AP2MDM_WAKEUP,
 	.mdm2ap_vdd_min_gpio = -1,
 	.ap2mdm_vdd_min_gpio = -1,
@@ -370,6 +371,7 @@ int __init flounder_mdm_9k_init(void)
 */
 	if (is_mdm_modem()) {
 		pr_info("%s: add mdm_devices\n", __func__);
+		tegra_set_wake_source(42, INT_USB2);
 		tegra_ehci2_device.dev.platform_data = &tegra_ehci2_hsic_modem_pdata;
 		platform_device_register(&qcom_mdm_device);
 	}

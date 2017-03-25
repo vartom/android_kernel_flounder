@@ -26,6 +26,7 @@
 #include <linux/workqueue.h>
 #include <linux/gpio.h>
 #include <linux/err.h>
+#include <linux/usb.h>
 #include <linux/pm_runtime.h>
 #include <linux/suspend.h>
 #include <linux/slab.h>
@@ -36,6 +37,7 @@
 #include <asm/uaccess.h>
 #include <linux/debugfs.h>
 #include <linux/completion.h>
+#include <linux/system-wakeup.h>
 
 #ifdef CONFIG_MSM_SUBSYSTEM_RESTART
 #include "subsystem_restart.h"
@@ -306,47 +308,20 @@ static void cpu_freq_boost(struct work_struct *ws)
 static irqreturn_t qcom_usb_modem_wake_thread(int irq, void *data)
 {
 	struct qcom_usb_modem *modem = (struct qcom_usb_modem *)data;
-	unsigned long start_time = jiffies;
-
-	if (modem->mdm_debug_on)
-		pr_info("%s start\n", __func__);
 
 	mutex_lock(&modem->lock);
-
 	if (modem->udev && modem->udev->state != USB_STATE_NOTATTACHED) {
-		wake_lock_timeout(&modem->wake_lock,
-				  WAKELOCK_TIMEOUT_FOR_REMOTE_WAKE);
-
 		dev_info(&modem->pdev->dev, "remote wake (%u)\n",
 			 ++(modem->wake_cnt));
 
 		if (!modem->system_suspend) {
-			mutex_unlock(&modem->lock);
 			usb_lock_device(modem->udev);
 			if (usb_autopm_get_interface(modem->intf) == 0)
-			{
-				pr_info("%s(%d) usb_autopm_get_interface OK %u ms\n", __func__, __LINE__, jiffies_to_msecs(jiffies-start_time));
 				usb_autopm_put_interface_async(modem->intf);
-			}
 			usb_unlock_device(modem->udev);
-			mutex_lock(&modem->lock);
 		}
-		else
-			modem->hsic_wakeup_pending = true;
-
-#ifdef CONFIG_PM
-		if (modem->short_autosuspend_enabled && modem->pdata->autosuspend_delay > 0) {
-			pm_runtime_set_autosuspend_delay(&modem->udev->dev,
-					modem->pdata->autosuspend_delay);
-			modem->short_autosuspend_enabled = 0;
-		}
-#endif
 	}
-
 	mutex_unlock(&modem->lock);
-
-	if (modem->mdm_debug_on)
-		pr_info("%s end\n", __func__);
 
 	return IRQ_HANDLED;
 }
@@ -653,7 +628,6 @@ static void device_add_handler(struct qcom_usb_modem *modem,
 			pr_info("enable autosuspend for %s %s\n",
 				udev->manufacturer, udev->product);
 		}
-		modem->short_autosuspend_enabled = 0;
 
 		/* allow the device to wake up the system */
 		if (udev->actconfig->desc.bmAttributes &
@@ -721,34 +695,11 @@ static int mdm_pm_notifier(struct notifier_block *notifier,
 		}
 
 		modem->system_suspend = 1;
-#ifdef CONFIG_PM
-		if (modem->udev && modem->pdata->short_autosuspend_delay > 0 &&
-		    modem->udev->state != USB_STATE_NOTATTACHED) {
-			pm_runtime_set_autosuspend_delay(&modem->udev->dev,
-					modem->pdata->short_autosuspend_delay);
-			modem->short_autosuspend_enabled = 1;
-			pr_info("%s: modem->short_autosuspend_enabled: %d (ms)\n", __func__, modem->pdata->short_autosuspend_delay);
-		}
-#endif
 		mutex_unlock(&modem->lock);
 		return NOTIFY_OK;
 	case PM_POST_SUSPEND:
 		pr_info("%s : PM_POST_SUSPEND\n", __func__);
 		modem->system_suspend = 0;
-		if(modem->hsic_wakeup_pending)
-		{
-			if(modem->mdm_debug_on)
-				pr_info("%s: hsic wakeup pending\n", __func__);
-
-			usb_lock_device(modem->udev);
-			if (usb_autopm_get_interface(modem->intf) == 0)
-			{
-				pr_info("%s: usb_autopm_get_interface OK\n", __func__);
-				usb_autopm_put_interface_async(modem->intf);
-			}
-			usb_unlock_device(modem->udev);
-			modem->hsic_wakeup_pending = false;
-		}
 		mutex_unlock(&modem->lock);
 		return NOTIFY_OK;
 	}
@@ -788,7 +739,7 @@ static int mdm_request_irq(struct qcom_usb_modem *modem,
 
 	return 0;
 }
-
+/*
 static void mdm_hsic_phy_open(void)
 {
 	struct device *dev;
@@ -1047,7 +998,7 @@ void mdm_hsic_phy_close(void)
 	modem = dev_get_drvdata(dev);
 
 	return;
-}
+}*/
 
 /* load USB host controller */
 static struct platform_device *tegra_usb_host_register(
@@ -1119,7 +1070,7 @@ static ssize_t load_unload_usb_host(struct device *dev,
 
 	return count;
 }
-
+/*
 static struct tegra_usb_phy_platform_ops qcom_usb_modem_debug_remote_wakeup_ops = {
 	.open = mdm_hsic_phy_open,
 	.init = mdm_hsic_phy_init,
@@ -1133,7 +1084,7 @@ static struct tegra_usb_phy_platform_ops qcom_usb_modem_debug_remote_wakeup_ops 
 
 static struct tegra_usb_phy_platform_ops qcom_usb_modem_remote_wakeup_ops = {
 	.post_remote_wakeup = mdm_post_remote_wakeup,
-};
+};*/
 
 static int proc_mdm9k_status(struct seq_file *s, void *unused)
 {
@@ -1907,7 +1858,6 @@ static int mdm_init(struct qcom_usb_modem *modem, struct platform_device *pdev)
 	/* hsic wakeup */
 	modem->mdm_hsic_phy_resume_jiffies = 0;
 	modem->mdm_hsic_phy_active_total_ms = 0;
-	modem->hsic_wakeup_pending = false;
 
 #ifdef CONFIG_MDM_FTRACE_DEBUG
 	memset(modem->ftrace_cmd, 0, sizeof(modem->ftrace_cmd));
@@ -1965,13 +1915,13 @@ static int mdm_init(struct qcom_usb_modem *modem, struct platform_device *pdev)
 		}
 	}
 
-	/* Register hsic usb ops */
+	/* Register hsic usb ops 
 	if(modem->mdm_debug_on)
 		modem->pdata->tegra_ehci_pdata->ops =
 						&qcom_usb_modem_debug_remote_wakeup_ops;
 	else
 		modem->pdata->tegra_ehci_pdata->ops =
-						&qcom_usb_modem_remote_wakeup_ops;
+						&qcom_usb_modem_remote_wakeup_ops;*/
 
 	if (gpio_is_valid(pdata->mdm2ap_hsic_ready_gpio)) {
 		/* request hsic ready irq from platform data */
@@ -2288,6 +2238,7 @@ static int qcom_usb_modem_suspend(struct platform_device *pdev,
 				   pm_message_t state)
 {
 	struct qcom_usb_modem *modem = platform_get_drvdata(pdev);
+	int ret = 0;
 
 	if(modem->mdm_debug_on)
 		pr_info("%s\n", __func__);
@@ -2296,15 +2247,36 @@ static int qcom_usb_modem_suspend(struct platform_device *pdev,
 	if (modem->ops && modem->ops->suspend)
 		modem->ops->suspend();
 
-	return 0;
+	if (modem->wake_irq) {
+		ret = enable_irq_wake(modem->wake_irq);
+		if (ret) {
+			pr_info("%s, wake irq=%d, error=%d\n",
+				__func__, modem->wake_irq, ret);
+			goto fail;
+		}
+	}
+fail:
+	return ret;
 }
 
 static int qcom_usb_modem_resume(struct platform_device *pdev)
 {
 	struct qcom_usb_modem *modem = platform_get_drvdata(pdev);
+	int ret = 0;
 
 	if(modem->mdm_debug_on)
 		pr_info("%s\n", __func__);
+
+	if (modem->wake_irq) {
+		ret = disable_irq_wake(modem->wake_irq);
+		if (ret)
+			pr_err("Failed to disable modem wake_irq\n");
+	} else if (get_wakeup_reason_irq() == INT_USB2) {
+		pr_info("%s: remote wakeup from USB. Hold a timed wakelock\n",
+				__func__);
+		wake_lock_timeout(&modem->wake_lock,
+				WAKELOCK_TIMEOUT_FOR_REMOTE_WAKE);
+	}
 
 	/* send L3->L0 hint to modem */
 	if (modem->ops && modem->ops->resume)

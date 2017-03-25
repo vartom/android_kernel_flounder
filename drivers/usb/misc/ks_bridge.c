@@ -129,7 +129,7 @@ struct ks_bridge {
 struct ks_bridge *__ksb[NO_BRIDGE_INSTANCES];
 
 /* by default debugging is enabled */
-static unsigned int enable_dbg = 1;
+static unsigned int enable_dbg = 0;
 module_param(enable_dbg, uint, S_IRUGO | S_IWUSR);
 
 static void
@@ -856,9 +856,11 @@ static int ksb_usb_suspend(struct usb_interface *ifc, pm_message_t message)
 	unsigned long flags;
 
 	dbg_log_event(ksb, "SUSPEND", 0, 0);
+	pr_info("1 %s\n", __func__);
 
 	if (pm_runtime_autosuspend_expiration(&ksb->udev->dev)) {
 		dbg_log_event(ksb, "SUSP ABORT-TimeCheck", 0, 0);
+		pr_info("2 %s\n", __func__);
 		return -EBUSY;
 	}
 
@@ -868,6 +870,7 @@ static int ksb_usb_suspend(struct usb_interface *ifc, pm_message_t message)
 	if (!list_empty(&ksb->to_ks_list)) {
 		spin_unlock_irqrestore(&ksb->lock, flags);
 		dbg_log_event(ksb, "SUSPEND ABORT", 0, 0);
+		pr_info("3 %s\n", __func__);
 		/*
 		 * Now wakeup the reader process and queue
 		 * Rx URBs for more data.
@@ -886,10 +889,12 @@ static int ksb_usb_resume(struct usb_interface *ifc)
 	struct ks_bridge *ksb = usb_get_intfdata(ifc);
 
 	dbg_log_event(ksb, "RESUME", 0, 0);
+	pr_info("1 %s\n", __func__);
 
-	if (test_bit(FILE_OPENED, &ksb->flags))
+	if (test_bit(USB_DEV_CONNECTED, &ksb->flags)) {
 		queue_work(ksb->wq, &ksb->start_rx_work);
-
+		pr_info("2 %s\n", __func__);
+	}
 	return 0;
 }
 
@@ -1079,6 +1084,7 @@ static void __exit ksb_exit(void)
 	struct ks_bridge *ksb = NULL;
 	int i;
 
+	pr_info("%s\n", __func__);
 #ifdef CONFIG_QCT_9K_MODEM
 	if (!is_mdm_modem())
 		return;
