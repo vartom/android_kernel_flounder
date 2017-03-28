@@ -495,16 +495,32 @@ nomem:
 static int rmnet_usb_ctrl_write_cmd(struct rmnet_ctrl_dev *dev)
 {
 	struct usb_device	*udev;
-
+	int			ret;
 	if (!test_bit(RMNET_CTRL_DEV_READY, &dev->cudev->status))
-		return -ENODEV;
+		return -ENETRESET;
+
+	ret = usb_autopm_get_interface(dev->cudev->intf);
+	if (ret < 0) {
+		pr_debug("%s: Unable to resume interface: %d\n",
+			__func__, ret);
+		return ret;
+	}
 
 	udev = interface_to_usbdev(dev->cudev->intf);
 	dev->cudev->set_ctrl_line_state_cnt++;
-	return usb_control_msg(udev, usb_rcvctrlpipe(udev, 0),
+	ret = usb_control_msg(udev, usb_rcvctrlpipe(udev, 0),
 			       USB_CDC_REQ_SET_CONTROL_LINE_STATE,
 			       (USB_DIR_OUT | USB_TYPE_CLASS | USB_RECIP_INTERFACE),
 			       dev->cbits_tomdm, dev->cudev->intf->cur_altsetting->desc.bInterfaceNumber, NULL, 0, USB_CTRL_SET_TIMEOUT);
+	if (ret < 0)
+		dev->cudev->tx_ctrl_err_cnt++;
+	/* if we are here after device disconnect
+	 * usb_unbind_interface() takes care of
+	 * residual pm_autopm_get_interface_* calls
+	 */
+	if (test_bit(RMNET_CTRL_DEV_READY, &dev->cudev->status))
+		usb_autopm_put_interface(dev->cudev->intf);
+	return ret;
 }
 
 static void ctrl_write_callback(struct urb *urb)
@@ -621,23 +637,42 @@ static int rmnet_usb_ctrl_write_cmd(struct rmnet_ctrl_udev *dev, u8 req,
 		data, size, USB_CTRL_SET_TIMEOUT);
 	if (ret < 0)
 		dev->tx_ctrl_err_cnt++;
-
-	usb_autopm_put_interface(dev->intf);
+	
+	/* if we are here after device disconnect
+	 * usb_unbind_interface() takes care of
+	 * residual pm_autopm_get_interface_* calls
+	 */
+	if (test_bit(RMNET_CTRL_DEV_READY, &dev->status))
+		usb_autopm_put_interface(dev->intf);
 
 	return ret;
 }
 #endif
 
+static void rmnet_usb_ctrl_free_rx_list(struct rmnet_ctrl_dev *dev)
+{
+	unsigned long flag;
+	struct ctrl_pkt_list_elem *list_elem = NULL;
+	spin_lock_irqsave(&dev->rx_lock, flag);
+	while (!list_empty(&dev->rx_list)) {
+		list_elem = list_first_entry(&dev->rx_list,
+				struct ctrl_pkt_list_elem, list);
+		list_del(&list_elem->list);
+		kfree(list_elem->cpkt.data);
+		kfree(list_elem);
+	}
+	spin_unlock_irqrestore(&dev->rx_lock, flag);
+}
+
 static int rmnet_ctl_open(struct inode *inode, struct file *file)
 {
-	struct ctrl_pkt_list_elem	*list_elem = NULL;
-	unsigned long			flag;
 	int				retval = 0;
 	struct rmnet_ctrl_dev		*dev =
 		container_of(inode->i_cdev, struct rmnet_ctrl_dev, cdev);
 
 #ifdef CONFIG_QCT_9K_MODEM
-	pr_info("%s+ \n", __func__);
+	if (get_radio_flag() & RADIO_FLAG_MORE_LOG)
+		pr_info("%s+ \n", __func__);
 #endif
 
 	if (!dev)
@@ -671,18 +706,7 @@ static int rmnet_ctl_open(struct inode *inode, struct file *file)
 	}
 
 	/* clear stale data if device close called but channel was ready */
-	spin_lock_irqsave(&dev->rx_lock, flag);
-	while (!list_empty(&dev->rx_list)) {
-		list_elem = list_first_entry(
-				&dev->rx_list,
-				struct ctrl_pkt_list_elem,
-				list);
-		list_del(&list_elem->list);
-		kfree(list_elem->cpkt.data);
-		kfree(list_elem);
-	}
-	spin_unlock_irqrestore(&dev->rx_lock, flag);
-
+	rmnet_usb_ctrl_free_rx_list(dev);
 	set_bit(RMNET_CTRL_DEV_OPEN, &dev->status);
 
 	file->private_data = dev;
@@ -690,7 +714,8 @@ static int rmnet_ctl_open(struct inode *inode, struct file *file)
 already_opened:
 	DBG("%s: Open called for %s\n", __func__, dev->name);
 #ifdef CONFIG_QCT_9K_MODEM
-	pr_info("%s- \n", __func__);
+	if (get_radio_flag() & RADIO_FLAG_MORE_LOG)
+		pr_info("%s- \n", __func__);
 #endif
 
 	return 0;
@@ -698,27 +723,13 @@ already_opened:
 
 static int rmnet_ctl_release(struct inode *inode, struct file *file)
 {
-	struct ctrl_pkt_list_elem	*list_elem = NULL;
 	struct rmnet_ctrl_dev		*dev;
-	unsigned long			flag;
 
 	dev = file->private_data;
 	if (!dev)
 		return -ENODEV;
 
 	DBG("%s Called on %s device\n", __func__, dev->name);
-
-	spin_lock_irqsave(&dev->rx_lock, flag);
-	while (!list_empty(&dev->rx_list)) {
-		list_elem = list_first_entry(
-				&dev->rx_list,
-				struct ctrl_pkt_list_elem,
-				list);
-		list_del(&list_elem->list);
-		kfree(list_elem->cpkt.data);
-		kfree(list_elem);
-	}
-	spin_unlock_irqrestore(&dev->rx_lock, flag);
 
 	clear_bit(RMNET_CTRL_DEV_OPEN, &dev->status);
 
@@ -731,20 +742,28 @@ static unsigned int rmnet_ctl_poll(struct file *file, poll_table *wait)
 {
 	unsigned int		mask = 0;
 	struct rmnet_ctrl_dev	*dev;
-
+	unsigned long		flags;
+	
 	dev = file->private_data;
 	if (!dev)
 		return POLLERR;
 
 	poll_wait(file, &dev->read_wait_queue, wait);
-	if (!test_bit(RMNET_CTRL_DEV_READY, &dev->cudev->status)) {
-		dev_dbg(dev->devicep, "%s: Device not connected\n",
-			__func__);
+	if (!dev->poll_err &&
+			!test_bit(RMNET_CTRL_DEV_READY, &dev->cudev->status)) {
+		dev_dbg(dev->devicep, "%s: Device not connected\n", __func__);
+		dev->poll_err = true;
 		return POLLERR;
 	}
 
+	if (dev->poll_err)
+		dev->poll_err = false;
+	
+	spin_lock_irqsave(&dev->rx_lock, flags);
+
 	if (!list_empty(&dev->rx_list))
 		mask |= POLLIN | POLLRDNORM;
+	spin_unlock_irqrestore(&dev->rx_lock, flags);
 
 	return mask;
 }
@@ -885,20 +904,18 @@ static ssize_t rmnet_ctl_write(struct file *file, const char __user * buf,
 
 #ifdef CONFIG_QCT_9K_MODEM
 	status = rmnet_usb_ctrl_write(dev, cpkt, size);
-	if (status == size)
-		return size;
-	else
-		pr_err("[%s] status %d\n", __func__, status);
 #else
 	status = rmnet_usb_ctrl_write_cmd(dev->cudev,
 			USB_CDC_SEND_ENCAPSULATED_COMMAND, 0, cpkt->data,
 			cpkt->data_size);
-	if (status > 0)
-		dev->cudev->snd_encap_cmd_cnt++;
 
 	kfree(cpkt->data);
 	kfree(cpkt);
 #endif
+	if (status > 0) {
+		dev->cudev->snd_encap_cmd_cnt++;
+		return size;
+	}
 
 	return status;
 }
@@ -928,21 +945,13 @@ static int rmnet_ctrl_tiocmset(struct rmnet_ctrl_dev *dev, unsigned int set,
 	mutex_unlock(&dev->dev_lock);
 
 #ifdef CONFIG_QCT_9K_MODEM
-	retval = usb_autopm_get_interface(dev->cudev->intf);
-	if (retval < 0) {
-		dev_dbg(dev->devicep, "%s: Unable to resume interface: %d\n", __func__, retval);
-		return retval;
-	}
-
 	retval = rmnet_usb_ctrl_write_cmd(dev);
-
-	usb_autopm_put_interface(dev->cudev->intf);
 #else
 	retval = rmnet_usb_ctrl_write_cmd(dev->cudev,
 			USB_CDC_REQ_SET_CONTROL_LINE_STATE, 0, NULL, 0);
+#endif
 	if (!retval)
 		dev->cudev->set_ctrl_line_state_cnt++;
-#endif
 
 	return retval;
 }
@@ -1108,6 +1117,7 @@ void rmnet_usb_ctrl_disconnect(struct rmnet_ctrl_udev *dev)
 	if (test_bit(RMNET_CTRL_DEV_MUX_EN, &dev->status)) {
 		for (n = 0; n < insts_per_dev; n++) {
 			cdev = &ctrl_devs[dev->rdev_num][n];
+			rmnet_usb_ctrl_free_rx_list(cdev);
 			wake_up(&cdev->read_wait_queue);
 			mutex_lock(&cdev->dev_lock);
 			cdev->cbits_tolocal = ~ACM_CTRL_CD;
@@ -1117,6 +1127,7 @@ void rmnet_usb_ctrl_disconnect(struct rmnet_ctrl_udev *dev)
 	} else {
 		cdev = &ctrl_devs[dev->rdev_num][dev->ctrldev_id];
 		cdev->claimed = false;
+		rmnet_usb_ctrl_free_rx_list(cdev);
 		wake_up(&cdev->read_wait_queue);
 		mutex_lock(&cdev->dev_lock);
 		cdev->cbits_tolocal = ~ACM_CTRL_CD;
@@ -1270,7 +1281,7 @@ int rmnet_usb_ctrl_init(int no_rmnet_devs, int no_rmnet_insts_per_dev,
 		unsigned long mux_info)
 {
 	struct rmnet_ctrl_dev	*dev;
-	struct rmnet_ctrl_udev	*cudev = NULL;
+	struct rmnet_ctrl_udev	*cudev;
 	int			i, n;
 	int			status;
 	int			cmux_enabled;

@@ -136,6 +136,7 @@ module_param_cb(rmnet_data_init, &rmnet_init_ops, &rmnet_data_init,
 
 static void rmnet_usb_setup(struct net_device *);
 static int rmnet_ioctl(struct net_device *, struct ifreq *, int);
+static void rmnet_usb_disable_hsic_autosuspend(struct usbnet *, int);
 
 static int rmnet_usb_suspend(struct usb_interface *iface, pm_message_t message)
 {
@@ -150,10 +151,10 @@ static int rmnet_usb_suspend(struct usb_interface *iface, pm_message_t message)
 	if (work_busy(&dev->get_encap_work))
 		return -EBUSY;
 
-	usbnet_pause_rx(unet);
+/*	usbnet_pause_rx(unet); Fix lost receving data packets */
 
 	if (usbnet_suspend(iface, message)) {
-		usbnet_resume_rx(unet);
+		/* usbnet_resume_rx(unet); Fix lost receving data packets when */ 
 		rmnet_usb_ctrl_start_rx(dev);
 		return -EBUSY;
 	}
@@ -169,9 +170,28 @@ static int rmnet_usb_resume(struct usb_interface *iface)
 	dev = (struct rmnet_ctrl_udev *)unet->data[1];
 
 	usbnet_resume(iface);
-	usbnet_resume_rx(unet);
+	/*usbnet_resume_rx(unet); Fix lost receving data packets when*/
 
 	return rmnet_usb_ctrl_start_rx(dev);
+}
+
+static void rmnet_usb_disable_hsic_autosuspend(struct usbnet *usbnet,
+						int enable_autosuspend)
+{
+	struct usb_device *usb_dev = usbnet->udev;
+	struct rmnet_ctrl_udev *rmnet_udev =
+		(struct rmnet_ctrl_udev *)usbnet->data[1];
+	usb_get_dev(usb_dev);
+	if (!enable_autosuspend) {
+		usb_disable_autosuspend(usb_dev);
+		rmnet_udev->autosuspend_disabled = 1;
+		rmnet_udev->autosuspend_dis_cnt++;
+	} else {
+		usb_enable_autosuspend(usb_dev);
+		rmnet_udev->autosuspend_disabled = 0;
+		rmnet_udev->autosuspend_en_cnt++;
+	}
+	usb_put_dev(usb_dev);
 }
 
 static int rmnet_usb_bind(struct usbnet *usbnet, struct usb_interface *iface)
@@ -353,7 +373,7 @@ static int rmnet_ioctl_extended(struct net_device *dev, struct ifreq *ifr)
 			return -EINVAL;
 
 		unet->rx_urb_size = (size_t) ext_cmd.u.data;
-		DBG0("[%s] rmnet_ioctl(): SET MRU to %lu\n", dev->name,
+		DBG0("[%s] rmnet_ioctl(): SET MRU to %u\n", dev->name,
 				unet->rx_urb_size);
 		break;
 
@@ -368,6 +388,10 @@ static int rmnet_ioctl_extended(struct net_device *dev, struct ifreq *ifr)
 	case RMNET_IOCTL_GET_EPID:
 		ext_cmd.u.data =
 			unet->intf->cur_altsetting->desc.bInterfaceNumber;
+		break;
+	}
+	case RMNET_IOCTL_SET_SLEEP_STATE:
+		rmnet_usb_disable_hsic_autosuspend(unet, ext_cmd.u.data);
 		break;
 	}
 
@@ -503,6 +527,8 @@ static void rmnet_usb_setup(struct net_device *dev)
 static int rmnet_usb_data_status(struct seq_file *s, void *unused)
 {
 	struct usbnet *unet = s->private;
+	struct rmnet_ctrl_udev *rmnet_udev =
+		(struct rmnet_ctrl_udev *)unet->data[1];
 
 	seq_printf(s, "RMNET_MODE_LLP_IP:  %d\n",
 			test_bit(RMNET_MODE_LLP_IP, &unet->data[0]));
@@ -511,7 +537,7 @@ static int rmnet_usb_data_status(struct seq_file *s, void *unused)
 	seq_printf(s, "RMNET_MODE_QOS:     %d\n",
 			test_bit(RMNET_MODE_QOS, &unet->data[0]));
 	seq_printf(s, "Net MTU:            %u\n", unet->net->mtu);
-	seq_printf(s, "rx_urb_size:        %lu\n", unet->rx_urb_size);
+	seq_printf(s, "rx_urb_size:        %u\n", unet->rx_urb_size);
 	seq_printf(s, "rx skb q len:       %u\n", unet->rxq.qlen);
 	seq_printf(s, "rx skb done q len:  %u\n", unet->done.qlen);
 	seq_printf(s, "rx errors:          %lu\n", unet->net->stats.rx_errors);
@@ -535,6 +561,12 @@ static int rmnet_usb_data_status(struct seq_file *s, void *unused)
 			test_bit(EVENT_RX_MEMORY, &unet->flags));
 	seq_printf(s, "EVENT_DEV_ASLEEP:   %d\n",
 			test_bit(EVENT_DEV_ASLEEP, &unet->flags));
+	seq_printf(s, "autosuspend_disabled: %d\n",
+			rmnet_udev->autosuspend_disabled);
+	seq_printf(s, "No. of times autosuspend enabled: %d\n",
+					rmnet_udev->autosuspend_en_cnt);
+	seq_printf(s, "No. of times autosuspend disabled: %d\n",
+					rmnet_udev->autosuspend_dis_cnt);
 
 	return 0;
 }
