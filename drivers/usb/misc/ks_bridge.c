@@ -117,8 +117,8 @@ struct ks_bridge {
 	/* to handle INT IN ep */
 	unsigned int		period;
 
-	/* wake lock */
-	struct wake_lock ks_wake_lock;
+	/* wake lock *
+	struct wake_lock ks_wake_lock;*/
 
 #define DBG_MSG_LEN   40
 #define DBG_MAX_MSG   500
@@ -597,8 +597,8 @@ add_to_list:
 	/* wake up read thread */
 	if (wakeup)
 	{
-		/* make sure ks bridge data can pass to user space process before pm freeze user space */
-		wake_lock_timeout(&ksb->ks_wake_lock, HZ);
+		/* make sure ks bridge data can pass to user space process before pm freeze user space *
+		wake_lock_timeout(&ksb->ks_wake_lock, HZ);*/
 		wake_up(&ksb->ks_wait_q);
 	}
 done:
@@ -707,8 +707,8 @@ ksb_usb_probe(struct usb_interface *ifc, const struct usb_device_id *id)
 
 	switch (id->idProduct) {
 	case 0x9008:
-#ifdef CONFIG_QCT_9K_MODEM
-		/* During 1st enumeration, disable auto-suspend */
+#ifdef CONFIG_QCT_9K_MODEM_0
+		* During 1st enumeration, disable auto-suspend *
 		pr_info("%s: disable auto-suspend for DL mode\n", __func__);
 		usb_disable_autosuspend(udev);
 #endif
@@ -856,11 +856,9 @@ static int ksb_usb_suspend(struct usb_interface *ifc, pm_message_t message)
 	unsigned long flags;
 
 	dbg_log_event(ksb, "SUSPEND", 0, 0);
-	pr_info("1 %s\n", __func__);
 
 	if (pm_runtime_autosuspend_expiration(&ksb->udev->dev)) {
 		dbg_log_event(ksb, "SUSP ABORT-TimeCheck", 0, 0);
-		pr_info("2 %s\n", __func__);
 		return -EBUSY;
 	}
 
@@ -870,7 +868,6 @@ static int ksb_usb_suspend(struct usb_interface *ifc, pm_message_t message)
 	if (!list_empty(&ksb->to_ks_list)) {
 		spin_unlock_irqrestore(&ksb->lock, flags);
 		dbg_log_event(ksb, "SUSPEND ABORT", 0, 0);
-		pr_info("3 %s\n", __func__);
 		/*
 		 * Now wakeup the reader process and queue
 		 * Rx URBs for more data.
@@ -889,12 +886,9 @@ static int ksb_usb_resume(struct usb_interface *ifc)
 	struct ks_bridge *ksb = usb_get_intfdata(ifc);
 
 	dbg_log_event(ksb, "RESUME", 0, 0);
-	pr_info("1 %s\n", __func__);
-
-	if (test_bit(USB_DEV_CONNECTED, &ksb->flags)) {
+	if (test_bit(USB_DEV_CONNECTED, &ksb->flags))
 		queue_work(ksb->wq, &ksb->start_rx_work);
-		pr_info("2 %s\n", __func__);
-	}
+
 	return 0;
 }
 
@@ -1044,7 +1038,7 @@ static int __init ksb_init(void)
 		ksb->dbg_idx = 0;
 		ksb->dbg_lock = __RW_LOCK_UNLOCKED(lck);
 
-		wake_lock_init(&ksb->ks_wake_lock, WAKE_LOCK_SUSPEND, "ks_bridge_lock");
+		//wake_lock_init(&ksb->ks_wake_lock, WAKE_LOCK_SUSPEND, "ks_bridge_lock");
 
 		if (!IS_ERR(dbg_dir))
 			debugfs_create_file(ksb->name, S_IRUGO, dbg_dir,
@@ -1084,7 +1078,6 @@ static void __exit ksb_exit(void)
 	struct ks_bridge *ksb = NULL;
 	int i;
 
-	pr_info("%s\n", __func__);
 #ifdef CONFIG_QCT_9K_MODEM
 	if (!is_mdm_modem())
 		return;
@@ -1094,7 +1087,7 @@ static void __exit ksb_exit(void)
 		debugfs_remove_recursive(dbg_dir);
 
 	//Destory ks wake lock
-	wake_lock_destroy(&ksb->ks_wake_lock);
+	//wake_lock_destroy(&ksb->ks_wake_lock);
 
 	usb_deregister(&ksb_usb_driver);
 
