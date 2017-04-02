@@ -35,6 +35,7 @@
 #include <linux/of_gpio.h>
 #include <linux/regulator/consumer.h>
 #include <linux/htc_headset_mgr.h>
+#include <linux/sound_on.h>
 
 #define AMP_ON_CMD_LEN 7
 #define RETRY_CNT 5
@@ -96,6 +97,11 @@ static struct workqueue_struct *ramp_wq;
 static struct workqueue_struct *gpio_wq;
 static int high_imp;
 
+bool mdmhp_on = true;
+bool is_mdmhp_on()
+{
+	return mdmhp_on;
+}
 
 int rt5506_headset_detect(int on)
 {
@@ -542,6 +548,7 @@ static void set_amp(int on, struct rt5506_config *i2c_command)
 		if (rt5506_i2c_write(i2c_command->reg,
 			i2c_command->reg_len) == 0) {
 			pr_err("%s: ON\n", __func__);
+			mdmhp_on = true;
 		}
 	} else {
 		if (high_imp) {
@@ -550,8 +557,10 @@ static void set_amp(int on, struct rt5506_config *i2c_command)
 		} else {
 			rt5506_write_reg(1, 0xc7);
 		}
-		if (rt5506_query.rt5506_status == STATUS_PLAYBACK)
+		if (rt5506_query.rt5506_status == STATUS_PLAYBACK) {
 			pr_err("%s: OFF\n", __func__);
+			mdmhp_on = false;
+		}
 		rt5506_query.rt5506_status = STATUS_OFF;
 		rt5506_query.curmode = PLAYBACK_MODE_OFF;
 	}

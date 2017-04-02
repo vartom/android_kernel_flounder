@@ -32,6 +32,7 @@
 #include <mach/tegra_asoc_pdata.h>
 #include <mach/gpio-tegra.h>
 #include <linux/sysedp.h>
+#include <linux/sound_on.h>
 
 #include <sound/core.h>
 #include <sound/jack.h>
@@ -78,6 +79,12 @@ static struct sysedp_consumer *sysedpc;
 
 void __set_rt5677_power(struct tegra_rt5677 *machine, bool enable, bool hp_depop);
 void set_rt5677_power_locked(struct tegra_rt5677 *machine, bool enable, bool hp_depop);
+
+bool mdmsp_on = true;
+bool is_mdmsp_on()
+{
+	return mdmsp_on;
+}
 
 static int hotword_cpufreq_notifier(struct notifier_block* nb,
 				    unsigned long event, void* data)
@@ -391,6 +398,7 @@ static int tegra_rt5677_spk_startup(struct snd_pcm_substream *substream)
 	struct tegra_rt5677 *machine = snd_soc_card_get_drvdata(card);
 	int dam_ifc = machine->dam_ifc;
 	pr_info("%s:mi2s amp on\n",__func__);
+	mdmsp_on = true;
 
 	tegra_asoc_utils_tristate_pd_dap(i2s->id, false);
 
@@ -459,6 +467,7 @@ static void tegra_rt5677_spk_shutdown(struct snd_pcm_substream *substream)
 	struct snd_soc_card *card = rtd->card;
 	struct tegra_rt5677 *machine = snd_soc_card_get_drvdata(card);
 	pr_info("%s:mi2s amp off\n",__func__);
+	mdmsp_on = false;
 
 	if (substream->stream == SNDRV_PCM_STREAM_PLAYBACK) {
 		if (rtd->dai_link->be_id == DAI_LINK_I2S_OFFLOAD_SPEAKER_BE) {

@@ -34,6 +34,8 @@
 
 #ifdef CONFIG_QCT_9K_MODEM
 #include <mach/board_htc.h>
+#include <linux/sound_on.h>
+#include <linux/platform_data/qcom_usb_modem_power.h>
 #endif
 
 #define DRIVER_DESC	"USB host ks bridge driver"
@@ -707,7 +709,7 @@ ksb_usb_probe(struct usb_interface *ifc, const struct usb_device_id *id)
 
 	switch (id->idProduct) {
 	case 0x9008:
-#ifdef CONFIG_QCT_9K_MODEM
+#ifdef CONFIG_QCT_9K_MODEM_0
 		/* During 1st enumeration, disable auto-suspend */
 		pr_info("%s: disable auto-suspend for DL mode\n", __func__);
 		usb_disable_autosuspend(udev);
@@ -856,6 +858,22 @@ static int ksb_usb_suspend(struct usb_interface *ifc, pm_message_t message)
 	unsigned long flags;
 
 	dbg_log_event(ksb, "SUSPEND", 0, 0);
+
+#ifdef CONFIG_QCT_9K_MODEM
+	if (is_mdm_on()) {
+		/*pr_info("%s: SUSPEND ABORT mdm_on", __func__);*/
+		return -EBUSY;
+	}
+	if (is_mdmhp_on()) {
+		/*pr_info("%s: SUSPEND ABORT mdmhp_on", __func__);*/
+		return -EBUSY;
+	}
+	if (is_mdmsp_on()) {
+		/*pr_info("%s: SUSPEND ABORT mdmsp_on", __func__);*/
+		return -EBUSY;
+	}
+
+#endif
 
 	if (pm_runtime_autosuspend_expiration(&ksb->udev->dev)) {
 		dbg_log_event(ksb, "SUSP ABORT-TimeCheck", 0, 0);

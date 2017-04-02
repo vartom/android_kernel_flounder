@@ -237,4 +237,6 @@ struct qcom_usb_modem_power_platform_data {
 #define MDM_STATUS_RAMDUMP (1 << 6)
 #define MDM_STATUS_EFFECTIVE_BIT 0x7f
 
+bool is_mdm_on(void);
+
 #endif /* __MACH_QCOM_USB_MODEM_POWER_H */

@@ -101,6 +101,12 @@ static int get_enable_ramdumps(void)
 }
 #endif
 
+bool mdm_on = true;
+bool is_mdm_on()
+{
+	return mdm_on;
+}
+
 static void mdm_enable_irqs(struct qcom_usb_modem *modem, bool is_wake_irq)
 {
 	if(is_wake_irq)
@@ -1370,6 +1376,7 @@ long mdm_modem_ioctl(struct file *filp, unsigned int cmd, unsigned long arg)
 					modem->ops->normal_boot_done_cb(modem);
 				}
 				modem->mdm9k_status = 1;
+				mdm_on = true;
 			}
 
 #ifdef CONFIG_MSM_SUBSYSTEM_RESTART
@@ -1703,8 +1710,8 @@ static int mdm_subsys_powerup(const struct subsys_data *crashed_subsys)
 		modem->ramdump_save = -1;
 	}
 	modem->boot_type = CHARM_NORMAL_BOOT;
-	mutex_unlock(&modem->lock);
 	complete(&modem->mdm_needs_reload);
+	mutex_unlock(&modem->lock);
 	if (!wait_for_completion_timeout(&modem->mdm_boot, msecs_to_jiffies(MDM_BOOT_TIMEOUT))) {
 		mdm_boot_status = -ETIMEDOUT;
 		pr_err("%s: mdm modem restart timed out.\n", __func__);
