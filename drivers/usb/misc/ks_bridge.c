@@ -80,6 +80,8 @@ struct data_pkt {
 #define MAX_DATA_PKT_SIZE	16384
 #define PENDING_URB_TIMEOUT	10
 
+#define AUTOSUSP_DELAY_WITH_USB 1000
+
 struct ksb_dev_info {
 	const char *name;
 };
@@ -115,6 +117,7 @@ struct ks_bridge {
 	struct usb_anchor	submitted;
 
 	unsigned long		flags;
+	unsigned		default_autosusp_delay;
 
 	/* to handle INT IN ep */
 	unsigned int		period;
@@ -838,6 +841,12 @@ ksb_usb_probe(struct usb_interface *ifc, const struct usb_device_id *id)
 
 	dev_dbg(&udev->dev, "usb dev connected");
 
+#ifdef CONFIG_PM_RUNTIME
+	ksb->default_autosusp_delay = ksb->udev->dev.power.autosuspend_delay;
+#endif
+	pm_runtime_set_autosuspend_delay(&ksb->udev->dev,
+			AUTOSUSP_DELAY_WITH_USB);
+
 	return 0;
 
 fail_device_create:
@@ -859,7 +868,7 @@ static int ksb_usb_suspend(struct usb_interface *ifc, pm_message_t message)
 
 	dbg_log_event(ksb, "SUSPEND", 0, 0);
 
-#ifdef CONFIG_QCT_9K_MODEM
+#ifdef CONFIG_QCT_9K_MODEM_0
 	if (is_mdm_on()) {
 		/*pr_info("%s: SUSPEND ABORT mdm_on", __func__);*/
 		return -EBUSY;
@@ -877,6 +886,7 @@ static int ksb_usb_suspend(struct usb_interface *ifc, pm_message_t message)
 
 	if (pm_runtime_autosuspend_expiration(&ksb->udev->dev)) {
 		dbg_log_event(ksb, "SUSP ABORT-TimeCheck", 0, 0);
+		pr_info("%s: SUSPEND ABORT TimeCheck", __func__);
 		return -EBUSY;
 	}
 
@@ -886,6 +896,7 @@ static int ksb_usb_suspend(struct usb_interface *ifc, pm_message_t message)
 	if (!list_empty(&ksb->to_ks_list)) {
 		spin_unlock_irqrestore(&ksb->lock, flags);
 		dbg_log_event(ksb, "SUSPEND ABORT", 0, 0);
+		pr_info("%s: SUSPEND ABORT list_empty", __func__);
 		/*
 		 * Now wakeup the reader process and queue
 		 * Rx URBs for more data.
