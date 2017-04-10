@@ -44,6 +44,9 @@
 #include <linux/delay.h>
 #include <linux/swap.h>
 #include <linux/fs.h>
+#ifdef CONFIG_TEGRA_NVMAP
+#include <linux/nvmap.h>
+#endif
 
 #define CREATE_TRACE_POINTS
 #include "trace/lowmemorykiller.h"
@@ -108,14 +111,19 @@ static int lowmem_shrink(struct shrinker *s, struct shrink_control *sc)
 	if (mutex_lock_interruptible(&scan_mutex) < 0)
 		return 0;
 
-	other_free = global_page_state(NR_FREE_PAGES);
+	other_free = global_page_state(NR_FREE_PAGES) -
+			 global_page_state(NR_FREE_CMA_PAGES) -
+			 totalreserve_pages
+#ifdef CONFIG_TEGRA_NVMAP
+			 + nvmap_page_pool_get_unused_pages()
+#endif
+			 ;
+	other_file = global_page_state(NR_FILE_PAGES)
+			- global_page_state(NR_SHMEM)
+			- global_page_state(NR_FILE_MAPPED)
+			- total_swapcache_pages();
 
-	if (global_page_state(NR_SHMEM) + total_swapcache_pages() <
-		global_page_state(NR_FILE_PAGES))
-		other_file = global_page_state(NR_FILE_PAGES) -
-						global_page_state(NR_SHMEM) -
-						total_swapcache_pages();
-	else
+	if (other_file < 0)
 		other_file = 0;
 
 	if (lowmem_adj_size < array_size)
@@ -198,7 +206,7 @@ static int lowmem_shrink(struct shrinker *s, struct shrink_control *sc)
 		long cache_limit = minfree * (long)(PAGE_SIZE / 1024);
 		long free = other_free * (long)(PAGE_SIZE / 1024);
 		trace_lowmemory_kill(selected, cache_size, cache_limit, free);
-		lowmem_print(4, "Killing '%s' (%d), adj %hd,\n" \
+		lowmem_print(1, "Killing '%s' (%d), adj %hd,\n" \
 				"   to free %ldkB on behalf of '%s' (%d) because\n" \
 				"   cache %ldkB is below limit %ldkB for oom_score_adj %hd\n" \
 				"   Free memory is %ldkB above reserved\n",
