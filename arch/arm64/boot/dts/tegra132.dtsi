@@ -172,6 +172,24 @@
 		      <0x0 0x60004400 0x0 0x40>;
 	};
 
+	reserved-memory {
+		#address-cells = <2>;
+		#size-cells = <2>;
+		ranges;
+
+		iram: iram-carveout {
+			compatible = "nvidia,iram-carveout";
+			reg = <0x0 0x40001000 0x0 0x3F000>;
+			no-map;
+		};
+	};
+
+	tegra-carveouts {
+		compatible = "nvidia,carveouts";
+		memory-region = <&iram>;
+		status = "okay";
+         };
+
 	timer {
 		compatible = "arm,armv8-timer";
 		interrupts = <1 13 0xff01>,

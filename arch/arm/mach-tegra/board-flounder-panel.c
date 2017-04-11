@@ -19,7 +19,6 @@
  */
 #include <linux/ioport.h>
 #include <linux/fb.h>
-#include <linux/nvmap.h>
 #include <linux/nvhost.h>
 #include <linux/init.h>
 #include <linux/delay.h>
@@ -330,42 +329,6 @@ static struct platform_device flounder_disp1_device = {
 	},
 };
 
-static struct nvmap_platform_carveout flounder_carveouts[] = {
-	[0] = {
-		.name		= "iram",
-		.usage_mask	= NVMAP_HEAP_CARVEOUT_IRAM,
-		.base		= TEGRA_IRAM_BASE + TEGRA_RESET_HANDLER_SIZE,
-		.size		= TEGRA_IRAM_SIZE - TEGRA_RESET_HANDLER_SIZE,
-		.dma_dev	= &tegra_iram_dev,
-	},
-	[1] = {
-		.name		= "generic-0",
-		.usage_mask	= NVMAP_HEAP_CARVEOUT_GENERIC,
-		.base		= 0, /* Filled in by flounder_panel_init() */
-		.size		= 0, /* Filled in by flounder_panel_init() */
-		.dma_dev	= &tegra_generic_dev,
-	},
-	[2] = {
-		.name		= "vpr",
-		.usage_mask	= NVMAP_HEAP_CARVEOUT_VPR,
-		.base		= 0, /* Filled in by flounder_panel_init() */
-		.size		= 0, /* Filled in by flounder_panel_init() */
-		.dma_dev	= &tegra_vpr_dev,
-	},
-};
-
-static struct nvmap_platform_data flounder_nvmap_data = {
-	.carveouts	= flounder_carveouts,
-	.nr_carveouts	= ARRAY_SIZE(flounder_carveouts),
-};
-static struct platform_device flounder_nvmap_device  = {
-	.name	= "tegra-nvmap",
-	.id	= -1,
-	.dev	= {
-		.platform_data = &flounder_nvmap_data,
-	},
-};
-
 /* can be called multiple times */
 static struct tegra_panel *flounder_panel_configure(struct board_info *board_out,
 	u8 *dsi_instance_out)
@@ -441,66 +404,7 @@ int __init flounder_panel_init(void)
 	struct resource __maybe_unused *res;
 	struct platform_device *phost1x = NULL;
 
-#ifdef CONFIG_NVMAP_USE_CMA_FOR_CARVEOUT
-	struct dma_declare_info vpr_dma_info;
-	struct dma_declare_info generic_dma_info;
-#endif
-
 	flounder_panel_select();
-
-#ifdef CONFIG_TEGRA_NVMAP
-	flounder_carveouts[1].base = tegra_carveout_start;
-	flounder_carveouts[1].size = tegra_carveout_size;
-	flounder_carveouts[2].base = tegra_vpr_start;
-	flounder_carveouts[2].size = tegra_vpr_size;
-#ifdef CONFIG_NVMAP_USE_CMA_FOR_CARVEOUT
-	generic_dma_info.name = "generic";
-	generic_dma_info.base = tegra_carveout_start;
-	generic_dma_info.size = tegra_carveout_size;
-	generic_dma_info.resize = false;
-	generic_dma_info.cma_dev = NULL;
-
-	vpr_dma_info.name = "vpr";
-	vpr_dma_info.base = tegra_vpr_start;
-	vpr_dma_info.size = tegra_vpr_size;
-	vpr_dma_info.resize = false;
-	vpr_dma_info.cma_dev = NULL;
-
-	flounder_carveouts[1].cma_dev = &tegra_generic_cma_dev;
-	flounder_carveouts[1].resize = false;
-	flounder_carveouts[2].cma_dev = &tegra_vpr_cma_dev;
-	flounder_carveouts[2].resize = true;
-
-	vpr_dma_info.size = SZ_32M;
-	vpr_dma_info.resize = true;
-	vpr_dma_info.cma_dev = &tegra_vpr_cma_dev;
-	vpr_dma_info.notifier.ops = &vpr_dev_ops;
-
-
-	if (tegra_carveout_size) {
-		err = dma_declare_coherent_resizable_cma_memory(
-				&tegra_generic_dev, &generic_dma_info);
-		if (err) {
-			pr_err("Generic coherent memory declaration failed\n");
-			return err;
-		}
-	}
-	if (tegra_vpr_size) {
-		err = dma_declare_coherent_resizable_cma_memory(
-				&tegra_vpr_dev, &vpr_dma_info);
-		if (err) {
-			pr_err("VPR coherent memory declaration failed\n");
-			return err;
-		}
-	}
-#endif
-
-	err = platform_device_register(&flounder_nvmap_device);
-	if (err) {
-		pr_err("nvmap device registration failed\n");
-		return err;
-	}
-#endif
 
 	phost1x = flounder_host1x_init();
 	if (!phost1x) {
@@ -515,12 +419,21 @@ int __init flounder_panel_init(void)
 
 	/* Copy the bootloader fb to the fb. */
 	if (tegra_bootloader_fb_size)
-		__tegra_move_framebuffer(&flounder_nvmap_device,
+		__tegra_move_framebuffer(NULL,
 				tegra_fb_start, tegra_bootloader_fb_start,
 				min(tegra_fb_size, tegra_bootloader_fb_size));
 	else
-		__tegra_clear_framebuffer(&flounder_nvmap_device,
+		__tegra_clear_framebuffer(NULL,
 					  tegra_fb_start, tegra_fb_size);
+
+	/* Copy the bootloader fb2 to the fb2. */
+	if (tegra_bootloader_fb2_size)
+		__tegra_move_framebuffer(NULL,
+				tegra_fb2_start, tegra_bootloader_fb2_start,
+				min(tegra_fb2_size, tegra_bootloader_fb2_size));
+	else
+		__tegra_clear_framebuffer(NULL,
+					  tegra_fb2_start, tegra_fb2_size);
 
 	flounder_disp1_device.dev.parent = &phost1x->dev;
 	err = platform_device_register(&flounder_disp1_device);
@@ -529,9 +442,17 @@ int __init flounder_panel_init(void)
 		return err;
 	}
 
-	err = tegra_init_hdmi(&flounder_disp2_device, phost1x);
-	if (err)
+	res = platform_get_resource_byname(&flounder_disp2_device,
+				IORESOURCE_MEM, "fbmem");
+	res->start = tegra_fb2_start;
+	res->end = tegra_fb2_start + tegra_fb2_size - 1;
+
+	flounder_disp2_device.dev.parent = &phost1x->dev;
+	err = platform_device_register(&flounder_disp2_device);
+	if (err) {
+		pr_err("disp2 device registration failed\n");
 		return err;
+	}
 
 	return err;
 }

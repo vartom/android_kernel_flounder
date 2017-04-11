@@ -104,8 +104,8 @@ done:
 			atomic_read(&h->pin));
 }
 
-int nvmap_pin_ids(struct nvmap_client *client, unsigned int nr,
-		  struct nvmap_handle * const *ids)
+int nvmap_pin_handles(struct nvmap_client *client, unsigned int nr,
+		      struct nvmap_handle * const *handles)
 {
 	int i, err = 0;
 	phys_addr_t phys;
@@ -116,10 +116,10 @@ int nvmap_pin_ids(struct nvmap_client *client, unsigned int nr,
 	 */
 	nvmap_ref_lock(client);
 	for (i = 0; i < nr; i++) {
-		if (!ids[i] || !virt_addr_valid(ids[i]))
+		if (!handles[i] || !virt_addr_valid(handles[i]))
 			continue;
 
-		ref = __nvmap_validate_locked(client, ids[i]);
+		ref = __nvmap_validate_locked(client, handles[i]);
 		if (!ref) {
 			err = -EPERM;
 			goto err_cleanup;
@@ -138,14 +138,14 @@ int nvmap_pin_ids(struct nvmap_client *client, unsigned int nr,
 
 err_cleanup:
 	for (--i; i >= 0; i--) {
-		if (!ids[i] || !virt_addr_valid(ids[i]))
+		if (!handles[i] || !virt_addr_valid(handles[i]))
 			continue;
 
 		/*
 		 * We will get the ref again - the ref lock has yet to be given
 		 * up so if this worked the first time it will work again.
 		 */
-		ref = __nvmap_validate_locked(client, ids[i]);
+		ref = __nvmap_validate_locked(client, handles[i]);
 		__nvmap_unpin(ref);
 	}
 	nvmap_ref_unlock(client);
@@ -156,18 +156,18 @@ err_cleanup:
  * This will unpin every handle. If an error occurs on a handle later handles
  * will still be unpinned.
  */
-void nvmap_unpin_ids(struct nvmap_client *client, unsigned int nr,
-		     struct nvmap_handle * const *ids)
+void nvmap_unpin_handles(struct nvmap_client *client, unsigned int nr,
+			 struct nvmap_handle * const *handles)
 {
 	int i;
 	struct nvmap_handle_ref *ref;
 
 	nvmap_ref_lock(client);
 	for (i = 0; i < nr; i++) {
-		if (!ids[i] || !virt_addr_valid(ids[i]))
+		if (!handles[i] || !virt_addr_valid(handles[i]))
 			continue;
 
-		ref = __nvmap_validate_locked(client, ids[i]);
+		ref = __nvmap_validate_locked(client, handles[i]);
 		if (!ref) {
 			pr_info("ref is null during unpin.\n");
 			continue;
@@ -196,6 +196,7 @@ void *__nvmap_kmap(struct nvmap_handle *h, unsigned int pagenum)
 	if (!h)
 		return NULL;
 
+	nvmap_kmaps_inc(h);
 	if (pagenum >= h->size >> PAGE_SHIFT)
 		goto out;
 	prot = nvmap_pgprot(h, PG_PROT_KERNEL);
@@ -212,6 +213,7 @@ void *__nvmap_kmap(struct nvmap_handle *h, unsigned int pagenum)
 	ioremap_page_range(kaddr, kaddr + PAGE_SIZE, paddr, prot);
 	return (void *)kaddr;
 out:
+	nvmap_kmaps_dec(h);
 	nvmap_handle_put(h);
 	return NULL;
 }
@@ -246,6 +248,7 @@ void __nvmap_kunmap(struct nvmap_handle *h, unsigned int pagenum,
 		free_vm_area(area);
 	else
 		WARN(1, "Invalid address passed");
+	nvmap_kmaps_dec(h);
 	nvmap_handle_put(h);
 }
 
@@ -268,6 +271,7 @@ void *__nvmap_mmap(struct nvmap_handle *h)
 	if (!h->alloc)
 		return NULL;
 
+	nvmap_kmaps_inc(h);
 	prot = nvmap_pgprot(h, PG_PROT_KERNEL);
 
 	if (h->heap_pgalloc) {
@@ -276,33 +280,35 @@ void *__nvmap_mmap(struct nvmap_handle *h)
 			pages = nvmap_pages(h->pgalloc.pages,
 					    h->size >> PAGE_SHIFT);
 			if (!pages)
-				return NULL;
+				goto out;
 			vaddr = vm_map_ram(pages,
 				h->size >> PAGE_SHIFT, -1, prot);
 			nvmap_altfree(pages,
 				(h->size >> PAGE_SHIFT) * sizeof(*pages));
+			if (!vaddr && !h->vaddr)
+				goto out;
 		}
 #ifdef NVMAP_LAZY_VFREE
-		if (vaddr && atomic_long_cmpxchg(&h->vaddr, 0, (long)vaddr))
+		else
+			nvmap_kmaps_dec(h);
+
+		if (vaddr && atomic_long_cmpxchg(&h->vaddr, 0, (long)vaddr)) {
+			nvmap_kmaps_dec(h);
 			vm_unmap_ram(vaddr, h->size >> PAGE_SHIFT);
+		}
 		return h->vaddr;
 #endif
 		return vaddr;
 	}
 
 	/* carveout - explicitly map the pfns into a vmalloc area */
-	if (!h->carveout)
-		return NULL;
-
 	adj_size = h->carveout->base & ~PAGE_MASK;
 	adj_size += h->size;
 	adj_size = PAGE_ALIGN(adj_size);
 
 	v = alloc_vm_area(adj_size, NULL);
-	if (!v) {
-		nvmap_handle_put(h);
-		return NULL;
-	}
+	if (!v)
+		goto out;
 
 	p = v->addr + (h->carveout->base & ~PAGE_MASK);
 	ioremap_page_range((ulong)v->addr, (ulong)v->addr + adj_size,
@@ -312,6 +318,10 @@ void *__nvmap_mmap(struct nvmap_handle *h)
 	 * the handle will not be freed while the kernel mapping exists.
 	 * nvmap_handle_put will be called by unmapping this address */
 	return p;
+out:
+	nvmap_kmaps_dec(h);
+	nvmap_handle_put(h);
+	return NULL;
 }
 
 void __nvmap_munmap(struct nvmap_handle *h, void *addr)
@@ -327,6 +337,7 @@ void __nvmap_munmap(struct nvmap_handle *h, void *addr)
 #ifndef NVMAP_LAZY_VFREE
 		BUG_ON(h->vaddr);
 		vm_unmap_ram(addr, h->size >> PAGE_SHIFT);
+		nvmap_kmaps_dec(h);
 #endif
 	} else {
 		struct vm_struct *vm;
@@ -334,91 +345,9 @@ void __nvmap_munmap(struct nvmap_handle *h, void *addr)
 		vm = find_vm_area(addr);
 		BUG_ON(!vm);
 		free_vm_area(vm);
+		nvmap_kmaps_dec(h);
 	}
 	nvmap_handle_put(h);
-}
-
-static struct nvmap_client *nvmap_get_dmabuf_client(void)
-{
-	static struct nvmap_client *client;
-
-	if (!client) {
-		struct nvmap_client *temp;
-
-		temp = __nvmap_create_client(nvmap_dev, "dmabuf_client");
-		if (!temp)
-			return NULL;
-		if (cmpxchg(&client, NULL, temp))
-			nvmap_client_put(temp);
-	}
-	BUG_ON(!client);
-	return client;
-}
-
-static struct nvmap_handle_ref *__nvmap_alloc(struct nvmap_client *client,
-					      size_t size, size_t align,
-					      unsigned int flags,
-					      unsigned int heap_mask)
-{
-	const unsigned int default_heap = NVMAP_HEAP_CARVEOUT_GENERIC;
-	struct nvmap_handle_ref *r = NULL;
-	int err;
-
-	if (!virt_addr_valid(client))
-		return ERR_PTR(-EINVAL);
-
-	if (heap_mask == 0)
-		heap_mask = default_heap;
-
-	r = nvmap_create_handle(client, size);
-	if (IS_ERR(r))
-		return r;
-
-	err = nvmap_alloc_handle(client, __nvmap_ref_to_id(r),
-				 heap_mask, align,
-				 0, /* kind n/a */
-				 flags & ~(NVMAP_HANDLE_KIND_SPECIFIED |
-					   NVMAP_HANDLE_COMPR_SPECIFIED));
-
-	if (err) {
-		nvmap_free_handle(client, __nvmap_ref_to_id(r));
-		return ERR_PTR(err);
-	}
-
-	return r;
-}
-
-static void __nvmap_free(struct nvmap_client *client,
-			 struct nvmap_handle_ref *r)
-{
-	struct nvmap_handle *handle = __nvmap_ref_to_id(r);
-
-	if (!r ||
-	    WARN_ON(!virt_addr_valid(client)) ||
-	    WARN_ON(!virt_addr_valid(r)) ||
-	    WARN_ON(!virt_addr_valid(handle)))
-		return;
-
-	nvmap_free_handle(client, handle);
-}
-
-struct dma_buf *nvmap_alloc_dmabuf(size_t size, size_t align,
-				   unsigned int flags,
-				   unsigned int heap_mask)
-{
-	struct dma_buf *dmabuf;
-	struct nvmap_handle_ref *ref;
-	struct nvmap_client *client = nvmap_get_dmabuf_client();
-
-	ref = __nvmap_alloc(client, size, align, flags, heap_mask);
-	if (!ref)
-		return ERR_PTR(-ENOMEM);
-	if (IS_ERR(ref))
-		return (struct dma_buf *)ref;
-
-	dmabuf = __nvmap_dmabuf_export_from_ref(ref);
-	__nvmap_free(client, ref);
-	return dmabuf;
 }
 
 void nvmap_handle_put(struct nvmap_handle *h)
