@@ -161,6 +161,16 @@ config TEGRA_LVDS
 	help
 	  Say Y here to enable LVDS panel.
 
+config TEGRA_HDMI
+	bool "Enable HDMI support."
+	depends on TEGRA_DC && (ARCH_TEGRA_11x_SOC || ARCH_TEGRA_12x_SOC || ARCH_TEGRA_14x_SOC)
+	default n
+	help
+	  Say Y here to enable HDMI output
+	  This option is for the Tegra2/3/12x/13x family of HDMI output resource.
+	  It is not for the newer Tegra21x family of HDMI, which uses sor/dp instead.
+	  Default is to enable it for chips that support it.
+
 config TEGRA_NVSR
 	bool "Enable NVSR support."
 	default  n
@@ -177,12 +187,18 @@ config NVMAP_CONVERT_CARVEOUT_TO_IOVMM
 
 config TEGRA_NVHDCP
 	bool "Support NVHDCP content protection on HDMI"
+	depends on TEGRA_HDMI
 	help
 	  Say Y here to support NVHDCP upstream and downstream protocols, this
 	  requires a correctly fused chip to negotiate keys.
+	  It is only needed if you have an application that cares about checking
+	  for HDCP security while playing protected content. You do not need this
+	  option to simply display a GUI on an HDMI TV. An HDMI TV will display
+	  unprotected content just fine.
 
 config TEGRA_HDMI_74MHZ_LIMIT
 	bool "Support only up to 74.25 MHz HDMI pixel frequency"
+	depends on TEGRA_HDMI
 	help
 	  Say Y here to make kernel report only low bandwidth modes.
 	  Useful only for boards which can't deliver 148.50 MHz.
