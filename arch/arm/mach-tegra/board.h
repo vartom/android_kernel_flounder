@@ -149,6 +149,7 @@ extern phys_addr_t tegra_wb0_params_address;
 extern phys_addr_t tegra_wb0_params_instances;
 extern phys_addr_t tegra_wb0_params_block_size;
 #endif
+extern bool tegra_vpr_resize;
 #ifdef CONFIG_TEGRA_NVDUMPER
 extern unsigned long nvdumper_reserved;
 #endif
@@ -164,12 +165,6 @@ extern unsigned long tegra_nck_size;
 void tegra_fb_linear_set(struct iommu_linear_map *map);
 #else
 static inline void tegra_fb_linear_set(struct iommu_linear_map *map) {}
-#endif
-
-#ifdef CONFIG_CMA
-void carveout_linear_set(struct device *cma_dev);
-#else
-static inline void carveout_linear_set(struct device *cma_dev) {}
 #endif
 
 void tegra_init_late(void);

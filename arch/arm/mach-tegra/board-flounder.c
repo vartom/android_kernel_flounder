@@ -1295,10 +1295,6 @@ static void __init tegra_flounder_init_early(void)
 static void __init tegra_flounder_dt_init(void)
 {
 	tegra_flounder_early_init();
-#ifdef CONFIG_NVMAP_USE_CMA_FOR_CARVEOUT
-	carveout_linear_set(&tegra_generic_cma_dev);
-	carveout_linear_set(&tegra_vpr_cma_dev);
-#endif
 #ifdef CONFIG_USE_OF
 	flounder_camera_auxdata(flounder_auxdata_lookup);
 	of_platform_populate(NULL,
