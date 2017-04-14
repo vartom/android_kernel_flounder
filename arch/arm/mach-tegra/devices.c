@@ -34,7 +34,6 @@
 #include <mach/tegra_smmu.h>
 #include <mach/tegra-swgid.h>
 #include <linux/dma-contiguous.h>
-#include "../../../arch/arm/mach-tegra/common.h"
 
 #ifdef CONFIG_TEGRA_WAKEUP_MONITOR
 #include <mach/tegra_wakeup_monitor.h>
@@ -1747,8 +1746,24 @@ do { \
 	} \
 } while (0)
 
+void tegra_fb_linear_set(struct iommu_linear_map *map)
+{
+	int i = 0;
+
+	map = tegra_fb_linear_map;
+
+	LINEAR_MAP_ADD(tegra_fb);
+	LINEAR_MAP_ADD(tegra_fb2);
+	LINEAR_MAP_ADD(tegra_bootloader_fb);
+	LINEAR_MAP_ADD(tegra_bootloader_fb2);
+#ifndef CONFIG_NVMAP_USE_CMA_FOR_CARVEOUT
+	LINEAR_MAP_ADD(tegra_vpr);
+	LINEAR_MAP_ADD(tegra_carveout);
+#endif
+}
+
 #ifdef CONFIG_CMA
-static void carveout_linear_set(struct device *cma_dev)
+void carveout_linear_set(struct device *cma_dev)
 {
 	struct dma_contiguous_stats stats;
 	struct iommu_linear_map *map = &tegra_fb_linear_map[0];
@@ -1763,33 +1778,6 @@ static void carveout_linear_set(struct device *cma_dev)
 	map->size = stats.size;
 }
 #endif
-
-static void cma_carveout_linear_set(void)
-{
-#ifdef CONFIG_CMA
-	if (tegra_vpr_resize) {
-		carveout_linear_set(&tegra_generic_cma_dev);
-		carveout_linear_set(&tegra_vpr_cma_dev);
-	}
-#endif
-}
-
-void tegra_fb_linear_set(struct iommu_linear_map *map)
-{
-	int i = 0;
-
-	map = tegra_fb_linear_map;
-
-	LINEAR_MAP_ADD(tegra_fb);
-	LINEAR_MAP_ADD(tegra_fb2);
-	LINEAR_MAP_ADD(tegra_bootloader_fb);
-	LINEAR_MAP_ADD(tegra_bootloader_fb2);
-	if (!tegra_vpr_resize) {
-		LINEAR_MAP_ADD(tegra_vpr);
-		LINEAR_MAP_ADD(tegra_carveout);
-	}
-}
-EXPORT_SYMBOL(tegra_fb_linear_set);
 
 struct swgid_fixup {
 	const char * const name;
@@ -2105,7 +2093,6 @@ static int __init tegra_smmu_init(void)
 {
 	platform_device_register(&tegra_smmu_device);
 	tegra_smmu_map_init(&tegra_smmu_device);
-	cma_carveout_linear_set();
 	return 0;
 }
 postcore_initcall(tegra_smmu_init);
