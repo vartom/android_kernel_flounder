@@ -3,7 +3,7 @@
  *
  * Some MM related functionality specific to nvmap.
  *
- * Copyright (c) 2013-2016, NVIDIA CORPORATION. All rights reserved.
+ * Copyright (c) 2013-2014, NVIDIA CORPORATION. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -22,29 +22,22 @@
 
 #include <trace/events/nvmap.h>
 
-#include <asm/pgtable.h>
-
 #include "nvmap_priv.h"
 
 inline static void nvmap_flush_dcache_all(void *dummy)
 {
 #if defined(CONFIG_DENVER_CPU)
 	u64 id_afr0;
-	u64 midr;
-
-	asm volatile ("mrs %0, MIDR_EL1" : "=r"(midr));
-	/* check if current core is a Denver processor */
-	if ((midr & 0xFF8FFFF0) == 0x4e0f0000) {
-		asm volatile ("mrs %0, ID_AFR0_EL1" : "=r"(id_afr0));
-		/* check if complete cache flush through msr is supported */
-		if (likely((id_afr0 & 0xf00) == 0x100)) {
-			asm volatile ("msr s3_0_c15_c13_0, %0" : : "r" (0));
-			asm volatile ("dsb sy");
-			return;
-		}
+	asm volatile ("mrs %0, ID_AFR0_EL1" : "=r"(id_afr0));
+	if (likely((id_afr0 & 0xf00) == 0x100)) {
+		asm volatile ("msr s3_0_c15_c13_0, %0" : : "r" (0));
+		asm volatile ("dsb sy");
+	} else {
+		__flush_dcache_all(NULL);
 	}
-#endif
+#else
 	__flush_dcache_all(NULL);
+#endif
 }
 
 void inner_flush_cache_all(void)
@@ -146,10 +139,68 @@ void nvmap_flush_cache(struct page **pages, int numpages)
 	}
 }
 
-enum NVMAP_PROT_OP {
-	NVMAP_HANDLE_PROT_NONE = 1,
-	NVMAP_HANDLE_PROT_RESTORE = 2,
-};
+/*
+ * Perform cache op on the list of memory regions within passed handles.
+ * A memory region within handle[i] is identified by offsets[i], sizes[i]
+ *
+ * sizes[i] == 0  is a special case which causes handle wide operation,
+ * this is done by replacing offsets[i] = 0, sizes[i] = handles[i]->size.
+ * So, the input arrays sizes, offsets  are not guaranteed to be read-only
+ *
+ * This will optimze the op if it can.
+ * In the case that all the handles together are larger than the inner cache
+ * maint threshold it is possible to just do an entire inner cache flush.
+ */
+int nvmap_do_cache_maint_list(struct nvmap_handle **handles, u32 *offsets,
+			      u32 *sizes, int op, int nr)
+{
+	int i;
+	u64 total = 0;
+
+	for (i = 0; i < nr; i++)
+		total += sizes[i] ? sizes[i] : handles[i]->size;
+
+	/* Full flush in the case the passed list is bigger than our
+	 * threshold. */
+	if (total >= cache_maint_inner_threshold) {
+		for (i = 0; i < nr; i++) {
+			if (handles[i]->userflags &
+			    NVMAP_HANDLE_CACHE_SYNC) {
+				nvmap_handle_mkclean(handles[i], 0,
+						     handles[i]->size);
+				nvmap_zap_handle(handles[i], 0,
+						 handles[i]->size);
+			}
+		}
+
+		if (op == NVMAP_CACHE_OP_WB) {
+			inner_clean_cache_all();
+			outer_clean_all();
+		} else {
+			inner_flush_cache_all();
+			outer_flush_all();
+		}
+		nvmap_stats_inc(NS_CFLUSH_RQ, total);
+		nvmap_stats_inc(NS_CFLUSH_DONE, cache_maint_inner_threshold);
+		trace_nvmap_cache_flush(total,
+					nvmap_stats_read(NS_ALLOC),
+					nvmap_stats_read(NS_CFLUSH_RQ),
+					nvmap_stats_read(NS_CFLUSH_DONE));
+	} else {
+		for (i = 0; i < nr; i++) {
+			u32 size = sizes[i] ? sizes[i] : handles[i]->size;
+			u32 offset = sizes[i] ? offsets[i] : 0;
+			int err = __nvmap_do_cache_maint(handles[i]->owner,
+							 handles[i], offset,
+							 offset + size,
+							 op, false);
+			if (err)
+				return err;
+		}
+	}
+
+	return 0;
+}
 
 void nvmap_zap_handle(struct nvmap_handle *handle, u32 offset, u32 size)
 {
@@ -158,10 +209,6 @@ void nvmap_zap_handle(struct nvmap_handle *handle, u32 offset, u32 size)
 	struct vm_area_struct *vma;
 
 	if (!handle->heap_pgalloc)
-		return;
-
-	/* if no dirty page is present, no need to zap */
-	if (nvmap_handle_track_dirty(handle) && !atomic_read(&handle->pgalloc.ndirty))
 		return;
 
 	if (!size) {
@@ -195,161 +242,41 @@ void nvmap_zap_handle(struct nvmap_handle *handle, u32 offset, u32 size)
 	mutex_unlock(&handle->lock);
 }
 
-static int nvmap_prot_handle(struct nvmap_handle *handle, u32 offset,
-		u32 size, int op)
+void nvmap_zap_handles(struct nvmap_handle **handles, u32 *offsets,
+		       u32 *sizes, u32 nr)
 {
-	struct list_head *vmas;
-	struct nvmap_vma_list *vma_list;
-	struct vm_area_struct *vma;
-	int err = -EINVAL;
+	int i;
 
-	BUG_ON(offset);
-
-	if (!handle->heap_pgalloc)
-		return err;
-
-	if (!size)
-		size = handle->size;
-
-	size = PAGE_ALIGN((offset & ~PAGE_MASK) + size);
-
-	mutex_lock(&handle->lock);
-	vmas = &handle->vmas;
-	list_for_each_entry(vma_list, vmas, list) {
-		struct nvmap_vma_priv *priv;
-		u32 vm_size = size;
-		struct vm_area_struct *prev;
-
-		vma = vma_list->vma;
-		prev = vma->vm_prev;
-		priv = vma->vm_private_data;
-		if ((offset + size) > (vma->vm_end - vma->vm_start))
-			vm_size = vma->vm_end - vma->vm_start - offset;
-
-		if ((priv->offs || vma->vm_pgoff) ||
-		    (size > (vma->vm_end - vma->vm_start)))
-			vm_size = vma->vm_end - vma->vm_start;
-		if (vma->vm_mm != current->mm)
-			down_write(&vma->vm_mm->mmap_sem);
-		switch (op) {
-		case NVMAP_HANDLE_PROT_NONE:
-			vma->vm_flags = vma_list->save_vm_flags;
-			(void)vm_set_page_prot(vma);
-			if (nvmap_handle_track_dirty(handle) &&
-			    !atomic_read(&handle->pgalloc.ndirty)) {
-				err = 0;
-				break;
-			}
-			err = mprotect_fixup(vma, &prev, vma->vm_start,
-					vma->vm_start + vm_size, VM_NONE);
-			if (err)
-				goto try_unlock;
-			vma->vm_flags = vma_list->save_vm_flags;
-			(void)vm_set_page_prot(vma);
-			break;
-		case NVMAP_HANDLE_PROT_RESTORE:
-			vma->vm_flags = VM_NONE;
-			(void)vm_set_page_prot(vma);
-			err = mprotect_fixup(vma, &prev, vma->vm_start,
-					vma->vm_start + vm_size,
-					vma_list->save_vm_flags);
-			if (err)
-				goto try_unlock;
-			_nvmap_handle_mkdirty(handle, 0, size);
-			break;
-		default:
-			BUG();
-		};
-try_unlock:
-		if (vma->vm_mm != current->mm)
-			up_write(&vma->vm_mm->mmap_sem);
-		if (err)
-			goto finish;
-	}
-finish:
-	mutex_unlock(&handle->lock);
-	return err;
-}
-
-static int nvmap_prot_handles(struct nvmap_handle **handles, u32 *offsets,
-		       u32 *sizes, u32 nr, int op)
-{
-	int i, err = 0;
-
-	down_write(&current->mm->mmap_sem);
-	for (i = 0; i < nr; i++) {
-		err = nvmap_prot_handle(handles[i], offsets[i],
-				sizes[i], op);
-		if (err)
-			goto finish;
-	}
-finish:
-	up_write(&current->mm->mmap_sem);
-	return err;
+	for (i = 0; i < nr; i++)
+		nvmap_zap_handle(handles[i], offsets[i], sizes[i]);
 }
 
 int nvmap_reserve_pages(struct nvmap_handle **handles, u32 *offsets, u32 *sizes,
 			u32 nr, u32 op)
 {
-	int i, err;
+	int i;
 
+	// validates all page params first
 	for (i = 0; i < nr; i++) {
 		u32 size = sizes[i] ? sizes[i] : handles[i]->size;
 		u32 offset = sizes[i] ? offsets[i] : 0;
 
 		if ((offset != 0) || (size != handles[i]->size))
 			return -EINVAL;
-
-		if (op == NVMAP_PAGES_PROT_AND_CLEAN)
-			continue;
-		/*
-		 * NOTE: This unreserves the handle even when
-		 * NVMAP_PAGES_INSERT_ON_UNRESERVE is called on some portion
-		 * of the handle
-		 */
-		atomic_set(&handles[i]->pgalloc.reserved,
-				(op == NVMAP_PAGES_RESERVE) ? 1 : 0);
 	}
 
-	if (op == NVMAP_PAGES_PROT_AND_CLEAN)
-		op = NVMAP_PAGES_RESERVE;
+	for (i = 0; i < nr; i++) {
+		u32 size = sizes[i] ? sizes[i] : handles[i]->size;
+		u32 offset = sizes[i] ? offsets[i] : 0;
 
-	switch (op) {
-	case NVMAP_PAGES_RESERVE:
-		err = nvmap_prot_handles(handles, offsets, sizes, nr,
-						NVMAP_HANDLE_PROT_NONE);
-		if (err)
-			return err;
-		break;
-	case NVMAP_INSERT_PAGES_ON_UNRESERVE:
-		err = nvmap_prot_handles(handles, offsets, sizes, nr,
-						NVMAP_HANDLE_PROT_RESTORE);
-		if (err)
-			return err;
-		break;
-	case NVMAP_PAGES_UNRESERVE:
-		for (i = 0; i < nr; i++)
-			if (nvmap_handle_track_dirty(handles[i]))
-				atomic_set(&handles[i]->pgalloc.ndirty, 0);
-		break;
-	default:
-		return -EINVAL;
+		if (op == NVMAP_PAGES_RESERVE)
+			nvmap_handle_mkreserved(handles[i], offset, size);
+		else
+			nvmap_handle_mkunreserved(handles[i],offset, size);
 	}
 
-	if (!(handles[0]->userflags & NVMAP_HANDLE_CACHE_SYNC_AT_RESERVE))
-		return 0;
-
-	if (op == NVMAP_PAGES_RESERVE) {
-		nvmap_do_cache_maint_list(handles, offsets, sizes,
-					  NVMAP_CACHE_OP_WB, nr);
-		for (i = 0; i < nr; i++)
-			nvmap_handle_mkclean(handles[i], offsets[i],
-					     sizes[i] ? sizes[i] : handles[i]->size);
-	} else if ((op == NVMAP_PAGES_UNRESERVE) && handles[0]->heap_pgalloc) {
-	} else {
-		nvmap_do_cache_maint_list(handles, offsets, sizes,
-					  NVMAP_CACHE_OP_WB_INV, nr);
-	}
+	if (op == NVMAP_PAGES_RESERVE)
+		nvmap_zap_handles(handles, offsets, sizes, nr);
 	return 0;
 }
 

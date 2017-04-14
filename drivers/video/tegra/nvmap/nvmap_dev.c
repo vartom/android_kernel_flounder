@@ -3,7 +3,7 @@
  *
  * User-space interface to nvmap
  *
- * Copyright (c) 2011-2016, NVIDIA CORPORATION. All rights reserved.
+ * Copyright (c) 2011-2015, NVIDIA CORPORATION. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -55,11 +55,9 @@
 
 #define NVMAP_CARVEOUT_KILLER_RETRY_TIME 100 /* msecs */
 
-/* this is basically the L2 cache size but may be tuned as per requirement */
-#if defined(CONFIG_DENVER_CPU)
+/* this is basically the L2 cache size */
+#ifdef CONFIG_DENVER_CPU
 size_t cache_maint_inner_threshold = SZ_2M * 8;
-#elif defined(CONFIG_ARCH_TEGRA_12x_SOC)
-size_t cache_maint_inner_threshold = SZ_1M;
 #else
 size_t cache_maint_inner_threshold = SZ_2M;
 #endif
@@ -67,6 +65,16 @@ size_t cache_maint_inner_threshold = SZ_2M;
 #ifdef CONFIG_NVMAP_OUTER_CACHE_MAINT_BY_SET_WAYS
 size_t cache_maint_outer_threshold = SZ_1M;
 #endif
+
+struct nvmap_carveout_node {
+	unsigned int		heap_bit;
+	struct nvmap_heap	*carveout;
+	int			index;
+	struct list_head	clients;
+	spinlock_t		clients_lock;
+	phys_addr_t			base;
+	size_t			size;
+};
 
 struct nvmap_device *nvmap_dev;
 struct nvmap_stats nvmap_stats;
@@ -85,6 +93,8 @@ static int nvmap_open(struct inode *inode, struct file *filp);
 static int nvmap_release(struct inode *inode, struct file *filp);
 static long nvmap_ioctl(struct file *filp, unsigned int cmd, unsigned long arg);
 static int nvmap_map(struct file *filp, struct vm_area_struct *vma);
+static void nvmap_vma_close(struct vm_area_struct *vma);
+static int nvmap_vma_fault(struct vm_area_struct *vma, struct vm_fault *vmf);
 
 static const struct file_operations nvmap_user_fops = {
 	.owner		= THIS_MODULE,
@@ -96,6 +106,17 @@ static const struct file_operations nvmap_user_fops = {
 #endif
 	.mmap		= nvmap_map,
 };
+
+static struct vm_operations_struct nvmap_vma_ops = {
+	.open		= nvmap_vma_open,
+	.close		= nvmap_vma_close,
+	.fault		= nvmap_vma_fault,
+};
+
+int is_nvmap_vma(struct vm_area_struct *vma)
+{
+	return vma->vm_ops == &nvmap_vma_ops;
+}
 
 /*
  * Verifies that the passed ID is a valid handle ID. Then the passed client's
@@ -209,8 +230,7 @@ out:
 static
 struct nvmap_heap_block *do_nvmap_carveout_alloc(struct nvmap_client *client,
 					      struct nvmap_handle *handle,
-					      unsigned long type,
-					      phys_addr_t *start)
+					      unsigned long type)
 {
 	struct nvmap_carveout_node *co_heap;
 	struct nvmap_device *dev = nvmap_dev;
@@ -223,7 +243,7 @@ struct nvmap_heap_block *do_nvmap_carveout_alloc(struct nvmap_client *client,
 		if (!(co_heap->heap_bit & type))
 			continue;
 
-		block = nvmap_heap_alloc(co_heap->carveout, handle, start);
+		block = nvmap_heap_alloc(co_heap->carveout, handle);
 		if (block)
 			return block;
 	}
@@ -232,10 +252,9 @@ struct nvmap_heap_block *do_nvmap_carveout_alloc(struct nvmap_client *client,
 
 struct nvmap_heap_block *nvmap_carveout_alloc(struct nvmap_client *client,
 					      struct nvmap_handle *handle,
-					      unsigned long type,
-					      phys_addr_t *start)
+					      unsigned long type)
 {
-	return do_nvmap_carveout_alloc(client, handle, type, start);
+	return do_nvmap_carveout_alloc(client, handle, type);
 }
 
 /* remove a handle from the device's tree of all handles; called
@@ -254,7 +273,6 @@ int nvmap_handle_remove(struct nvmap_device *dev, struct nvmap_handle *h)
 	BUG_ON(atomic_read(&h->ref) < 0);
 	BUG_ON(atomic_read(&h->pin) != 0);
 
-	nvmap_lru_del(h);
 	rb_erase(&h->node, &dev->handles);
 
 	spin_unlock(&dev->handle_lock);
@@ -281,7 +299,6 @@ void nvmap_handle_add(struct nvmap_device *dev, struct nvmap_handle *h)
 	}
 	rb_link_node(&h->node, parent, p);
 	rb_insert_color(&h->node, &dev->handles);
-	nvmap_lru_add(h);
 	spin_unlock(&dev->handle_lock);
 }
 
@@ -555,10 +572,8 @@ int __nvmap_map(struct nvmap_handle *h, struct vm_area_struct *vma)
 		return -EINVAL;
 
 	priv = kzalloc(sizeof(*priv), GFP_KERNEL);
-	if (!priv) {
-		nvmap_handle_put(h);
+	if (!priv)
 		return -ENOMEM;
-	}
 	priv->handle = h;
 
 	vma->vm_flags |= VM_SHARED | VM_DONTEXPAND |
@@ -574,12 +589,11 @@ int __nvmap_map(struct nvmap_handle *h, struct vm_area_struct *vma)
 
 static int nvmap_map(struct file *filp, struct vm_area_struct *vma)
 {
-	char task_comm[TASK_COMM_LEN];
-
-	get_task_comm(task_comm, current);
-	pr_err("error: mmap not supported on nvmap file, pid=%d, %s\n",
-		task_tgid_nr(current), task_comm);
-	return -EPERM;
+	BUG_ON(vma->vm_private_data != NULL);
+	vma->vm_flags |= (VM_SHARED | VM_DONTEXPAND |
+			  VM_DONTDUMP | VM_DONTCOPY);
+	vma->vm_ops = &nvmap_vma_ops;
+	return 0;
 }
 
 static long nvmap_ioctl(struct file *filp, unsigned int cmd, unsigned long arg)
@@ -616,18 +630,6 @@ static long nvmap_ioctl(struct file *filp, unsigned int cmd, unsigned long arg)
 		err = nvmap_ioctl_getfd(filp, uarg);
 		break;
 
-	case NVMAP_IOC_GET_IVM_HEAPS:
-		err = nvmap_ioctl_get_ivc_heap(filp, uarg);
-		break;
-
-	case NVMAP_IOC_FROM_IVC_ID:
-		err = nvmap_ioctl_create_from_ivc(filp, uarg);
-		break;
-
-	case NVMAP_IOC_GET_IVC_ID:
-		err = nvmap_ioctl_get_ivcid(filp, uarg);
-		break;
-
 #ifdef CONFIG_COMPAT
 	case NVMAP_IOC_PARAM_32:
 		err = nvmap_ioctl_get_param(filp, uarg, true);
@@ -660,24 +662,19 @@ static long nvmap_ioctl(struct file *filp, unsigned int cmd, unsigned long arg)
 		err = nvmap_ioctl_alloc_kind(filp, uarg);
 		break;
 
-	case NVMAP_IOC_ALLOC_IVM:
-		err = nvmap_ioctl_alloc_ivm(filp, uarg);
-		break;
-
-	case NVMAP_IOC_VPR_FLOOR_SIZE:
-		err = nvmap_ioctl_vpr_floor_size(filp, uarg);
-		break;
-
 	case NVMAP_IOC_FREE:
 		err = nvmap_ioctl_free(filp, arg);
 		break;
 
 #ifdef CONFIG_COMPAT
 	case NVMAP_IOC_MMAP_32:
+		err = nvmap_map_into_caller_ptr(filp, uarg, true);
+		break;
 #endif
+
 	case NVMAP_IOC_MMAP:
-		pr_warn("nvmap: unsupported MMAP IOCTL used.\n");
-		return -ENOTTY;
+		err = nvmap_map_into_caller_ptr(filp, uarg, false);
+		break;
 
 #ifdef CONFIG_COMPAT
 	case NVMAP_IOC_WRITE_32:
@@ -717,6 +714,171 @@ static long nvmap_ioctl(struct file *filp, unsigned int cmd, unsigned long arg)
 		return -ENOTTY;
 	}
 	return err;
+}
+
+/* to ensure that the backing store for the VMA isn't freed while a fork'd
+ * reference still exists, nvmap_vma_open increments the reference count on
+ * the handle, and nvmap_vma_close decrements it. alternatively, we could
+ * disallow copying of the vma, or behave like pmem and zap the pages. FIXME.
+*/
+void nvmap_vma_open(struct vm_area_struct *vma)
+{
+	struct nvmap_vma_priv *priv;
+	struct nvmap_handle *h;
+	struct nvmap_vma_list *vma_list, *tmp;
+	struct list_head *tmp_head = NULL;
+	pid_t current_pid = current->pid;
+	bool vma_pos_found = false;
+	int nr_page, i;
+	ulong vma_open_count;
+
+	priv = vma->vm_private_data;
+	BUG_ON(!priv);
+	BUG_ON(!priv->handle);
+
+	h = priv->handle;
+
+	mutex_lock(&h->lock);
+	vma_open_count = atomic_inc_return(&priv->count);
+	if (vma_open_count == 1 && h->heap_pgalloc) {
+		nr_page = PAGE_ALIGN(h->size) >> PAGE_SHIFT;
+		for (i = 0; i < nr_page; i++) {
+			struct page *page = nvmap_to_page(h->pgalloc.pages[i]);
+			/* This is necessry to avoid page being accounted
+			 * under NR_FILE_MAPPED. This way NR_FILE_MAPPED would
+			 * be fully accounted under NR_FILE_PAGES. This allows
+			 * Android low mem killer detect low memory condition
+			 * precisely.
+			 * This has a side effect of inaccurate pss accounting
+			 * for NvMap memory mapped into user space. Android
+			 * procrank and NvMap Procrank both would have same
+			 * issue. Subtracting NvMap_Procrank pss from
+			 * procrank pss would give non-NvMap pss held by process
+			 * and adding NvMap memory used by process represents
+			 * entire memroy consumption by the process.
+			 */
+			atomic_inc(&page->_mapcount);
+		}
+	}
+	mutex_unlock(&h->lock);
+
+	vma_list = kmalloc(sizeof(*vma_list), GFP_KERNEL);
+	if (vma_list) {
+		mutex_lock(&h->lock);
+		tmp_head = &h->vmas;
+
+		/* insert vma into handle's vmas list in the increasing order of
+		 * handle offsets
+		 */
+		list_for_each_entry(tmp, &h->vmas, list) {
+			BUG_ON(tmp->vma == vma);
+
+			if (!vma_pos_found && (current_pid == tmp->pid)) {
+				if (vma->vm_pgoff < tmp->vma->vm_pgoff) {
+					tmp_head = &tmp->list;
+					vma_pos_found = true;
+				} else {
+					tmp_head = tmp->list.next;
+				}
+			}
+		}
+
+		vma_list->vma = vma;
+		vma_list->pid = current_pid;
+		list_add_tail(&vma_list->list, tmp_head);
+		mutex_unlock(&h->lock);
+	} else {
+		WARN(1, "vma not tracked");
+	}
+}
+
+static void nvmap_vma_close(struct vm_area_struct *vma)
+{
+	struct nvmap_vma_priv *priv = vma->vm_private_data;
+	struct nvmap_vma_list *vma_list;
+	struct nvmap_handle *h;
+	bool vma_found = false;
+	int nr_page, i;
+
+	if (!priv)
+		return;
+
+	BUG_ON(!priv->handle);
+
+	h = priv->handle;
+	nr_page = PAGE_ALIGN(h->size) >> PAGE_SHIFT;
+
+	mutex_lock(&h->lock);
+	list_for_each_entry(vma_list, &h->vmas, list) {
+		if (vma_list->vma != vma)
+			continue;
+		list_del(&vma_list->list);
+		kfree(vma_list);
+		vma_found = true;
+		break;
+	}
+	BUG_ON(!vma_found);
+
+	if (__atomic_add_unless(&priv->count, -1, 0) == 1) {
+		if (h->heap_pgalloc) {
+			for (i = 0; i < nr_page; i++) {
+				struct page *page;
+				page = nvmap_to_page(h->pgalloc.pages[i]);
+				atomic_dec(&page->_mapcount);
+			}
+		}
+		mutex_unlock(&h->lock);
+		if (priv->handle)
+			nvmap_handle_put(priv->handle);
+		vma->vm_private_data = NULL;
+		kfree(priv);
+	} else {
+		mutex_unlock(&h->lock);
+	}
+}
+
+static int nvmap_vma_fault(struct vm_area_struct *vma, struct vm_fault *vmf)
+{
+	struct page *page;
+	struct nvmap_vma_priv *priv;
+	unsigned long offs;
+
+	offs = (unsigned long)(vmf->virtual_address - vma->vm_start);
+	priv = vma->vm_private_data;
+	if (!priv || !priv->handle || !priv->handle->alloc)
+		return VM_FAULT_SIGBUS;
+
+	offs += priv->offs;
+	/* if the VMA was split for some reason, vm_pgoff will be the VMA's
+	 * offset from the original VMA */
+	offs += (vma->vm_pgoff << PAGE_SHIFT);
+
+	if (offs >= priv->handle->size)
+		return VM_FAULT_SIGBUS;
+
+	if (!priv->handle->heap_pgalloc) {
+		unsigned long pfn;
+		BUG_ON(priv->handle->carveout->base & ~PAGE_MASK);
+		pfn = ((priv->handle->carveout->base + offs) >> PAGE_SHIFT);
+		if (!pfn_valid(pfn)) {
+			vm_insert_pfn(vma,
+				(unsigned long)vmf->virtual_address, pfn);
+			return VM_FAULT_NOPAGE;
+		}
+		/* CMA memory would get here */
+		page = pfn_to_page(pfn);
+	} else {
+		offs >>= PAGE_SHIFT;
+		if (nvmap_page_reserved(priv->handle->pgalloc.pages[offs]))
+			return VM_FAULT_SIGBUS;
+		page = nvmap_to_page(priv->handle->pgalloc.pages[offs]);
+		nvmap_page_mkdirty(&priv->handle->pgalloc.pages[offs]);
+	}
+
+	if (page)
+		get_page(page);
+	vmf->page = page;
+	return (page) ? 0 : VM_FAULT_SIGBUS;
 }
 
 #define DEBUGFS_OPEN_FOPS(name) \
@@ -763,15 +925,13 @@ static void allocations_stringify(struct nvmap_client *client,
 			phys_addr_t base = heap_type == NVMAP_HEAP_IOVMM ? 0 :
 					   (handle->carveout->base);
 			seq_printf(s,
-				"%-18s %-18s %8llx %10zuK %8x %6u %6u %6u %6u %6u %6u %8pK\n",
+				"%-18s %-18s %8llx %10zuK %8x %6u %6u %6u %6u %8pK\n",
 				"", "",
 				(unsigned long long)base, K(handle->size),
 				handle->userflags,
 				atomic_read(&handle->ref),
 				atomic_read(&ref->dupes),
 				atomic_read(&ref->pin),
-				atomic_read(&handle->kmap_count),
-				atomic_read(&handle->umap_count),
 				atomic_read(&handle->share_count),
 				handle);
 		}
@@ -944,82 +1104,6 @@ static int nvmap_debug_allocations_show(struct seq_file *s, void *unused)
 
 DEBUGFS_OPEN_FOPS(allocations);
 
-static int nvmap_debug_all_allocations_show(struct seq_file *s, void *unused)
-{
-	u32 heap_type = (u32)(uintptr_t)s->private;
-	struct rb_node *n;
-
-
-	spin_lock(&nvmap_dev->handle_lock);
-	seq_printf(s, "%8s %11s %9s %6s %6s %6s %6s %8s\n",
-			"BASE", "SIZE", "USERFLAGS", "REFS",
-			"KMAPS", "UMAPS", "SHARE", "UID");
-
-	/* for each handle */
-	n = rb_first(&nvmap_dev->handles);
-	for (; n != NULL; n = rb_next(n)) {
-		struct nvmap_handle *handle =
-			rb_entry(n, struct nvmap_handle, node);
-		if (handle->alloc && handle->heap_type == heap_type) {
-			phys_addr_t base = heap_type == NVMAP_HEAP_IOVMM ? 0 :
-					   (handle->carveout->base);
-			seq_printf(s,
-				"%8llx %10zuK %9x %6u %6u %6u %6u %8p\n",
-				(unsigned long long)base, K(handle->size),
-				handle->userflags,
-				atomic_read(&handle->ref),
-				atomic_read(&handle->kmap_count),
-				atomic_read(&handle->umap_count),
-				atomic_read(&handle->share_count),
-				handle);
-		}
-	}
-
-	spin_unlock(&nvmap_dev->handle_lock);
-
-	return 0;
-}
-
-DEBUGFS_OPEN_FOPS(all_allocations);
-
-static int nvmap_debug_orphan_handles_show(struct seq_file *s, void *unused)
-{
-	u32 heap_type = (u32)(uintptr_t)s->private;
-	struct rb_node *n;
-
-
-	spin_lock(&nvmap_dev->handle_lock);
-	seq_printf(s, "%8s %11s %9s %6s %6s %6s %6s %8s\n",
-			"BASE", "SIZE", "USERFLAGS", "REFS",
-			"KMAPS", "UMAPS", "SHARE", "UID");
-
-	/* for each handle */
-	n = rb_first(&nvmap_dev->handles);
-	for (; n != NULL; n = rb_next(n)) {
-		struct nvmap_handle *handle =
-			rb_entry(n, struct nvmap_handle, node);
-		if (handle->alloc && handle->heap_type == heap_type &&
-			!atomic_read(&handle->share_count)) {
-			phys_addr_t base = heap_type == NVMAP_HEAP_IOVMM ? 0 :
-					   (handle->carveout->base);
-			seq_printf(s,
-				"%8llx %10zuK %9x %6u %6u %6u %8p\n",
-				(unsigned long long)base, K(handle->size),
-				handle->userflags,
-				atomic_read(&handle->ref),
-				atomic_read(&handle->kmap_count),
-				atomic_read(&handle->umap_count),
-				handle);
-		}
-	}
-
-	spin_unlock(&nvmap_dev->handle_lock);
-
-	return 0;
-}
-
-DEBUGFS_OPEN_FOPS(orphan_handles);
-
 static int nvmap_debug_maps_show(struct seq_file *s, void *unused)
 {
 	u64 total;
@@ -1116,12 +1200,12 @@ static int nvmap_debug_handles_by_pid_show(struct seq_file *s, void *unused)
 	struct nvmap_pid_data *p = s->private;
 	struct nvmap_client *client;
 	struct nvmap_debugfs_handles_header header;
-	int ret;
+	int err;
 
 	header.version = 1;
-	ret = seq_write(s, &header, sizeof(header));
-	if (ret < 0)
-		return ret;
+	err = seq_write(s, &header, sizeof(header));
+	if (err < 0)
+		return 0;
 
 	mutex_lock(&nvmap_dev->clients_lock);
 
@@ -1129,13 +1213,13 @@ static int nvmap_debug_handles_by_pid_show(struct seq_file *s, void *unused)
 		if (nvmap_client_pid(client) != p->pid)
 			continue;
 
-		ret = nvmap_debug_handles_by_pid_show_client(s, client);
-		if (ret < 0)
+		err = nvmap_debug_handles_by_pid_show_client(s, client);
+		if (err < 0)
 			break;
 	}
 
 	mutex_unlock(&nvmap_dev->clients_lock);
-	return ret;
+	return 0;
 }
 
 DEBUGFS_OPEN_FOPS(handles_by_pid);
@@ -1147,41 +1231,6 @@ do { \
 		"\"%s\" accumulated as shared memory \nis accounted in " \
 		"full in each clients \"%s\" that shared memory.\n", #x, #x); \
 } while (0)
-
-static int nvmap_debug_lru_allocations_show(struct seq_file *s, void *unused)
-{
-	struct nvmap_handle *h;
-	int total_handles = 0, migratable_handles = 0;
-	size_t total_size = 0, migratable_size = 0;
-
-	seq_printf(s, "%-18s %18s %8s %11s %8s %6s %6s %6s %6s %6s %8s\n",
-			"", "", "", "", "", "",
-			"", "PINS", "KMAPS", "UMAPS", "UID");
-	spin_lock(&nvmap_dev->lru_lock);
-	list_for_each_entry(h, &nvmap_dev->lru_handles, lru) {
-		total_handles++;
-		total_size += h->size;
-		if (!atomic_read(&h->pin) && !atomic_read(&h->kmap_count)) {
-			migratable_handles++;
-			migratable_size += h->size;
-		}
-		seq_printf(s, "%-18s %18s %8s %10zuK %8s %6s %6s %6u %6u "
-			"%6u %8p\n", "", "", "", K(h->size), "", "",
-			"", atomic_read(&h->pin),
-			    atomic_read(&h->kmap_count),
-			    atomic_read(&h->umap_count),
-			    h);
-	}
-	seq_printf(s, "total_handles = %d, migratable_handles = %d,"
-		"total_size=%zuK, migratable_size=%zuK\n",
-		total_handles, migratable_handles,
-		K(total_size), K(migratable_size));
-	spin_unlock(&nvmap_dev->lru_lock);
-	PRINT_MEM_STATS_NOTE(SIZE);
-	return 0;
-}
-
-DEBUGFS_OPEN_FOPS(lru_allocations);
 
 struct procrank_stats {
 	struct vm_area_struct *vma;
@@ -1453,9 +1502,6 @@ end_loop:
 		nvmap_handle_put(h);
 		h = h_next;
 	}
-
-	min_clen = max_clen ? min_clen : 0;
-
 	seq_puts(s, "compression algo: \tlzo\n");
 	seq_printf(s, "uncompressed bytes: \t%lld\n", total_uncompressed_mem);
 	seq_printf(s, "compressed bytes: \t%lld\n", total_compressed_mem);
@@ -1535,13 +1581,26 @@ u64 nvmap_stats_read(enum nvmap_stats_t stat)
 	return atomic64_read(&nvmap_stats.stats[stat]);
 }
 
-int nvmap_probe(struct platform_device *pdev)
+static int nvmap_probe(struct platform_device *pdev)
 {
-	struct nvmap_platform_data *plat;
+	struct nvmap_platform_data *plat = pdev->dev.platform_data;
 	struct nvmap_device *dev;
 	struct dentry *nvmap_debug_root;
 	unsigned int i;
 	int e;
+
+	if (!plat) {
+		dev_err(&pdev->dev, "no platform data?\n");
+		return -ENODEV;
+	}
+
+	/*
+	 * The DMA mapping API uses these parameters to decide how to map the
+	 * passed buffers. If the maximum physical segment size is set to
+	 * smaller than the size of the buffer, then the buffer will be mapped
+	 * as separate IO virtual address ranges.
+	 */
+	pdev->dev.dma_parms = &nvmap_dma_parameters;
 
 	if (WARN_ON(nvmap_dev != NULL)) {
 		dev_err(&pdev->dev, "only one nvmap device may be present\n");
@@ -1556,23 +1615,6 @@ int nvmap_probe(struct platform_device *pdev)
 
 	nvmap_dev = dev;
 
-	nvmap_init(pdev);
-
-	plat = pdev->dev.platform_data;
-	if (!plat) {
-		dev_err(&pdev->dev, "no platform data?\n");
-		nvmap_dev = NULL;
-		kfree(dev);
-		return -ENODEV;
-	}
-
-	/*
-	 * The DMA mapping API uses these parameters to decide how to map the
-	 * passed buffers. If the maximum physical segment size is set to
-	 * smaller than the size of the buffer, then the buffer will be mapped
-	 * as separate IO virtual address ranges.
-	 */
-	pdev->dev.dma_parms = &nvmap_dma_parameters;
 	dev->dev_user.minor = MISC_DYNAMIC_MINOR;
 	dev->dev_user.name = "nvmap";
 	dev->dev_user.fops = &nvmap_user_fops;
@@ -1590,8 +1632,6 @@ int nvmap_probe(struct platform_device *pdev)
 	INIT_LIST_HEAD(&dev->clients);
 	dev->pids = RB_ROOT;
 	mutex_init(&dev->clients_lock);
-	INIT_LIST_HEAD(&dev->lru_handles);
-	spin_lock_init(&dev->lru_lock);
 
 	e = misc_register(&dev->dev_user);
 	if (e) {
@@ -1616,7 +1656,6 @@ int nvmap_probe(struct platform_device *pdev)
 	debugfs_create_u32("max_handle_count", S_IRUGO,
 			nvmap_debug_root, &nvmap_max_handle_count);
 
-	nvmap_dev->dynamic_dma_map_mask = ~0;
 	for (i = 0; i < plat->nr_carveouts; i++) {
 		struct nvmap_carveout_node *node = &dev->heaps[dev->nr_carveouts];
 		const struct nvmap_platform_carveout *co = &plat->carveouts[i];
@@ -1637,6 +1676,8 @@ int nvmap_probe(struct platform_device *pdev)
 		}
 		node->index = dev->nr_carveouts;
 		dev->nr_carveouts++;
+		spin_lock_init(&node->clients_lock);
+		INIT_LIST_HEAD(&node->clients);
 		node->heap_bit = co->usage_mask;
 
 		if (!IS_ERR_OR_NULL(nvmap_debug_root)) {
@@ -1651,14 +1692,6 @@ int nvmap_probe(struct platform_device *pdev)
 					heap_root,
 					(void *)(uintptr_t)node->heap_bit,
 					&debug_allocations_fops);
-				debugfs_create_file("all_allocations", S_IRUGO,
-					heap_root,
-					(void *)(uintptr_t)node->heap_bit,
-					&debug_all_allocations_fops);
-				debugfs_create_file("orphan_handles", S_IRUGO,
-					heap_root,
-					(void *)(uintptr_t)node->heap_bit,
-					&debug_orphan_handles_fops);
 				debugfs_create_file("maps", S_IRUGO,
 					heap_root,
 					(void *)(uintptr_t)node->heap_bit,
@@ -1678,12 +1711,6 @@ int nvmap_probe(struct platform_device *pdev)
 			debugfs_create_file("allocations", S_IRUGO, iovmm_root,
 				(void *)(uintptr_t)NVMAP_HEAP_IOVMM,
 				&debug_allocations_fops);
-			debugfs_create_file("all_allocations", S_IRUGO,
-				iovmm_root, (void *)(uintptr_t)NVMAP_HEAP_IOVMM,
-				&debug_all_allocations_fops);
-			debugfs_create_file("orphan_handles", S_IRUGO,
-				iovmm_root, (void *)(uintptr_t)NVMAP_HEAP_IOVMM,
-				&debug_orphan_handles_fops);
 			debugfs_create_file("maps", S_IRUGO, iovmm_root,
 				(void *)(uintptr_t)NVMAP_HEAP_IOVMM,
 				&debug_maps_fops);
@@ -1699,6 +1726,9 @@ int nvmap_probe(struct platform_device *pdev)
 				      nvmap_debug_root,
 				      &cache_maint_inner_threshold);
 
+		/* cortex-a9 */
+		if ((read_cpuid_id() >> 4 & 0xfff) == 0xc09)
+			cache_maint_inner_threshold = SZ_32K;
 		pr_info("nvmap:inner cache maint threshold=%zd",
 			cache_maint_inner_threshold);
 #endif
@@ -1735,12 +1765,12 @@ fail:
 	kfree(dev->heaps);
 	if (dev->dev_user.minor != MISC_DYNAMIC_MINOR)
 		misc_deregister(&dev->dev_user);
-	nvmap_dev = NULL;
 	kfree(dev);
+	nvmap_dev = NULL;
 	return e;
 }
 
-int nvmap_remove(struct platform_device *pdev)
+static int nvmap_remove(struct platform_device *pdev)
 {
 	struct nvmap_device *dev = platform_get_drvdata(pdev);
 	struct rb_node *n;
@@ -1765,3 +1795,54 @@ int nvmap_remove(struct platform_device *pdev)
 	nvmap_dev = NULL;
 	return 0;
 }
+
+static int nvmap_suspend(struct platform_device *pdev, pm_message_t state)
+{
+	return 0;
+}
+
+static int nvmap_resume(struct platform_device *pdev)
+{
+	return 0;
+}
+
+static struct platform_driver nvmap_driver = {
+	.probe		= nvmap_probe,
+	.remove		= nvmap_remove,
+	.suspend	= nvmap_suspend,
+	.resume		= nvmap_resume,
+
+	.driver = {
+		.name	= "tegra-nvmap",
+		.owner	= THIS_MODULE,
+	},
+};
+
+static int __init nvmap_init_driver(void)
+{
+	int e;
+
+	nvmap_dev = NULL;
+
+	e = nvmap_heap_init();
+	if (e)
+		goto fail;
+
+	e = platform_driver_register(&nvmap_driver);
+	if (e) {
+		nvmap_heap_deinit();
+		goto fail;
+	}
+
+fail:
+	return e;
+}
+fs_initcall(nvmap_init_driver);
+
+static void __exit nvmap_exit_driver(void)
+{
+	platform_driver_unregister(&nvmap_driver);
+	nvmap_heap_deinit();
+	nvmap_dev = NULL;
+}
+module_exit(nvmap_exit_driver);
