@@ -164,7 +164,7 @@
 		scl-gpio = <&gpio 20 0>; /* gpio PC4 */
 		sda-gpio = <&gpio 21 0>; /* gpio PC5 */
 		nvidia,memory-clients = <14>;
-		status = "okay";
+		status = "disabled";
 		clock-frequency = <400000>;
 	};
 
@@ -177,7 +177,7 @@
 		scl-gpio = <&gpio 157 0>; /* gpio PT5 */
 		sda-gpio = <&gpio 158 0>; /* gpio PT6 */
 		nvidia,memory-clients = <14>;
-		status = "okay";
+		status = "disabled";
 		clock-frequency = <100000>;
 	};
 
@@ -190,7 +190,7 @@
 		scl-gpio = <&gpio 217 0>; /* gpio PBB1 */
 		sda-gpio = <&gpio 218 0>; /* gpio PBB2 */
 		nvidia,memory-clients = <14>;
-		status = "okay";
+		status = "disabled";
 		clock-frequency = <400000>;
 	};
 
@@ -203,7 +203,7 @@
 		scl-gpio = <&gpio 172 0>; /* gpio PV4 */
 		sda-gpio = <&gpio 173 0>; /* gpio PV5 */
 		nvidia,memory-clients = <14>;
-		status = "okay";
+		status = "disabled";
 		clock-frequency = <100000>;
 	};
 
@@ -217,7 +217,7 @@
 		scl-gpio = <&gpio 206 0>; /* gpio PZ6 */
 		sda-gpio = <&gpio 207 0>; /* gpio PZ7 */
 		nvidia,memory-clients = <14>;
-		status = "okay";
+		status = "disabled";
 		clock-frequency = <400000>;
 	};
 
@@ -228,7 +228,7 @@
 		reg = <0x0 0x7000d100 0x0 0x100>;
 		interrupts = <0 63 0x04>;
 		nvidia,memory-clients = <14>;
-		status = "okay";
+		status = "disabled";
 		clock-frequency = <400000>;
 	};
 
