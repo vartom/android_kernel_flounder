@@ -61,7 +61,6 @@ EXPORT_SYMBOL(journal_forget);
 EXPORT_SYMBOL(journal_sync_buffer);
 #endif
 EXPORT_SYMBOL(journal_flush);
-EXPORT_SYMBOL(journal_force_flush);
 EXPORT_SYMBOL(journal_revoke);
 
 EXPORT_SYMBOL(journal_init_dev);
@@ -1532,7 +1531,7 @@ static int journal_convert_superblock_v1(journal_t *journal,
  * recovery does not need to happen on remount.
  */
 
-static int __journal_flush(journal_t *journal, bool assert)
+int journal_flush(journal_t *journal)
 {
 	int err = 0;
 	transaction_t *transaction = NULL;
@@ -1580,8 +1579,6 @@ static int __journal_flush(journal_t *journal, bool assert)
 	 * s_start value. */
 	mark_journal_empty(journal);
 	mutex_unlock(&journal->j_checkpoint_mutex);
-	if (!assert)
-		return 0;
 	spin_lock(&journal->j_state_lock);
 	J_ASSERT(!journal->j_running_transaction);
 	J_ASSERT(!journal->j_committing_transaction);
@@ -1590,16 +1587,6 @@ static int __journal_flush(journal_t *journal, bool assert)
 	J_ASSERT(journal->j_tail_sequence == journal->j_transaction_sequence);
 	spin_unlock(&journal->j_state_lock);
 	return 0;
-}
-
-int journal_flush(journal_t *journal)
-{
-	return __journal_flush(journal, true);
-}
-
-int journal_force_flush(journal_t *journal)
-{
-	return __journal_flush(journal, false);
 }
 
 /**
