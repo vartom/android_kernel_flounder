@@ -104,6 +104,10 @@ dtb-$(CONFIG_ARCH_TEGRA_18x_SOC) += tegra186-sim-cl34324618.dtb
 dtb-$(CONFIG_ARCH_TEGRA_18x_SOC) += tegra186-fpga-cl34324618.dtb
 dtb-$(CONFIG_ARCH_TEGRA_18x_SOC) += tegra186-fpga-cl34563539.dtb
 dtb-$(CONFIG_ARCH_TEGRA_18x_SOC) += tegra186-sim-cl34563539.dtb
+dtb-$(CONFIG_MACH_T132_FLOUNDER) += tegra132-flounder-xaxb.dtb
+dtb-$(CONFIG_MACH_T132_FLOUNDER) += tegra132-flounder-xc.dtb
+dtb-$(CONFIG_MACH_T132_FLOUNDER) += tegra132-flounder-xdxepvt.dtb
+dtb-$(CONFIG_MACH_T132_FLOUNDER) += tegra132-flounder_lte-xaxbxcxdpvt.dtb
 targets += $(dtb-y)
 
 DTC_FLAGS := -i $(srctree)/arch/arm/boot/dts
