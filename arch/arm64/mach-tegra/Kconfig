@@ -27,7 +27,7 @@ config ARCH_TEGRA_13x_SOC
 	select PM_GENERIC_DOMAINS if PM
 	select MACH_HAS_SND_SOC_TEGRA_MAX98090 if SND_SOC
 	select MACH_HAS_SND_SOC_TEGRA_RT5639 if SND_SOC
-	select ARM64_SIMPLE_SPINLOCK
+#	select ARM64_SIMPLE_SPINLOCK
 	help
 	  Support for NVIDIA Tegra 13x family of SoCs, based upon the
 	  NVIDIA Denver CPU
@@ -45,6 +45,13 @@ config MACH_T132REF
 	select SYSEDP_FRAMEWORK
 	help
 	  Support for NVIDIA Exuma FPGA development platform
+
+config MACH_T132_FLOUNDER
+        bool "Flounder board with t132"
+        depends on ARCH_TEGRA_13x_SOC
+        select SYSEDP_FRAMEWORK
+        help
+          Support for flounder development platform
 
 config DENVER_CPU
 	bool "Denver CPU"
