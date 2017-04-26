@@ -23,6 +23,8 @@
 #include <linux/err.h>
 #include <linux/err.h>
 #include <linux/module.h>
+#include <linux/of.h>
+#include <linux/of_device.h>
 #include <linux/platform_device.h>
 #include <linux/power_supply.h>
 #include <linux/power/power_supply_extcon.h>
@@ -100,13 +102,19 @@ static int power_supply_extcon_get_property(struct power_supply *psy,
 	int ret = 0;
 	struct power_supply_extcon *psy_extcon;
 
-	if (psy->type == POWER_SUPPLY_TYPE_MAINS) {
+	switch (psy->type) {
+	case POWER_SUPPLY_TYPE_MAINS:
 		psy_extcon = container_of(psy, struct power_supply_extcon, ac);
 		online = psy_extcon->ac_online;
-	} else if (psy->type == POWER_SUPPLY_TYPE_USB) {
+		break;
+
+	case POWER_SUPPLY_TYPE_USB:
+	case POWER_SUPPLY_TYPE_USB_CDP:
 		psy_extcon = container_of(psy, struct power_supply_extcon, usb);
 		online = psy_extcon->usb_online;
-	} else {
+		break;
+
+	default:
 		return -EINVAL;
 	}
 
@@ -141,9 +149,11 @@ static int power_supply_extcon_attach_cable(
 	psy_extcon->ac_online = 0;
 
 	if (true == extcon_get_cable_state(edev, "USB")) {
+		psy_extcon->usb.type = POWER_SUPPLY_TYPE_USB;
 		psy_extcon->usb_online = 1;
 		dev_info(psy_extcon->dev, "USB charger cable detected\n");
 	} else if (true == extcon_get_cable_state(edev, "Charge-downstream")) {
+		psy_extcon->usb.type = POWER_SUPPLY_TYPE_USB_CDP;
 		psy_extcon->usb_online = 1;
 		dev_info(psy_extcon->dev,
 			"USB charger downstream cable detected\n");
@@ -179,7 +189,7 @@ static int power_supply_extcon_attach_cable(
 		psy_extcon->ac_online = 1;
 		dev_info(psy_extcon->dev, "Y cable charging detected\n");
 	} else {
-		dev_info(psy_extcon->dev, "No cable detected\n");
+		dev_info(psy_extcon->dev, "Unknown cable detected\n");
 	}
 
 	power_supply_changed(&psy_extcon->usb);
@@ -220,12 +230,44 @@ static int psy_extcon_extcon_notifier(struct notifier_block *self,
 	return NOTIFY_DONE;
 }
 
+static struct power_supply_extcon_plat_data *psy_extcon_get_dt_pdata(
+		struct platform_device *pdev)
+{
+	struct device_node *np = pdev->dev.of_node;
+	struct power_supply_extcon_plat_data *pdata;
+	char const *pstr;
+	int ret;
+
+	pdata = devm_kzalloc(&pdev->dev, sizeof(*pdata), GFP_KERNEL);
+	if (!pdata)
+		return ERR_PTR(-ENOMEM);
+
+	ret = of_property_read_string(np, "power-supply,extcon-dev", &pstr);
+	if (!ret)
+		pdata->extcon_name = pstr;
+
+	ret = of_property_read_string(np, "power-supply,y-cable-extcon-dev",
+					&pstr);
+	if (!ret)
+		pdata->extcon_name = pstr;
+
+	return pdata;
+}
+
 static int psy_extcon_probe(struct platform_device *pdev)
 {
 	int ret = 0;
 	uint8_t j;
 	struct power_supply_extcon *psy_extcon;
 	struct power_supply_extcon_plat_data *pdata = pdev->dev.platform_data;
+
+	if (!pdata && pdev->dev.of_node) {
+		pdata = psy_extcon_get_dt_pdata(pdev);
+		if (IS_ERR(pdata)) {
+			ret = PTR_ERR(pdata);
+			pdata = NULL;
+		}
+	}
 
 	if (!pdata) {
 		dev_err(&pdev->dev, "No platform data, exiting..\n");
@@ -241,6 +283,8 @@ static int psy_extcon_probe(struct platform_device *pdev)
 	psy_extcon->dev = &pdev->dev;
 	dev_set_drvdata(&pdev->dev, psy_extcon);
 	spin_lock_init(&psy_extcon->lock);
+
+	dev_info(psy_extcon->dev, "Extcon name %s\n", pdata->extcon_name);
 
 	psy_extcon->ac.name		= "ac";
 	psy_extcon->ac.type		= POWER_SUPPLY_TYPE_MAINS;
@@ -291,13 +335,17 @@ static int psy_extcon_probe(struct platform_device *pdev)
 		}
 
 		if (ret < 0)
-			dev_err(psy_extcon->dev, "Cannot register for cable: %s\n",
-					cable->name);
+			dev_err(psy_extcon->dev,
+				"Cable %s registration failed: %d\n",
+				cable->name, ret);
 	}
 
 	psy_extcon->edev = extcon_get_extcon_dev(pdata->extcon_name);
-	if (!psy_extcon->edev)
-			goto econ_err;
+	if (!psy_extcon->edev) {
+		dev_err(psy_extcon->dev, "No extcon device with %s\n",
+			pdata->extcon_name);
+		goto econ_err;
+	}
 
 	spin_lock(&psy_extcon->lock);
 	power_supply_extcon_attach_cable(psy_extcon, psy_extcon->edev);
@@ -335,14 +383,20 @@ static int psy_extcon_remove(struct platform_device *pdev)
 	return 0;
 }
 
+static struct of_device_id power_supply_extcon_of_match[] = {
+	{ .compatible = "power-supply-extcon", },
+	{},
+};
+MODULE_DEVICE_TABLE(of, power_supply_extcon_of_match);
+
 static struct platform_driver power_supply_extcon_driver = {
 	.driver = {
 		.name = "power-supply-extcon",
 		.owner = THIS_MODULE,
+		.of_match_table = power_supply_extcon_of_match,
 	},
 	.probe = psy_extcon_probe,
 	.remove = psy_extcon_remove,
-
 };
 
 static int __init psy_extcon_init(void)
