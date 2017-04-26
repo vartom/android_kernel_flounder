@@ -52,6 +52,7 @@ struct battery_gauge_ops {
 				enum battery_charger_status status);
 	int (*set_current_broadcast) (struct battery_gauge_dev *bg_device);
 	int (*get_battery_temp)(void);
+	int (*get_battery_soc)(struct battery_gauge_dev *bg_device);
 };
 
 struct battery_charging_ops {
