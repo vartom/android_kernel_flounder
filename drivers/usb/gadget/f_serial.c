@@ -498,8 +498,9 @@ static void gser_mdm_disable(struct usb_function *f)
 #ifdef CONFIG_QCT_USB_MODEM_SUPPORT
 	usb_ep_fifo_flush(gser->notify);
 	usb_ep_disable(gser->notify);
-#endif
+
 	gser->notify->driver_data = NULL;
+#endif
 }
 
 #ifdef CONFIG_QCT_USB_MODEM_SUPPORT
