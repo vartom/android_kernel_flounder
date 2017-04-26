@@ -32,10 +32,13 @@ modules.builtin
 *.lzo
 *.patch
 *.gcno
+*.log
 
 #
 # Top-level generic files
 #
+/out
+/working
 /tags
 /TAGS
 /linux
