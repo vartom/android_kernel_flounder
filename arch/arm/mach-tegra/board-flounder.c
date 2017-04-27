@@ -788,15 +788,9 @@ static void flounder_usb_init(void)
 	/* charger needs to be set to 2A - h/w will do 1.8A */
 	tegra_udc_pdata.u_data.dev.dcp_current_limit_ma = 2000;
 
-	/* Host cable is detected through GPIO Interrupt *
+	/* Host cable is detected through GPIO Interrupt */
 	tegra_udc_pdata.id_det_type = TEGRA_USB_GPIO_ID;
-	tegra_ehci1_utmi_pdata.id_det_type = TEGRA_USB_GPIO_ID;*/
-
-	/* Host cable is detected through PMU Interrupt */
-	tegra_udc_pdata.id_det_type = TEGRA_USB_PMU_ID;
-	tegra_ehci1_utmi_pdata.id_det_type = TEGRA_USB_PMU_ID;
-	tegra_ehci1_utmi_pdata.id_extcon_dev_name = "palmas-extcon";
-
+	tegra_ehci1_utmi_pdata.id_det_type = TEGRA_USB_GPIO_ID;
 
 	if (!is_mdm_modem())
 		tegra_ehci1_utmi_pdata.u_cfg.utmi.xcvr_setup_offset = -3;

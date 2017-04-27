@@ -60,7 +60,7 @@
 #define DBG(stuff...)	do {} while (0)
 #endif
 
-#define YCABLE_CHARGING_CURRENT_UA 500000u
+#define YCABLE_CHARGING_CURRENT_UA 1200000u
 
 struct tegra_otg {
 	struct platform_device *pdev;
@@ -791,6 +791,8 @@ static int tegra_otg_conf(struct platform_device *pdev)
 		extcon_register_notifier(tegra->id_extcon_dev, &otg_id_nb);
 	}
 
+	ATOMIC_INIT_NOTIFIER_HEAD(&tegra->phy.notifier);
+
 	err = usb_add_phy(&tegra->phy, USB_PHY_TYPE_USB2);
 	if (err) {
 		dev_err(&pdev->dev, "usb_set_transceiver failed\n");
@@ -867,8 +869,8 @@ static int tegra_otg_start(struct platform_device *pdev)
 		gpio_direction_input(tegra->id_det_gpio);
 
 		err = request_threaded_irq(gpio_to_irq(tegra->id_det_gpio), NULL
-			, tegra_otg_id_detect_gpio_thr, IRQF_TRIGGER_FALLING |
-			IRQF_TRIGGER_RISING, "tegra-otg", tegra);
+			, tegra_otg_id_detect_gpio_thr, IRQF_TRIGGER_FALLING | IRQF_ONESHOT | IRQF_TRIGGER_RISING
+			, "tegra-otg", tegra);
 		if (err) {
 			dev_err(&pdev->dev, "request irq error\n");
 			goto err_id_gpio_irq;
@@ -1022,10 +1024,6 @@ static int tegra_otg_suspend(struct device *dev)
 	otg_writel(tegra, val, USB_PHY_WAKEUP);
 	clk_disable_unprepare(tegra->clk);
 	pm_runtime_put_sync(dev);
-
-	/* suspend peripheral mode, host mode is taken care by host driver */
-	if (from == OTG_STATE_B_PERIPHERAL)
-		tegra_change_otg_state(tegra, OTG_STATE_A_SUSPEND);
 
 	if (from == OTG_STATE_A_HOST && tegra->turn_off_vbus_on_lp0)
 		tegra_otg_vbus_enable(tegra->vbus_reg, 0);
