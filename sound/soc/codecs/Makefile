@@ -123,6 +123,8 @@ snd-soc-wm9712-objs := wm9712.o
 snd-soc-wm9713-objs := wm9713.o
 snd-soc-wm-hubs-objs := wm_hubs.o
 snd-soc-rt5639-objs := rt5639.o rt56xx_ioctl.o rt5639_ioctl.o
+snd-soc-rt5677-objs := rt5677.o rt5677-spi.o tfa9895.o tfa9895l.o \
+		       rt5677_ioctl.o rt_codec_ioctl.o
 snd-soc-rt5640-objs := rt5640.o
 snd-soc-rt5645-objs := rt5645.o rt5645_ioctl.o rt_codec_ioctl.o
 
@@ -130,6 +132,7 @@ snd-soc-rt5645-objs := rt5645.o rt5645_ioctl.o rt_codec_ioctl.o
 snd-soc-max9877-objs := max9877.o
 snd-soc-max97236-objs := max97236.o
 snd-soc-tpa6130a2-objs := tpa6130a2.o
+snd-soc-rt5506-objs := rt5506.o
 
 obj-$(CONFIG_SND_SOC_88PM860X)	+= snd-soc-88pm860x.o
 obj-$(CONFIG_SND_SOC_AB8500_CODEC)	+= snd-soc-ab8500-codec.o
@@ -257,8 +260,10 @@ obj-$(CONFIG_SND_SOC_WM_HUBS)	+= snd-soc-wm-hubs.o
 obj-$(CONFIG_SND_SOC_RT5639)	+= snd-soc-rt5639.o
 obj-$(CONFIG_SND_SOC_RT5640)	+= snd-soc-rt5640.o
 obj-$(CONFIG_SND_SOC_RT5645)	+= snd-soc-rt5645.o
+obj-$(CONFIG_SND_SOC_RT5677)	+= snd-soc-rt5677.o
 
 # Amp
 obj-$(CONFIG_SND_SOC_MAX9877)	+= snd-soc-max9877.o
 obj-$(CONFIG_SND_SOC_MAX97236)	+= snd-soc-max97236.o
 obj-$(CONFIG_SND_SOC_TPA6130A2)	+= snd-soc-tpa6130a2.o
+obj-$(CONFIG_SND_SOC_RT5506)	+= snd-soc-rt5506.o
