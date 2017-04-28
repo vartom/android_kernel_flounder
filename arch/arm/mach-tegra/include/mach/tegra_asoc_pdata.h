@@ -15,6 +15,7 @@
  */
 
 #define	HIFI_CODEC		0
+#define	SPEAKER			1
 #define	BASEBAND		1
 #define	BT_SCO			2
 #define	VOICE_CODEC		3
@@ -25,6 +26,13 @@
 #define	TEGRA_DAIFMT_I2S		2
 #define	TEGRA_DAIFMT_RIGHT_J		3
 #define	TEGRA_DAIFMT_LEFT_J		4
+
+struct gpio_config {
+	const char *name;
+	int id;
+	int dir_in;
+	int pg;
+};
 
 struct i2s_config {
 	int audio_port_id;
@@ -56,20 +64,32 @@ struct tegra_asoc_platform_data {
 	const char *codec_dai_name;
 	int num_links;
 	int gpio_spkr_en;
+	int gpio_spkr_ldo_en;
 	int gpio_hp_det;
 	int gpio_hp_det_active_high;
 	int gpio_hp_mute;
+	int gpio_hp_en;
+	int gpio_hp_ldo_en;
 	int gpio_int_mic_en;
 	int gpio_ext_mic_en;
 	int gpio_ldo1_en;
+	int gpio_ldo2_en;
+	int gpio_reset;
+	int gpio_irq1;
+	int gpio_wakeup;
 	int gpio_codec1;
 	int gpio_codec2;
 	int gpio_codec3;
+	struct gpio_config codec_mclk;
 	bool micbias_gpio_absent;
 	bool use_codec_jd_irq;
 	unsigned int debounce_time_hp;
 	bool edp_support;
 	unsigned int edp_states[TEGRA_SPK_EDP_NUM_STATES];
 	struct i2s_config i2s_param[NUM_I2S_DEVICES];
+	struct gpio_config i2s_set[NUM_I2S_DEVICES*4];
+	struct mutex i2s_gpio_lock[NUM_I2S_DEVICES];
+	int gpio_free_count[NUM_I2S_DEVICES];
+	bool first_time_free[NUM_I2S_DEVICES];
 	struct ahub_bbc1_config *ahub_bbc1_param;
 };
