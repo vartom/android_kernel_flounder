@@ -61,14 +61,14 @@ static int flounder_wifi_reset(int on);
 static int flounder_wifi_power(int on);
 static int flounder_wifi_set_carddetect(int val);
 static int flounder_wifi_get_mac_addr(unsigned char *buf);
-/*static void* flounder_wifi_get_country_code(char *country_iso_code, u32 flags);*/
+static void* flounder_wifi_get_country_code(char *country_iso_code);
 
 static struct wifi_platform_data flounder_wifi_control = {
 	.set_power	= flounder_wifi_power,
 	.set_reset	= flounder_wifi_reset,
 	.set_carddetect	= flounder_wifi_set_carddetect,
 	.get_mac_addr	= flounder_wifi_get_mac_addr,
-/*	.get_country_code	= flounder_wifi_get_country_code,*/
+	.get_country_code	= flounder_wifi_get_country_code,
 #if defined (CONFIG_BCMDHD_EDP_SUPPORT)
 	/* wifi edp client information */
 	.client_info	= {
@@ -470,12 +470,12 @@ struct cntry_locales_custom country_code_nodfs_table[] = {
 	{"ZA", "E0", 26},
 };
 
-static void* flounder_wifi_get_country_code(char *country_iso_code, u32 flags)
+static void* flounder_wifi_get_country_code(char *country_iso_code)
 {
 	struct cntry_locales_custom *locales;
 	int size, i;
 
-	if (flags & WLAN_PLAT_NODFS_FLAG) {
+	if (WLAN_PLAT_NODFS_FLAG) {
 		locales = country_code_nodfs_table;
 		size = ARRAY_SIZE(country_code_nodfs_table);
 	} else {

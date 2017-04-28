@@ -1118,13 +1118,13 @@ static int __init flounder_headset_init(void)
 	platform_device_register(&htc_headset_mgr);
 	return 0;
 }
-
+/*
 static struct device *gps_dev;
-static struct class *gps_class;
+static struct class *gps_class;*/
 
 extern int tegra_get_hw_rev(void);
 
-#define GPS_HOSTWAKE_GPIO 69
+/*#define GPS_HOSTWAKE_GPIO 69
 static struct bcm_gps_hostwake_platform_data gps_hostwake_data = {
 	.gpio_hostwake = GPS_HOSTWAKE_GPIO,
 };
@@ -1186,7 +1186,7 @@ static int __init flounder_gps_init(void)
 
 	return 0;
 }
-#undef PRJ_F
+#undef PRJ_F*/
 
 static void __init flounder_force_recovery_gpio(void)
 {
