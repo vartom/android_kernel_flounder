@@ -356,7 +356,6 @@ static struct tegra_serial_platform_data flounder_uarta_pdata = {
 	.modem_interrupt = false,
 };
 
-/*
 static struct tegra_asoc_platform_data flounder_audio_pdata_rt5677 = {
 	.gpio_hp_det = -1,
 	.gpio_ldo1_en = TEGRA_GPIO_PK0,
@@ -549,7 +548,7 @@ static struct platform_device flounder_audio_device_rt5677 = {
 	.dev = {
 		.platform_data = &flounder_audio_pdata_rt5677,
 	},
-};*/
+};
 
 static void __init flounder_uart_init(void)
 {
@@ -643,7 +642,7 @@ static struct platform_device *flounder_devices[] __initdata = {
 	&tegra_i2s_device2,
 	&tegra_i2s_device3,
 	&tegra_i2s_device4,
-/*	&flounder_audio_device_rt5677,*/
+	&flounder_audio_device_rt5677,
 	&tegra_spdif_device,
 	&spdif_dit_device,
 	&bluetooth_dit_device,
@@ -1255,7 +1254,7 @@ static void __init tegra_flounder_late_init(void)
 #endif
 	flounder_i2c_init();
 	flounder_spi_init();
-/*	flounder_audio_init();*/
+	flounder_audio_init();
 	platform_add_devices(flounder_devices, ARRAY_SIZE(flounder_devices));
 	tegra_io_dpd_init();
 	flounder_sdhci_init();
@@ -1267,7 +1266,7 @@ static void __init tegra_flounder_late_init(void)
 	edp_init();
 	isomgr_init();
 
-/*	flounder_headset_init();*/
+	flounder_headset_init();
 	flounder_panel_init();
 	flounder_kbc_init();
 /*	flounder_gps_init();*/
