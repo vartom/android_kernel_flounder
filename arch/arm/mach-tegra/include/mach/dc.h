@@ -319,6 +319,9 @@ struct tegra_dsi_out {
 	struct tegra_dsi_cmd	*dsi_suspend_cmd;	/* required */
 	u16		n_suspend_cmd;			/* required */
 
+	struct tegra_dsi_cmd	*dsi_backlight_cmd;
+	u16		n_backlight_cmd;
+
 	u8		video_data_type;		/* required */
 	u8		video_clock_mode;
 	u8		video_burst_mode;
@@ -335,6 +338,7 @@ struct tegra_dsi_out {
 	bool		no_pkt_seq_eot; /* 1st generation panel may not
 					 * support eot. Don't set it for
 					 * most panels. */
+	bool		no_pkt_seq_hbp;
 	bool		te_polarity_low;
 	bool		power_saving_suspend;
 	bool		dsi2lvds_bridge_enable;
@@ -861,6 +865,7 @@ struct tegra_dc_pwm_params {
 	unsigned int clk_div;
 	unsigned int clk_select;
 	unsigned int duty_cycle;
+	int backlight_mode;
 };
 
 void tegra_dc_config_pwm(struct tegra_dc *dc, struct tegra_dc_pwm_params *cfg);
