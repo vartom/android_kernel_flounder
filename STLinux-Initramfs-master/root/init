@@ -1,0 +1,40 @@
+#!/sbin/busybox sh
+
+PATH=/bin:/sbin:/usr/bin:/usr/sbin
+BB=/sbin/busybox
+
+set -x
+
+$BB mkdir -p /etc
+$BB mkdir -p /proc
+$BB mount -t proc proc /proc
+$BB mkdir -p /sys
+$BB mount -t sysfs sysfs /sys
+$BB mkdir -p /dev
+$BB mount -t devtmpfs devtmpfs /dev
+
+# Disable kernel messages
+#echo 0 > /proc/sys/kernel/printk
+
+$BB mkdir -p /data
+$BB mount -t ext4 -o noatime,nodiratime,errors=panic /dev/mmcblk0p31 /data
+
+$BB mkdir -p /root
+$BB mount -o bind /data/linux /root
+$BB mkdir -p /root/data
+$BB mount -o bind /data /root/data
+
+$BB mkdir -p /root/system
+$BB mount -t ext4 -o ro /dev/mmcblk0p29 /root/system
+
+$BB mkdir -p /root/vendor
+$BB mount -t ext4 -o ro /dev/mmcblk0p24 /root/vendor
+
+$BB mkdir -p /root/cache
+$BB mount -t ext4 /dev/mmcblk0p30 /root/cache
+
+$BB mount --move /dev /root/dev
+$BB umount /sys
+$BB umount /proc
+
+exec $BB switch_root /root /sbin/init
