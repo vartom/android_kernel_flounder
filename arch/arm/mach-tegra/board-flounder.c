@@ -36,7 +36,6 @@
 #include <linux/platform_data/tegra_c2port_platform_data.h>
 #include <linux/spi/spi.h>
 #include <linux/spi/rm31080a_ts.h>
-#include <linux/maxim_sti.h>
 #include <linux/memblock.h>
 #include <linux/spi/spi-tegra.h>
 #include <linux/nfc/bcm2079x.h>
@@ -52,6 +51,7 @@
 #include <linux/of_platform.h>
 #include <linux/i2c.h>
 #include <linux/i2c-tegra.h>
+#include <linux/tegra-soc.h>
 #include <linux/tegra-powergate.h>
 #include <linux/platform_data/serial-tegra.h>
 #include <linux/edp.h>
@@ -60,10 +60,6 @@
 #include <linux/clk/tegra.h>
 #include <linux/clocksource.h>
 #include <linux/irqchip.h>
-#include <linux/irqchip/tegra.h>
-#include <linux/tegra-soc.h>
-#include <linux/platform_data/tegra_usb_modem_power.h>
-#include <linux/platform_data/tegra_ahci.h>
 #include <linux/irqchip/tegra.h>
 #include <linux/pinctrl/pinctrl.h>
 #include <linux/pinctrl/consumer.h>
@@ -79,16 +75,16 @@
 #include <mach/i2s.h>
 #include <linux/platform/tegra/isomgr.h>
 #include <mach/tegra_asoc_pdata.h>
+#include <asm/mach-types.h>
+#include <asm/mach/arch.h>
+#include <asm/system_info.h>
+#include <mach/xusb.h>
+
 #include <mach/dc.h>
 #include <mach/tegra_usb_pad_ctrl.h>
 
-#include <asm/mach-types.h>
-#include <asm/mach/arch.h>
-#include <mach/xusb.h>
-
 #include <linux/platform_data/tegra_usb.h>
 #include <linux/platform_data/tegra_ahci.h>
-#include <linux/irqchip/tegra.h>
 #include <linux/htc_headset_mgr.h>
 #include <linux/htc_headset_pmic.h>
 #include <linux/htc_headset_one_wire.h>
@@ -101,20 +97,19 @@
 #include "board-flounder.h"
 #include "board-common.h"
 #include "board-panel.h"
-#include "board-touch-raydium.h"
-#include "board-touch-maxim_sti.h"
 #include <linux/platform/tegra/clock.h>
 #include <linux/platform/tegra/common.h>
 #include "devices.h"
 #include "gpio-names.h"
-#include "iomap.h"
 #include "pm.h"
 #include "tegra-board-id.h"
+#include "iomap.h"
 #include "tegra-of-dev-auxdata.h"
+/*
 #include "../../../sound/soc/codecs/rt5506.h"
 #include "../../../sound/soc/codecs/rt5677.h"
 #include "../../../sound/soc/codecs/tfa9895.h"
-#include "../../../sound/soc/codecs/rt5677-spi.h"
+#include "../../../sound/soc/codecs/rt5677-spi.h"*/
 
 /*static unsigned int flounder_hw_rev;
 static unsigned int flounder_eng_id;
@@ -232,7 +227,7 @@ static __initdata struct tegra_clk_init_table flounder_clk_init_table[] = {
 	{ "pll_m",	NULL,		0,		false},
 	{ "hda",	"pll_p",	108000000,	false},
 	{ "hda2codec_2x", "pll_p",	48000000,	false},
-	{ "pwm",	"pll_p",	3187500,	false},
+	{ "pwm",	"pll_p",	48000000,	false},
 	{ "i2s1",	"pll_a_out0",	0,		false},
 	{ "i2s2",	"pll_a_out0",	0,		false},
 	{ "i2s3",	"pll_a_out0",	0,		false},
@@ -380,6 +375,7 @@ static struct platform_device *flounder_devices[] __initdata = {
 	&tegra_dam_device0,
 	&tegra_dam_device1,
 	&tegra_dam_device2,
+	&tegra_i2s_device0,
 	&tegra_i2s_device1,
 	&tegra_i2s_device2,
 	&tegra_i2s_device3,
@@ -619,24 +615,26 @@ static void __init flounder_spi_init(void)
 
 #ifdef CONFIG_USE_OF
 static struct of_dev_auxdata flounder_auxdata_lookup[] __initdata = {
-	OF_DEV_AUXDATA("nvidia,tegra114-spi", 0x7000d400, "spi-tegra114.0",
-				NULL),
-	OF_DEV_AUXDATA("nvidia,tegra114-spi", 0x7000d600, "spi-tegra114.1",
-				NULL),
-	OF_DEV_AUXDATA("nvidia,tegra114-spi", 0x7000d800, "spi-tegra114.2",
-				NULL),
-	OF_DEV_AUXDATA("nvidia,tegra114-spi", 0x7000da00, "spi-tegra114.3",
-				NULL),
-	OF_DEV_AUXDATA("nvidia,tegra114-spi", 0x7000dc00, "spi-tegra114.4",
-				NULL),
-	OF_DEV_AUXDATA("nvidia,tegra114-spi", 0x7000de00, "spi-tegra114.5",
-				NULL),
-	OF_DEV_AUXDATA("nvidia,tegra124-apbdma", 0x60020000, "tegra-apbdma",
-				NULL),
 	OF_DEV_AUXDATA("nvidia,tegra124-se", 0x70012000, "tegra12-se", NULL),
+	OF_DEV_AUXDATA("nvidia,tegra132-dtv", 0x7000c300, "dtv", NULL),
+	OF_DEV_AUXDATA("nvidia,tegra124-dtv", 0x7000c300, "dtv", NULL),
+#if defined(CONFIG_ARM64)
+	OF_DEV_AUXDATA("nvidia,tegra132-udc", 0x7d000000, "tegra-udc.0",
+			&tegra_udc_pdata.u_data.dev),
+	OF_DEV_AUXDATA("nvidia,tegra132-otg", 0x7d000000, "tegra-otg",
+			&tegra_otg_pdata),
+	OF_DEV_AUXDATA("nvidia,tegra132-ehci", 0x7d004000, "tegra-ehci.1",
+			NULL),
+	OF_DEV_AUXDATA("nvidia,tegra132-ehci", 0x7d008000, "tegra-ehci.2",
+			NULL),
+#endif
+	OF_DEV_AUXDATA("nvidia,tegra124-udc", TEGRA_USB_BASE, "tegra-udc.0",
+			NULL),
+	OF_DEV_AUXDATA("nvidia,tegra124-otg", TEGRA_USB_BASE, "tegra-otg",
+			NULL),
 	OF_DEV_AUXDATA("nvidia,tegra124-host1x", TEGRA_HOST1X_BASE, "host1x",
 		NULL),
-		OF_DEV_AUXDATA("nvidia,tegra124-gk20a", TEGRA_GK20A_BAR0_BASE,
+	OF_DEV_AUXDATA("nvidia,tegra124-gk20a", TEGRA_GK20A_BAR0_BASE,
 			"gk20a.0", NULL),
 #ifdef CONFIG_ARCH_TEGRA_VIC
 	OF_DEV_AUXDATA("nvidia,tegra124-vic", TEGRA_VIC_BASE, "vic03.0", NULL),
@@ -647,28 +645,16 @@ static struct of_dev_auxdata flounder_auxdata_lookup[] __initdata = {
 	OF_DEV_AUXDATA("nvidia,tegra124-isp", TEGRA_ISP_BASE, "isp.0", NULL),
 	OF_DEV_AUXDATA("nvidia,tegra124-isp", TEGRA_ISPB_BASE, "isp.1", NULL),
 	OF_DEV_AUXDATA("nvidia,tegra124-tsec", TEGRA_TSEC_BASE, "tsec", NULL),
-	OF_DEV_AUXDATA("nvidia,tegra114-hsuart", 0x70006000, "serial-tegra.0",
-				NULL),
-	OF_DEV_AUXDATA("nvidia,tegra114-hsuart", 0x70006040, "serial-tegra.1",
-				NULL),
-	OF_DEV_AUXDATA("nvidia,tegra114-hsuart", 0x70006200, "serial-tegra.2",
-				NULL),
-	OF_DEV_AUXDATA("nvidia,tegra114-hsuart", 0x70006300, "serial-tegra.3",
-				NULL),
-	OF_DEV_AUXDATA("nvidia,tegra124-i2c", 0x7000c000, "tegra12-i2c.0",
-				NULL),
-	OF_DEV_AUXDATA("nvidia,tegra124-i2c", 0x7000c400, "tegra12-i2c.1",
-				NULL),
-	OF_DEV_AUXDATA("nvidia,tegra124-i2c", 0x7000c500, "tegra12-i2c.2",
-				NULL),
-	OF_DEV_AUXDATA("nvidia,tegra124-i2c", 0x7000c700, "tegra12-i2c.3",
-				NULL),
-	OF_DEV_AUXDATA("nvidia,tegra124-i2c", 0x7000d000, "tegra12-i2c.4",
-				NULL),
-	OF_DEV_AUXDATA("nvidia,tegra124-i2c", 0x7000d100, "tegra12-i2c.5",
-				NULL),
 	OF_DEV_AUXDATA("nvidia,tegra124-xhci", 0x70090000, "tegra-xhci",
 				&xusb_pdata),
+	OF_DEV_AUXDATA("nvidia,tegra132-xhci", 0x70090000, "tegra-xhci",
+				&xusb_pdata),
+	OF_DEV_AUXDATA("nvidia,tegra124-dc", TEGRA_DISPLAY_BASE, "tegradc.0",
+		NULL),
+	OF_DEV_AUXDATA("nvidia,tegra124-dc", TEGRA_DISPLAY2_BASE, "tegradc.1",
+		NULL),
+	OF_DEV_AUXDATA("nvidia,tegra124-nvavp", 0x60001000, "nvavp",
+				NULL),
 	OF_DEV_AUXDATA("nvidia,tegra124-camera", 0, "pcl-generic",
 				NULL),
 	OF_DEV_AUXDATA("nvidia,tegra124-dfll", 0x70110000, "tegra_cl_dvfs",
@@ -884,7 +870,7 @@ static struct tegra_io_dpd pexclk2_io = {
 
 static void __init tegra_flounder_late_init(void)
 {
-	flounder_usb_init();
+/*	flounder_usb_init();*/
 /*	if(is_mdm_modem())
 		flounder_mdm_9k_init();*/
 #ifdef CONFIG_TEGRA_XUSB_PLATFORM

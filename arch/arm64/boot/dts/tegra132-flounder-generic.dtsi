@@ -1,12 +1,14 @@
- #include <dt-bindings/gpio/tegra-gpio.h>
- #include <dt-bindings/mfd/palmas.h>
- #include <dt-bindings/regulator/regulator.h>
- #include <dt-bindings/display/tegra-dc.h>
+#include <dt-bindings/gpio/tegra-gpio.h>
+#include <dt-bindings/mfd/palmas.h>
+#include <dt-bindings/regulator/regulator.h>
+#include <dt-bindings/display/tegra-dc.h>
+#include <dt-bindings/display/tegra-panel.h>
+
 
 #define TEGRA132_PACKAGE_IS_DSC
 
 #include "tegra132-soc-shield.dtsi"
-#include "tegra132-flounder-camera.dtsi"
+/*  #include "tegra132-flounder-camera.dtsi"*/
 
 #include "tegra132-flounder-sysedp.dtsi"
 #include "tegra132-flounder-powermon.dtsi"
@@ -18,7 +20,7 @@
 #include "tegra132-flounder-power-tree.dtsi"
 
 / {
-	model = "Flounder";
+	model = "flounder";
 	nvidia,dtsfilename = __FILE__;
 	nvidia-boardids = "1780:1100:2:B:7","1794:1000:0:A:6";
 	#address-cells = <2>;
@@ -42,14 +44,34 @@
 		/* tegradc.0 */
 		dc@54200000 {
 			status = "disabled";
+			nvidia,dc-flags = <TEGRA_DC_FLAG_ENABLED>;
+			nvidia,emc-clk-rate = <204000000>;
+			nvidia,cmu-enable = <1>;
+			nvidia,low-v-win = <0x2>;
+			nvidia,fb-bpp = <32>; /* bits per pixel */
+			nvidia,fb-flags = <TEGRA_FB_FLIP_ON_PROBE>;
 		};
 		/* tegradc.1 */
 		dc@54240000 {
 			status = "disabled";
+			nvidia,dc-flags = <TEGRA_DC_FLAG_ENABLED>;
+			nvidia,emc-clk-rate = <300000000>;
+			nvidia,fb-bpp = <32>; /* bits per pixel */
+			nvidia,fb-flags = <TEGRA_FB_FLIP_ON_PROBE>;
 		};
-                dsi {
-                       status = "disabled";
-                };
+		dsi {
+			nvidia,dsi-controller-vs = <1>;
+			status = "disabled";
+			panel_jdi_qxga_8_9 {
+		                gpios = <&gpio TEGRA_GPIO(Q, 2) 0>,
+		                        <&gpio TEGRA_GPIO(R, 0) 0>,
+		                        <&gpio TEGRA_GPIO(I, 4) 0>,
+		                        <&gpio TEGRA_GPIO(H, 5) 0>;
+				disp-default-out {
+					nvidia,out-rotation = <180>;
+				};
+			};
+		};
 		hdmi {
 			status = "disabled";
 		};
@@ -61,6 +83,14 @@
 
 	pmc@7000e400 {
 		status = "okay";
+		nvidia,invert-interrupt;
+		nvidia,suspend-mode = <0>;
+		nvidia,cpu-pwr-good-time = <500>;
+		nvidia,cpu-pwr-off-time = <300>;
+		nvidia,core-pwr-good-time = <3845 3845>;
+		nvidia,core-pwr-off-time = <2000>;
+		nvidia,core-power-req-active-high;
+		nvidia,sys-clock-req-active-high;
 	};
 
 	serial@70006000 {
@@ -90,7 +120,6 @@
 
 	i2c@7000c000 {
 		status = "okay";
-		clock-frequency = <400000>;
 
 		battery-gauge@36 {
 			compatible = "maxim,max17050";
@@ -196,7 +225,6 @@
 
 	i2c@7000c400 {
 		status = "okay";
-		clock-frequency = <400000>;
 
 		richtek_rt5506_amp@52 {
 			compatible = "richtek,rt5506-amp";
@@ -207,17 +235,13 @@
 
 	i2c@7000c500 {
 		status = "okay";
-		clock-frequency = <400000>;
 	};
 
 	i2c@7000c700 {
 		status = "okay";
-		clock-frequency = <400000>;
 	};
 
 	i2c@7000d000 {
-		status = "okay";
-		clock-frequency = <400000>;
 		nvidia,bit-banging-xfer-after-shutdown;
 
 	};

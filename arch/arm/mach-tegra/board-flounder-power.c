@@ -21,61 +21,42 @@
 #include <linux/platform_device.h>
 #include <linux/resource.h>
 #include <linux/io.h>
+#include <mach/irqs.h>
+#include <mach/edp.h>
+#include <linux/platform_data/tegra_edp.h>
+#include <linux/pid_thermal_gov.h>
+#include <linux/regulator/fixed.h>
 #include <linux/regulator/machine.h>
 #include <linux/irq.h>
 #include <linux/gpio.h>
-
-#include <linux/platform_data/tegra_edp.h>
-
-#include <linux/regulator/fixed.h>
-#include <linux/mfd/palmas.h>
-
 #include <linux/regulator/tegra-dfll-bypass-regulator.h>
-#include <linux/power/power_supply_extcon.h>
 #include <linux/tegra-fuse.h>
 #include <linux/tegra-pmc.h>
 #include <linux/pinctrl/pinconf-tegra.h>
+
 #include <linux/system-wakeup.h>
 #include <linux/syscore_ops.h>
 #include <linux/delay.h>
-#include <linux/tegra-pmc.h>
-
-#include <mach/irqs.h>
-#include <mach/edp.h>
-
-#include <linux/pid_thermal_gov.h>
-#include <linux/tegra_soctherm.h>
+#include <linux/mfd/palmas.h>
+#include <linux/power/power_supply_extcon.h>
 
 #include <asm/mach-types.h>
+#include <linux/tegra_soctherm.h>
 
 #include "pm.h"
+#include <linux/platform/tegra/dvfs.h>
 #include "board.h"
+#include <linux/platform/tegra/common.h>
 #include "tegra-board-id.h"
 #include "board-common.h"
 #include "board-flounder.h"
 #include "board-pmu-defines.h"
 #include "devices.h"
 #include "iomap.h"
-#include <linux/platform/tegra/dvfs.h>
 #include <linux/platform/tegra/tegra_cl_dvfs.h>
 
 #define PMC_CTRL                0x0
 #define PMC_CTRL_INTR_LOW       (1 << 17)
-
-/*static void flounder_board_suspend(int state, enum suspend_stage stage)
-{
-	static int request = 0;
-
-	if (state == TEGRA_SUSPEND_LP0 && stage == TEGRA_SUSPEND_BEFORE_PERIPHERAL) {
-		if (!request)
-			gpio_request_one(TEGRA_GPIO_PB5, GPIOF_OUT_INIT_HIGH,
-				"sdmmc3_dat2");
-		else
-			gpio_direction_output(TEGRA_GPIO_PB5,1);
-
-		request = 1;
-	}
-}*/
 
 static struct tegra_suspend_platform_data flounder_suspend_data = {
 	.cpu_timer      = 500,
@@ -156,17 +137,11 @@ static struct tegra_cl_dvfs_platform_data e1736_cl_dvfs_data = {
 	.cfg_param = &e1736_flounder_cl_dvfs_param,
 };
 
-static const struct of_device_id dfll_of_match[] = {
-	{ .compatible	= "nvidia,tegra124-dfll", },
-	{ .compatible	= "nvidia,tegra132-dfll", },
-	{ },
-};
-
 static int __init flounder_cl_dvfs_init(void)
 {
 	struct tegra_cl_dvfs_platform_data *data = NULL;
-	struct device_node *dn = of_find_matching_node(NULL, dfll_of_match);
-
+		struct device_node *dn = of_find_compatible_node(
+			NULL, NULL, "nvidia,tegra132-dfll");
 	/*
 	 * flounder platforms maybe used with different DT variants. Some of them
 	 * include DFLL data in DT, some - not. Check DT here, and continue with
@@ -175,12 +150,26 @@ static int __init flounder_cl_dvfs_init(void)
 	if (dn) {
 		bool available = of_device_is_available(dn);
 		of_node_put(dn);
+
 		if (available)
 			return 0;
 	}
 
 	e1736_fill_reg_map();
 	data = &e1736_cl_dvfs_data;
+
+	data->u.pmu_pwm.pinctrl_dev = tegra_get_pinctrl_device_handle();
+	if (!data->u.pmu_pwm.pinctrl_dev)
+		return -EINVAL;
+
+	data->u.pmu_pwm.pwm_pingroup =
+			pinctrl_get_selector_from_group_name(
+				data->u.pmu_pwm.pinctrl_dev,
+				"dvfs_pwm_px0");
+	if (data->u.pmu_pwm.pwm_pingroup < 0) {
+		pr_err("%s: Tegra pin dvfs_pwm_px0 not found\n", __func__);
+		return -EINVAL;
+	}
 
 	if (data) {
 		data->flags = TEGRA_CL_DVFS_DYN_OUTPUT_CFG;
@@ -221,26 +210,6 @@ int __init flounder_regulator_init(void)
 	flounder_cl_dvfs_init();
 	return 0;
 }
-/*
-int __init flounder_edp_init(void)
-{
-	unsigned int regulator_mA;
-
-	* Both vdd_cpu and vdd_gpu uses 3-phase rail, so EDP current
-	 * limit will be the same.
-	 * 
-	regulator_mA = 16800;
-
-	pr_info("%s: CPU regulator %d mA\n", __func__, regulator_mA);
-	tegra_init_cpu_edp_limits(regulator_mA);
-
-	regulator_mA = 12000;
-	pr_info("%s: GPU regulator %d mA\n", __func__, regulator_mA);
-	tegra_init_gpu_edp_limits(regulator_mA);
-
-	return 0;
-}*/
-
 
 static struct pid_thermal_gov_params soctherm_pid_params = {
 	.max_err_temp = 9000,
