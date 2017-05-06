@@ -158,7 +158,7 @@ static int __init flounder_cl_dvfs_init(void)
 	e1736_fill_reg_map();
 	data = &e1736_cl_dvfs_data;
 
-	data->u.pmu_pwm.pinctrl_dev = tegra_get_pinctrl_device_handle();
+/*	data->u.pmu_pwm.pinctrl_dev = tegra_get_pinctrl_device_handle();
 	if (!data->u.pmu_pwm.pinctrl_dev)
 		return -EINVAL;
 
@@ -169,7 +169,7 @@ static int __init flounder_cl_dvfs_init(void)
 	if (data->u.pmu_pwm.pwm_pingroup < 0) {
 		pr_err("%s: Tegra pin dvfs_pwm_px0 not found\n", __func__);
 		return -EINVAL;
-	}
+	}*/
 
 	if (data) {
 		data->flags = TEGRA_CL_DVFS_DYN_OUTPUT_CFG;

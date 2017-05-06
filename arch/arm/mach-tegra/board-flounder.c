@@ -870,7 +870,7 @@ static struct tegra_io_dpd pexclk2_io = {
 
 static void __init tegra_flounder_late_init(void)
 {
-/*	flounder_usb_init();*/
+	flounder_usb_init();
 /*	if(is_mdm_modem())
 		flounder_mdm_9k_init();*/
 #ifdef CONFIG_TEGRA_XUSB_PLATFORM
@@ -889,7 +889,7 @@ static void __init tegra_flounder_late_init(void)
 
 	isomgr_init();
 /*	flounder_headset_init();*/
-/*	flounder_panel_init();*/
+	flounder_panel_init();
 	flounder_kbc_init();
 
 	/* put PEX pads into DPD mode to save additional power */
@@ -897,7 +897,7 @@ static void __init tegra_flounder_late_init(void)
 	tegra_io_dpd_enable(&pexclk1_io);
 	tegra_io_dpd_enable(&pexclk2_io);
 
-/*	flounder_sensors_init();*/
+	flounder_sensors_init();
 
 	flounder_soctherm_init();
 

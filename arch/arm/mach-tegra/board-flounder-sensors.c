@@ -59,7 +59,7 @@
 #include "board-flounder.h"
 #include "tegra-board-id.h"
 
-
+#ifdef CONFIG_CYPRESS_SAR
 int cy8c_sar1_reset(void)
 {
 	pr_debug("[SAR] %s Enter\n", __func__);
@@ -106,6 +106,7 @@ int cy8c_sar_powerdown(int activate)
 	}
 	return ret;
 }
+#endif
 
 static struct i2c_board_info flounder_i2c_board_info_cm32181[] = {
 	{
@@ -113,6 +114,7 @@ static struct i2c_board_info flounder_i2c_board_info_cm32181[] = {
 	},
 };
 
+#ifdef CONFIG_CYPRESS_SAR
 struct cy8c_i2c_sar_platform_data sar1_cy8c_data[] = {
 	{
 		.gpio_irq = TEGRA_GPIO_PCC5,
@@ -150,6 +152,7 @@ struct i2c_board_info flounder_i2c_board_info_cypress_sar1[] = {
 		.irq = -1,
 	},
 };
+#endif
 
 /*
  * Soc Camera platform driver for testing
@@ -628,6 +631,7 @@ static int flounder_nct72_init(void)
 	return ret;
 }
 
+#ifdef CONFIG_CYPRESS_SAR
 static int powerdown_gpio_init(void){
 	int ret = 0;
 	static int done;
@@ -689,13 +693,16 @@ static int flounder_sar1_init(void){
 			ARRAY_SIZE(flounder_i2c_board_info_cypress_sar1));
 	return 0;
 }
+#endif
 
 int __init flounder_sensors_init(void)
 {
 	flounder_camera_init();
 	flounder_nct72_init();
+#ifdef CONFIG_CYPRESS_SAR
 	flounder_sar_init();
 	flounder_sar1_init();
+#endif
 
 	i2c_register_board_info(0, flounder_i2c_board_info_cm32181,
 		ARRAY_SIZE(flounder_i2c_board_info_cm32181));

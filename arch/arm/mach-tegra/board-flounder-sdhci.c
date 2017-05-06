@@ -30,6 +30,7 @@
 #include <linux/platform_data/mmc-sdhci-tegra.h>
 #include <linux/mfd/max77660/max77660-core.h>
 #include <linux/tegra-fuse.h>
+#include <linux/dma-mapping.h>
 #include <linux/clk/tegra.h>
 #include <linux/random.h>
 
@@ -145,6 +146,8 @@ static struct embedded_sdio_data embedded_sdio_data0 = {
 };
 #endif
 
+static u64 tegra_sdhci_dmamask = DMA_BIT_MASK(64);
+
 static struct tegra_sdhci_platform_data tegra_sdhci_platform_data0 = {
 	.mmc_data = {
 		.register_status_notify	= flounder_wifi_status_register,
@@ -172,7 +175,8 @@ static struct tegra_sdhci_platform_data tegra_sdhci_platform_data3 = {
 	.power_gpio = -1,
 	.is_8bit = 1,
 	.tap_delay = 0x4,
-	.trim_delay = 0x3,
+	.trim_delay = 0x4,
+	.is_ddr_trim_delay = true,
 	.ddr_trim_delay = 0x0,
 	.mmc_data = {
 		.built_in = 1,
@@ -190,6 +194,8 @@ static struct platform_device tegra_sdhci_device0 = {
 	.resource	= sdhci_resource0,
 	.num_resources	= ARRAY_SIZE(sdhci_resource0),
 	.dev = {
+		.dma_mask = &tegra_sdhci_dmamask,
+		.coherent_dma_mask = DMA_BIT_MASK(64),
 		.platform_data = &tegra_sdhci_platform_data0,
 	},
 };
@@ -200,6 +206,8 @@ static struct platform_device tegra_sdhci_device3 = {
 	.resource	= sdhci_resource3,
 	.num_resources	= ARRAY_SIZE(sdhci_resource3),
 	.dev = {
+		.dma_mask = &tegra_sdhci_dmamask,
+		.coherent_dma_mask = DMA_BIT_MASK(64),
 		.platform_data = &tegra_sdhci_platform_data3,
 	},
 };
@@ -506,9 +514,13 @@ int __init flounder_sdhci_init(void)
 		tegra_sdhci_platform_data3.boot_vcore_mv = boot_vcore_mv;
 	}
 
+	tegra_sdhci_platform_data0.max_clk_limit = 204000000;
+
 	speedo = tegra_fuse_readl(FUSE_SOC_SPEEDO_0);
 	tegra_sdhci_platform_data0.cpu_speedo = speedo;
 	tegra_sdhci_platform_data3.cpu_speedo = speedo;
+
+	tegra_sdhci_platform_data3.max_clk_limit = 200000000;
 
 	platform_device_register(&tegra_sdhci_device3);
 	platform_device_register(&tegra_sdhci_device0);
