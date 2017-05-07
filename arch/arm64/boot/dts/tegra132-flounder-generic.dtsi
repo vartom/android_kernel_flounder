@@ -27,7 +27,7 @@
 	#size-cells = <2>;
 
 	chosen {
-		bootargs = "tegraid=40.0.0.00.00 vmalloc=256M video=tegrafb console=ttyS0,115200n8 earlyprintk 1780:1100:2:B:7";
+		bootargs = "tegraid=40.0.0.00.00 vmalloc=300M video=tegrafb no_console_suspend=1 console=ttyS0,115200n8 earlyprintk vpr_resize board_info=0x06F4:0x04d2:0x04:0x00:0x00";
 		linux,initrd-start = <0x85000000>;
 		linux,initrd-end = <0x851bc400>;
 	};
@@ -74,7 +74,12 @@
 		vi {
 			status = "disabled";
 		};
-
+		tsec {
+			carveout {
+				carveout_addr = <0xfe000000>;
+				carveout_size = <0x2000000>;
+			};
+		};
 	};
 
 	backlight {
