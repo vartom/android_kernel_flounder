@@ -46,14 +46,14 @@
 			status = "okay";
 			nvidia,dc-flags = <TEGRA_DC_FLAG_ENABLED>;
 			nvidia,emc-clk-rate = <204000000>;
-			nvidia,cmu-enable = <1>;
+			nvidia,cmu-enable = <0>;
 			nvidia,low-v-win = <0x2>;
 			nvidia,fb-bpp = <32>; /* bits per pixel */
 			nvidia,fb-flags = <TEGRA_FB_FLIP_ON_PROBE>;
 		};
 		/* tegradc.1 */
 		dc@54240000 {
-			status = "okay";
+			status = "disabled";
 			nvidia,dc-flags = <TEGRA_DC_FLAG_ENABLED>;
 			nvidia,emc-clk-rate = <300000000>;
 			nvidia,fb-bpp = <32>; /* bits per pixel */
@@ -63,8 +63,6 @@
 			nvidia,dsi-controller-vs = <DSI_VS_1>;
 			status = "okay";
 			panel-j-qxga-8-9 {
-				nvidia,panel-rst-gpio = <&gpio TEGRA_GPIO(Q, 2) 0>;
-				nvidia,panel-bl-pwm-gpio = <&gpio TEGRA_GPIO(R, 0) 0>;
 				disp-default-out {
 					nvidia,out-rotation = <180>;
 				};
