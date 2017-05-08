@@ -19,6 +19,7 @@
 #include <linux/resource.h>
 #include <linux/platform_device.h>
 #include <linux/wlan_plat.h>
+#include <linux/fs.h>
 #include <linux/delay.h>
 #include <linux/gpio.h>
 #include <linux/clk.h>
@@ -29,21 +30,19 @@
 #include <linux/platform_data/mmc-sdhci-tegra.h>
 #include <linux/mfd/max77660/max77660-core.h>
 #include <linux/tegra-fuse.h>
-#include <linux/random.h>
 #include <linux/dma-mapping.h>
+#include <linux/clk/tegra.h>
+#include <linux/random.h>
 
 #include <asm/mach-types.h>
 #include <mach/irqs.h>
-#include <mach/gpio-tegra.h>
 
 #include "gpio-names.h"
 #include "board.h"
 #include "board-flounder.h"
-#include "dvfs.h"
 #include "iomap.h"
 #include "tegra-board-id.h"
 
-#define WLAN_PLAT_NODFS_FLAG	0x01
 #define FLOUNDER_WLAN_PWR	TEGRA_GPIO_PX7
 #define FLOUNDER_WLAN_WOW	TEGRA_GPIO_PU5
 #if defined(CONFIG_BCMDHD_EDP_SUPPORT)
@@ -61,24 +60,12 @@ static int flounder_wifi_reset(int on);
 static int flounder_wifi_power(int on);
 static int flounder_wifi_set_carddetect(int val);
 static int flounder_wifi_get_mac_addr(unsigned char *buf);
-/*static void* flounder_wifi_get_country_code(char *country_iso_code, u32 flags);*/
 
 static struct wifi_platform_data flounder_wifi_control = {
 	.set_power	= flounder_wifi_power,
 	.set_reset	= flounder_wifi_reset,
 	.set_carddetect	= flounder_wifi_set_carddetect,
 	.get_mac_addr	= flounder_wifi_get_mac_addr,
-/*	.get_country_code	= flounder_wifi_get_country_code,*/
-#if defined (CONFIG_BCMDHD_EDP_SUPPORT)
-	/* wifi edp client information */
-	.client_info	= {
-		.name		= "wifi_edp_client",
-		.states		= wifi_states,
-		.num_states	= ARRAY_SIZE(wifi_states),
-		.e0_index	= 0,
-		.priority	= EDP_MAX_PRIO,
-	},
-#endif
 };
 
 static struct resource wifi_resource[] = {
@@ -179,7 +166,7 @@ static struct tegra_sdhci_platform_data tegra_sdhci_platform_data0 = {
 	.uhs_mask = MMC_UHS_MASK_DDR50,
 	.calib_3v3_offsets = 0x7676,
 	.calib_1v8_offsets = 0x7676,
-	.default_drv_type = MMC_SET_DRIVER_TYPE_A,
+	.max_clk_limit = 204000000,
 };
 
 static struct tegra_sdhci_platform_data tegra_sdhci_platform_data3 = {
@@ -189,6 +176,7 @@ static struct tegra_sdhci_platform_data tegra_sdhci_platform_data3 = {
 	.is_8bit = 1,
 	.tap_delay = 0x4,
 	.trim_delay = 0x4,
+	.is_ddr_trim_delay = true,
 	.ddr_trim_delay = 0x0,
 	.mmc_data = {
 		.built_in = 1,
@@ -313,7 +301,6 @@ static int flounder_wifi_get_mac_addr(unsigned char *buf)
 }
 
 #define WLC_CNTRY_BUF_SZ	4		/* Country string is 3 bytes + NUL */
-
 
 static char flounder_country_code[WLC_CNTRY_BUF_SZ] = { 0 };
 
@@ -470,33 +457,6 @@ struct cntry_locales_custom country_code_nodfs_table[] = {
 	{"ZA", "E0", 26},
 };
 
-static void* flounder_wifi_get_country_code(char *country_iso_code, u32 flags)
-{
-	struct cntry_locales_custom *locales;
-	int size, i;
-
-	if (flags & WLAN_PLAT_NODFS_FLAG) {
-		locales = country_code_nodfs_table;
-		size = ARRAY_SIZE(country_code_nodfs_table);
-	} else {
-		locales = country_code_custom_table;
-		size = ARRAY_SIZE(country_code_custom_table);
-	}
-
-	if (size == 0)
-		 return NULL;
-
-	if (!country_iso_code || country_iso_code[0] == 0)
-		country_iso_code = flounder_country_code;
-
-	for (i = 0; i < size; i++) {
-		if (strcmp(country_iso_code, locales[i].iso_abbrev) == 0)
-			return &locales[i];
-	}
-	/* if no country code matched return first universal code */
-	return &locales[0];
-}
-
 static int __init flounder_wifi_init(void)
 {
 	int rc;
@@ -535,20 +495,20 @@ int __init flounder_sdhci_init(void)
 	u32 speedo;
 
 	nominal_core_mv =
-		tegra_dvfs_rail_get_nominal_millivolts(tegra_core_rail);
+		tegra_dvfs_get_core_nominal_millivolts();
 	if (nominal_core_mv) {
 		tegra_sdhci_platform_data0.nominal_vcore_mv = nominal_core_mv;
 		tegra_sdhci_platform_data3.nominal_vcore_mv = nominal_core_mv;
 	}
 	min_vcore_override_mv =
-		tegra_dvfs_rail_get_override_floor(tegra_core_rail);
+		tegra_dvfs_get_core_override_floor();
 	if (min_vcore_override_mv) {
 		tegra_sdhci_platform_data0.min_vcore_override_mv =
 			min_vcore_override_mv;
 		tegra_sdhci_platform_data3.min_vcore_override_mv =
 			min_vcore_override_mv;
 	}
-	boot_vcore_mv = tegra_dvfs_rail_get_boot_level(tegra_core_rail);
+	boot_vcore_mv = tegra_dvfs_get_core_boot_level();
 	if (boot_vcore_mv) {
 		tegra_sdhci_platform_data0.boot_vcore_mv = boot_vcore_mv;
 		tegra_sdhci_platform_data3.boot_vcore_mv = boot_vcore_mv;
