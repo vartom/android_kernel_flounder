@@ -21,11 +21,13 @@
 #include <linux/power_supply.h>
 #include <mach/edp.h>
 #include <linux/interrupt.h>
+#include <linux/tegra_soctherm.h>
+
 #include "board-flounder.h"
 #include "board.h"
 #include "board-panel.h"
-#include "common.h"
-#include "tegra11_soctherm.h"
+#include <linux/platform/tegra/common.h>
+
 
 /* --- EDP consumers data --- */
 static unsigned int imx219_states[] = { 0, 411 };
@@ -63,7 +65,11 @@ static struct sysedp_platform_data flounder_sysedp_platform_data = {
 	.consumer_data = flounder_sysedp_consumer_data,
 	.consumer_data_size = ARRAY_SIZE(flounder_sysedp_consumer_data),
 	.margin = 0,
+#if defined(CONFIG_ARCH_TEGRA_13x_SOC)
+	.min_budget = 0,
+#else
 	.min_budget = 4400,
+#endif
 };
 
 static struct platform_device flounder_sysedp_device = {
@@ -81,10 +87,10 @@ void __init flounder_new_sysedp_init(void)
 }
 
 static struct tegra_sysedp_platform_data flounder_sysedp_dynamic_capping_platdata = {
-	.core_gain = 125,
+	.core_gain = 100,
 	.init_req_watts = 20000,
 	.pthrot_ratio = 75,
-	.cap_method = TEGRA_SYSEDP_CAP_METHOD_DIRECT,
+	.cap_method = TEGRA_SYSEDP_CAP_METHOD_SIGNAL,
 };
 
 static struct platform_device flounder_sysedp_dynamic_capping = {
@@ -125,13 +131,6 @@ void __init flounder_sysedp_dynamic_capping_init(void)
 	}
 	flounder_sysedp_dynamic_capping_platdata.corecap = corecap;
 	flounder_sysedp_dynamic_capping_platdata.corecap_size = corecap_size;
-
-	flounder_sysedp_dynamic_capping_platdata.cpufreq_lim = tegra_get_system_edp_entries(
-		&flounder_sysedp_dynamic_capping_platdata.cpufreq_lim_size);
-	if (!flounder_sysedp_dynamic_capping_platdata.cpufreq_lim) {
-		WARN_ON(1);
-		return;
-	}
 
 	r = platform_device_register(&flounder_sysedp_dynamic_capping);
 	WARN_ON(r);
