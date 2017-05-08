@@ -692,6 +692,13 @@ static struct device_node
 			is_dsi_a_1200_800_8_0 = true;
 		break;
 	case BOARD_PM363:
+	case BOARD_E1780:
+		np_panel = of_find_compatible_node(NULL,
+			NULL, "j,qxga-8-9");
+		if (np_panel && pdata && dc_out)
+			tegra_panel_register_ops(dc_out,
+				&dsi_j_qxga_8_9_ops);
+		break;
 	case BOARD_E1824:
 		if (of_machine_is_compatible("nvidia,jetson-cv"))
 			is_edp_s_2160p_15_6 = true;
@@ -750,6 +757,12 @@ static struct device_node
 			tegra_panel_register_ops(dc_out,
 				&edp_s_uhdtv_15_6_ops);
 	}
+	np_panel = of_find_compatible_node(NULL,
+		NULL, "j,qxga-8-9");
+	if (np_panel && pdata && dc_out)
+		tegra_panel_register_ops(dc_out,
+			&dsi_j_qxga_8_9_ops);
+
 	if (np_panel)
 		return np_panel;
 	else
