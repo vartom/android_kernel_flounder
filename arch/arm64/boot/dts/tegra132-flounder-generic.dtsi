@@ -1,41 +1,102 @@
 #include <dt-bindings/gpio/tegra-gpio.h>
-#include <dt-bindings/input/input.h>
-#include <dt-bindings/interrupt-controller/arm-gic.h>
+#include <dt-bindings/mfd/palmas.h>
+#include <dt-bindings/regulator/regulator.h>
+#include <dt-bindings/display/tegra-dc.h>
+#include <dt-bindings/display/tegra-panel.h>
 
-#include "tegra132.dtsi"
-#include "tegra132-flounder-camera.dtsi"
-#include "tegra132-flounder-trusty.dtsi"
+
+#define TEGRA132_PACKAGE_IS_DSC
+
+#include "tegra132-soc-shield.dtsi"
+/*  #include "tegra132-flounder-camera.dtsi"*/
+
 #include "tegra132-flounder-sysedp.dtsi"
 #include "tegra132-flounder-powermon.dtsi"
 #include "tegra132-flounder-emc.dtsi"
 #include "tegra132-tn8-dfll.dtsi"
 #include "tegra132-flounder-touch.dtsi"
-#include <tegra132-platforms/tegra132-flounder-pinmux.dtsi>
-#include <tegra132-platforms/tegra132-flounder-gpio-default.dtsi>
-
+#include "tegra132-platforms/tegra132-flounder-gpio-default.dtsi"
+#include "tegra132-platforms/tegra132-flounder-pinmux.dtsi"
+#include "tegra132-flounder-power-tree.dtsi"
+#include "panel-j-qxga-8-9.dtsi"
 / {
 	model = "flounder";
-
+	nvidia,dtsfilename = __FILE__;
 	nvidia-boardids = "1780:1100:2:B:7","1794:1000:0:A:6";
 	#address-cells = <2>;
 	#size-cells = <2>;
 
 	chosen {
-		bootargs = "tegraid=40.0.0.00.00 vmalloc=256M video=tegrafb console=ttyS0,115200n8 earlyprintk";
+		bootargs = "tegraid=40.0.0.00.00 vmalloc=300M video=tegrafb no_console_suspend=1 console=ttyS0,115200n8 earlyprintk vpr_resize board_info=0x06F4:0x04d2:0x04:0x00:0x00";
 		linux,initrd-start = <0x85000000>;
 		linux,initrd-end = <0x851bc400>;
 	};
 
 
-        host1x {
-                dsi {
-                        nvidia,dsi-controller-vs = <1>;
-                        status = "okay";
-                };
+	firmware {
+		android {
+			compatible = "android,firmware";
+			hardware = "flounder";
+		};
+	};
 
+        host1x {
+		/* tegradc.0 */
+		dc@54200000 {
+			status = "okay";
+			nvidia,dc-flags = <TEGRA_DC_FLAG_ENABLED>;
+			nvidia,emc-clk-rate = <204000000>;
+			nvidia,cmu-enable = <0>;
+			nvidia,low-v-win = <0x2>;
+			nvidia,fb-bpp = <32>; /* bits per pixel */
+			nvidia,fb-flags = <TEGRA_FB_FLIP_ON_PROBE>;
+		};
+		/* tegradc.1 */
+		dc@54240000 {
+			status = "disabled";
+			nvidia,dc-flags = <TEGRA_DC_FLAG_ENABLED>;
+			nvidia,emc-clk-rate = <300000000>;
+			nvidia,fb-bpp = <32>; /* bits per pixel */
+			nvidia,fb-flags = <TEGRA_FB_FLIP_ON_PROBE>;
+		};
+		dsi {
+			nvidia,dsi-controller-vs = <DSI_VS_1>;
+			status = "okay";
+			panel-j-qxga-8-9 {
+				disp-default-out {
+					nvidia,out-rotation = <180>;
+				};
+			};
+		};
 		hdmi {
 			status = "disabled";
 		};
+		vi {
+			status = "disabled";
+		};
+		tsec {
+			carveout {
+				carveout_addr = <0xfe000000>;
+				carveout_size = <0x2000000>;
+			};
+		};
+	};
+
+	backlight {
+		compatible = "pwm-backlight";
+		status = "okay";
+	};
+
+	pmc@7000e400 {
+		status = "okay";
+		nvidia,invert-interrupt;
+		nvidia,suspend-mode = <0>;
+		nvidia,cpu-pwr-good-time = <500>;
+		nvidia,cpu-pwr-off-time = <300>;
+		nvidia,core-pwr-good-time = <3845 3845>;
+		nvidia,core-pwr-off-time = <2000>;
+		nvidia,core-power-req-active-high;
+		nvidia,sys-clock-req-active-high;
 	};
 
 	serial@70006000 {
@@ -65,9 +126,8 @@
 
 	i2c@7000c000 {
 		status = "okay";
-		clock-frequency = <400000>;
 
-		max17050@36 {
+		battery-gauge@36 {
 			compatible = "maxim,max17050";
 			reg = <0x36>;
 			battery-id-channel-name = "batt-id-channel";
@@ -91,12 +151,51 @@
 			};
 		};
 
-		bq2419x: bq2419x@6b {
+		battery-charger@6b {
 			compatible = "ti,bq2419x";
 			reg = <0x6b>;
 
-			interrupt-parent = <&gpio>;
-			interrupts = <TEGRA_GPIO(J, 0) 0x0>;
+			battery_charger: charger {
+				compatible = "htc,bq2419x_battery";
+				regulator-name = "batt_regulator";
+				regulator-max-microamp = <2000000>;
+				auto-recharge-time = <30>;
+				input-voltage-limit-millivolt = <4440>;
+				fast-charge-current-limit-milliamp = <2944>;
+				pre-charge-current-limit-milliamp = <512>;
+				charge-voltage-limit-millivolt = <4352>;
+				charge-suspend-polling-time-sec = <3600>;
+				temp-polling-time-sec = <30>;
+				thermal-overtemp-control-no-thermister;
+				thermal-temperature-hot-deciC = <551>;
+				thermal-temperature-cold-deciC = <(-1)>;
+				thermal-temperature-warm-deciC = <481>;
+				thermal-temperature-cool-deciC = <100>;
+				thermal-temperature-hysteresis-deciC = <30>;
+				thermal-warm-voltage-millivolt = <4096>;
+				thermal-cool-voltage-millivolt = <4352>;
+				thermal-disable-warm-current-half;
+				thermal-overtemp-output-current-milliamp = <1344>;
+				unknown-battery-id-minimum = <1343>;
+				battery-id-channel-name = "batt-id-channel";
+				input-voltage-min-high-battery-millivolt = <4440>;
+				input-voltage-min-low-battery-millivolt = <4200>;
+				input-voltage-switch-millivolt = <4150>;
+				gauge-power-supply-name = "battery";
+				vbus-channel-name = "charger-vbus";
+				vbus-channel-max-voltage-mv = <6875>;
+				vbus-channel-max-adc = <4096>;
+				consumers {
+					c1 {
+						regulator-consumer-supply = "usb_bat_chg";
+						regulator-consumer-device = "tegra-udc.0";
+					};
+					c2 {
+						regulator-consumer-supply = "usb_bat_chg";
+						regulator-consumer-device = "tegra-otg";
+					};
+				};
+			};
 
 			vbus {
 				regulator-name = "vbus_regulator";
@@ -132,7 +231,6 @@
 
 	i2c@7000c400 {
 		status = "okay";
-		clock-frequency = <400000>;
 
 		richtek_rt5506_amp@52 {
 			compatible = "richtek,rt5506-amp";
@@ -143,20 +241,15 @@
 
 	i2c@7000c500 {
 		status = "okay";
-		clock-frequency = <400000>;
 	};
 
 	i2c@7000c700 {
 		status = "okay";
-		clock-frequency = <400000>;
 	};
 
 	i2c@7000d000 {
-		status = "okay";
-		clock-frequency = <400000>;
 		nvidia,bit-banging-xfer-after-shutdown;
 
-	/include/ "tegra124-flounder-power.dtsi"
 	};
 
 	i2c@7000d100 {
@@ -216,237 +309,16 @@
 		};
 	};
 
-	regulators {
-		compatible = "simple-bus";
-		#address-cells = <1>;
-		#size-cells = <0>;
-
-		vdd_ac_bat_reg: regulator@0 {
-			compatible = "regulator-fixed";
-			reg = <0>;
-			regulator-name = "vdd_ac_bat";
-			regulator-min-microvolt = <5000000>;
-			regulator-max-microvolt = <5000000>;
-			regulator-always-on;
-
-			consumers {
-				c1 {
-					regulator-consumer-supply = "vdd_sys_bl";
-				};
-			};
-		};
-
-		usb0_vbus: regulator@1 {
-			compatible = "regulator-fixed-sync";
-			reg = <1>;
-			regulator-name = "usb0-vbus";
-			regulator-min-microvolt = <5000000>;
-			regulator-max-microvolt = <5000000>;
-			enable-active-high;
-
-			consumers {
-				c1 {
-					regulator-consumer-supply = "usb_vbus0";
-					regulator-consumer-device = "tegra-xhci";
-				};
-			};
-		};
-
-		usb1_vbus: regulator@2 {
-			compatible = "regulator-fixed-sync";
-			reg = <2>;
-			regulator-name = "usb1-vbus";
-			regulator-min-microvolt = <5000000>;
-			regulator-max-microvolt = <5000000>;
-			enable-active-high;
-			vin-supply = <&palmas_smps10_out2>;
-
-			consumers {
-				c1 {
-					regulator-consumer-supply = "usb_vbus";
-					regulator-consumer-device = "tegra-ehci.1";
-				};
-				c2 {
-					regulator-consumer-supply = "usb_vbus1";
-					regulator-consumer-device = "tegra-xhci";
-				};
-			};
-		};
-
-		usb2_vbus: regulator@3 {
-			compatible = "regulator-fixed-sync";
-			reg = <3>;
-			regulator-name = "usb2-vbus";
-			regulator-min-microvolt = <5000000>;
-			regulator-max-microvolt = <5000000>;
-			enable-active-high;
-			vin-supply = <&palmas_smps10_out2>;
-
-			consumers {
-				c1 {
-					regulator-consumer-supply = "usb_vbus";
-					regulator-consumer-device = "tegra-ehci.2";
-				};
-				c2 {
-					regulator-consumer-supply = "usb_vbus2";
-					regulator-consumer-device = "tegra-xhci";
-				};
-			};
-		};
-
-		avdd_lcd: regulator@4 {
-			compatible = "regulator-fixed-sync";
-			reg = <4>;
-			regulator-name = "avdd-lcd";
-			regulator-min-microvolt = <3300000>;
-			regulator-max-microvolt = <3300000>;
-			gpio = <&palmas_gpio 3 0>;
-			enable-active-high;
-			vin-supply = <&palmas_smps9>;
-
-			consumers {
-				c1 {
-					regulator-consumer-supply = "avdd_lcd";
-				};
-			};
-		};
-
-		vdd_lcd: regulator@5 {
-			compatible = "regulator-fixed-sync";
-			reg = <5>;
-			regulator-name = "vdd-lcd";
-			regulator-min-microvolt = <1200000>;
-			regulator-max-microvolt = <1200000>;
-			enable-active-high;
-			vin-supply = <&palmas_smps8>;
-
-			consumers {
-				c1 {
-					regulator-consumer-supply = "vdd_lcd_1v2_s";
-				};
-			};
-		};
-
-		ldoen: regulator@6 {
-			compatible = "regulator-fixed-sync";
-			reg = <6>;
-			regulator-name = "ldoen";
-			regulator-min-microvolt = <1200000>;
-			regulator-max-microvolt = <1200000>;
-			regulator-boot-on;
-			enable-active-high;
-			gpio = <&palmas_gpio 6 0>;
-			vin-supply = <&palmas_smps8>;
-
-			consumers {
-				c1 {
-					regulator-consumer-supply = "ldoen";
-					regulator-consumer-device = "1-0052";
-				};
-			};
-		};
-
-		vpp_fuse: regulator@7 {
-			compatible = "regulator-fixed-sync";
-			reg = <7>;
-			regulator-name = "vpp-fuse";
-			regulator-min-microvolt = <1800000>;
-			regulator-max-microvolt = <1800000>;
-			enable-active-high;
-			gpio = <&palmas_gpio 7 0>;
-			vin-supply = <&palmas_smps8>;
-
-			consumers {
-				c1 {
-					regulator-consumer-supply = "vpp_fuse";
-				};
-			};
-		};
-
-		en_lcd_bl: regulator@8 {
-			compatible = "regulator-fixed-sync";
-			reg = <8>;
-			regulator-name = "en-lcd-bl";
-			regulator-min-microvolt = <5000000>;
-			regulator-max-microvolt = <5000000>;
-			enable-active-high;
-
-			consumers {
-				c1 {
-					regulator-consumer-supply = "vdd_lcd_bl_en";
-				};
-			};
-		};
+	therm_est_sensor {
+		status = "disabled";
 	};
 
-	htc_battery_max17050 {
-		compatible = "htc,max17050_battery";
+	cpu_edp {
+		nvidia,edp_limit = <16800>;
 	};
 
-	htc_battery_bq2419x {
-		compatible = "htc,bq2419x_battery";
-		regulator-name = "batt_regulator";
-		regulator-max-microamp = <2000000>;
-		auto-recharge-time = <30>;
-		input-voltage-limit-millivolt = <4440>;
-		fast-charge-current-limit-milliamp = <2944>;
-		pre-charge-current-limit-milliamp = <512>;
-		charge-voltage-limit-millivolt = <4352>;
-		charge-suspend-polling-time-sec = <3600>;
-		temp-polling-time-sec = <30>;
-		thermal-overtemp-control-no-thermister;
-		thermal-temperature-hot-deciC = <551>;
-		thermal-temperature-cold-deciC = <(-1)>;
-		thermal-temperature-warm-deciC = <481>;
-		thermal-temperature-cool-deciC = <100>;
-		thermal-temperature-hysteresis-deciC = <30>;
-		thermal-warm-voltage-millivolt = <4096>;
-		thermal-cool-voltage-millivolt = <4352>;
-		thermal-disable-warm-current-half;
-		thermal-overtemp-output-current-milliamp = <1344>;
-		unknown-battery-id-minimum = <1343>;
-		battery-id-channel-name = "batt-id-channel";
-		input-voltage-min-high-battery-millivolt = <4440>;
-		input-voltage-min-low-battery-millivolt = <4200>;
-		input-voltage-switch-millivolt = <4150>;
-		gauge-power-supply-name = "battery";
-		vbus-channel-name = "charger-vbus";
-		vbus-channel-max-voltage-mv = <6875>;
-		vbus-channel-max-adc = <4096>;
-		consumers {
-			c1 {
-				regulator-consumer-supply = "usb_bat_chg";
-				regulator-consumer-device = "tegra-udc.0";
-			};
-			c2 {
-				regulator-consumer-supply = "usb_bat_chg";
-				regulator-consumer-device = "tegra-otg";
-			};
-		};
+	gpu_edp {
+		nvidia,edp_limit = <16800>;
 	};
 
-	vdd_hv_3v: fixedregulator@0 {
-		compatible = "regulator-fixed";
-		regulator-name = "vdd_hv_3v";
-		regulator-min-microvolt = <3000000>;
-		regulator-max-microvolt = <3000000>;
-		regulator-boot-on;
-		consumers {
-			c1 {
-				regulator-consumer-supply = "vdd";
-				regulator-consumer-device = "0-004c";
-			};
-		};
-	};
-
-	soctherm: soctherm@0x700E2000 {
-		compatible = "nvidia,tegra-soctherm";
-		reg = <0x0 0x700E2000 0x0 0x600>,
-		      <0x0 0x70aaf00d 0x0 0x40>;
-		interrupts = <0 48 0x04
-			      0 51 0x04>;
-		status = "okay";
-		interrupt-controller;
-		#interrupt-cells = <2>;
-	};
 };
