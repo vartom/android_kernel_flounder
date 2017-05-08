@@ -20,7 +20,7 @@
 #ifndef _MACH_TEGRA_BOARD_FLOUNDER_H
 #define _MACH_TEGRA_BOARD_FLOUNDER_H
 
-#include <mach/gpio-tegra.h>
+
 #include <mach/irqs.h>
 #include "gpio-names.h"
 #include <mach/board_htc.h>
