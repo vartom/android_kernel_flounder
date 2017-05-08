@@ -45,6 +45,7 @@ static int print_reset_warning(void)
 
 static struct keyreset_platform_data flounder_reset_keys_pdata = {
 	.reset_fn = &print_reset_warning,
+	.key_down_delay = RESTART_DELAY_MS,
 	.keys_down = {
 		KEY_POWER,
 		0
