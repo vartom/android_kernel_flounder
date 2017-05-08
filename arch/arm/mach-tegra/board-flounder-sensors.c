@@ -27,8 +27,7 @@
 #include <linux/pid_thermal_gov.h>
 #include <linux/tegra-fuse.h>
 #include <mach/edp.h>
-#include <mach/pinmux-t12.h>
-#include <mach/pinmux.h>
+
 #include <mach/io_dpd.h>
 #include <media/camera.h>
 #include <media/ar0261.h>
@@ -53,15 +52,12 @@
 #include <linux/generic_adc_thermal.h>
 #include <mach/board_htc.h>
 
-#include "cpu-tegra.h"
+#include <linux/platform/tegra/cpu-tegra.h>
 #include "devices.h"
 #include "board.h"
 #include "board-common.h"
 #include "board-flounder.h"
 #include "tegra-board-id.h"
-#ifdef CONFIG_THERMAL_GOV_ADAPTIVE_SKIN
-#include <linux/adaptive_skin.h>
-#endif
 
 #ifdef CONFIG_CYPRESS_SAR
 int cy8c_sar1_reset(void)
@@ -425,8 +421,6 @@ static int flounder_camera_init(void)
 	tegra_io_dpd_enable(&csia_io);
 	tegra_io_dpd_enable(&csib_io);
 	tegra_io_dpd_enable(&csie_io);
-	tegra_gpio_disable(TEGRA_GPIO_PBB0);
-	tegra_gpio_disable(TEGRA_GPIO_PCC0);
 
 #if IS_ENABLED(CONFIG_SOC_CAMERA_PLATFORM)
 	platform_device_register(&flounder_soc_camera_device);
@@ -450,400 +444,9 @@ static struct thermal_zone_params cpu_tzp = {
 	.governor_params = &cpu_pid_params,
 };
 
-static struct thermal_zone_params therm_est_activ_tzp = {
-	.governor_name = "step_wise"
+static struct thermal_zone_params board_tzp = {
+	.governor_name = "pid_thermal_gov"
 };
-
-static struct throttle_table cpu_throttle_table[] = {
-	/* CPU_THROT_LOW cannot be used by other than CPU */
-	/*      CPU,    GPU,  C2BUS,  C3BUS,   SCLK,    EMC   */
-	{ { 2499000, NO_CAP, NO_CAP, NO_CAP, NO_CAP, NO_CAP } },
-	{ { 2397000, NO_CAP, NO_CAP, NO_CAP, NO_CAP, NO_CAP } },
-	{ { 2295000, NO_CAP, NO_CAP, NO_CAP, NO_CAP, NO_CAP } },
-	{ { 2269500, NO_CAP, NO_CAP, NO_CAP, NO_CAP, NO_CAP } },
-	{ { 2244000, NO_CAP, NO_CAP, NO_CAP, NO_CAP, NO_CAP } },
-	{ { 2218500, NO_CAP, NO_CAP, NO_CAP, NO_CAP, NO_CAP } },
-	{ { 2193000, NO_CAP, NO_CAP, NO_CAP, NO_CAP, NO_CAP } },
-	{ { 2167500, NO_CAP, NO_CAP, NO_CAP, NO_CAP, NO_CAP } },
-	{ { 2142000, NO_CAP, NO_CAP, NO_CAP, NO_CAP, NO_CAP } },
-	{ { 2116500, NO_CAP, NO_CAP, NO_CAP, NO_CAP, NO_CAP } },
-	{ { 2091000, NO_CAP, NO_CAP, NO_CAP, NO_CAP, NO_CAP } },
-	{ { 2065500, NO_CAP, NO_CAP, NO_CAP, NO_CAP, NO_CAP } },
-	{ { 2040000, NO_CAP, NO_CAP, NO_CAP, NO_CAP, NO_CAP } },
-	{ { 2014500, NO_CAP, NO_CAP, NO_CAP, NO_CAP, NO_CAP } },
-	{ { 1989000, NO_CAP, NO_CAP, NO_CAP, NO_CAP, NO_CAP } },
-	{ { 1963500, NO_CAP, NO_CAP, NO_CAP, NO_CAP, NO_CAP } },
-	{ { 1938000, NO_CAP, NO_CAP, NO_CAP, NO_CAP, NO_CAP } },
-	{ { 1912500, NO_CAP, NO_CAP, NO_CAP, NO_CAP, NO_CAP } },
-	{ { 1887000, NO_CAP, NO_CAP, NO_CAP, NO_CAP, NO_CAP } },
-	{ { 1861500, NO_CAP, NO_CAP, NO_CAP, NO_CAP, NO_CAP } },
-	{ { 1836000, NO_CAP, NO_CAP, NO_CAP, NO_CAP, NO_CAP } },
-	{ { 1810500, NO_CAP, NO_CAP, NO_CAP, NO_CAP, NO_CAP } },
-	{ { 1785000, NO_CAP, NO_CAP, NO_CAP, NO_CAP, NO_CAP } },
-	{ { 1759500, NO_CAP, NO_CAP, NO_CAP, NO_CAP, NO_CAP } },
-	{ { 1734000, NO_CAP, NO_CAP, NO_CAP, NO_CAP, NO_CAP } },
-	{ { 1708500, NO_CAP, NO_CAP, NO_CAP, NO_CAP, NO_CAP } },
-	{ { 1683000, NO_CAP, NO_CAP, NO_CAP, NO_CAP, NO_CAP } },
-	{ { 1657500, NO_CAP, NO_CAP, NO_CAP, NO_CAP, NO_CAP } },
-	{ { 1632000, NO_CAP, NO_CAP, NO_CAP, NO_CAP, NO_CAP } },
-	{ { 1606500, 790000, NO_CAP, NO_CAP, NO_CAP, NO_CAP } },
-	{ { 1581000, 776000, NO_CAP, NO_CAP, NO_CAP, NO_CAP } },
-	{ { 1555500, 762000, NO_CAP, NO_CAP, NO_CAP, NO_CAP } },
-	{ { 1530000, 749000, NO_CAP, NO_CAP, NO_CAP, NO_CAP } },
-	{ { 1504500, 735000, NO_CAP, NO_CAP, NO_CAP, NO_CAP } },
-	{ { 1479000, 721000, NO_CAP, NO_CAP, NO_CAP, NO_CAP } },
-	{ { 1453500, 707000, NO_CAP, NO_CAP, NO_CAP, NO_CAP } },
-	{ { 1428000, 693000, NO_CAP, NO_CAP, NO_CAP, NO_CAP } },
-	{ { 1402500, 679000, NO_CAP, NO_CAP, NO_CAP, NO_CAP } },
-	{ { 1377000, 666000, NO_CAP, NO_CAP, NO_CAP, NO_CAP } },
-	{ { 1351500, 652000, NO_CAP, NO_CAP, NO_CAP, NO_CAP } },
-	{ { 1326000, 638000, NO_CAP, NO_CAP, NO_CAP, NO_CAP } },
-	{ { 1300500, 624000, NO_CAP, NO_CAP, NO_CAP, NO_CAP } },
-	{ { 1275000, 610000, NO_CAP, NO_CAP, NO_CAP, NO_CAP } },
-	{ { 1249500, 596000, NO_CAP, NO_CAP, NO_CAP, NO_CAP } },
-	{ { 1224000, 582000, NO_CAP, NO_CAP, NO_CAP, 792000 } },
-	{ { 1198500, 569000, NO_CAP, NO_CAP, NO_CAP, 792000 } },
-	{ { 1173000, 555000, NO_CAP, NO_CAP, 360000, 792000 } },
-	{ { 1147500, 541000, NO_CAP, NO_CAP, 360000, 792000 } },
-	{ { 1122000, 527000, NO_CAP, 684000, 360000, 792000 } },
-	{ { 1096500, 513000, 444000, 684000, 360000, 792000 } },
-	{ { 1071000, 499000, 444000, 684000, 360000, 792000 } },
-	{ { 1045500, 486000, 444000, 684000, 360000, 792000 } },
-	{ { 1020000, 472000, 444000, 684000, 324000, 792000 } },
-	{ {  994500, 458000, 444000, 684000, 324000, 792000 } },
-	{ {  969000, 444000, 444000, 600000, 324000, 792000 } },
-	{ {  943500, 430000, 444000, 600000, 324000, 792000 } },
-	{ {  918000, 416000, 396000, 600000, 324000, 792000 } },
-	{ {  892500, 402000, 396000, 600000, 324000, 792000 } },
-	{ {  867000, 389000, 396000, 600000, 324000, 792000 } },
-	{ {  841500, 375000, 396000, 600000, 288000, 792000 } },
-	{ {  816000, 361000, 396000, 600000, 288000, 792000 } },
-	{ {  790500, 347000, 396000, 600000, 288000, 792000 } },
-	{ {  765000, 333000, 396000, 504000, 288000, 792000 } },
-	{ {  739500, 319000, 348000, 504000, 288000, 792000 } },
-	{ {  714000, 306000, 348000, 504000, 288000, 624000 } },
-	{ {  688500, 292000, 348000, 504000, 288000, 624000 } },
-	{ {  663000, 278000, 348000, 504000, 288000, 624000 } },
-	{ {  637500, 264000, 348000, 504000, 288000, 624000 } },
-	{ {  612000, 250000, 348000, 504000, 252000, 624000 } },
-	{ {  586500, 236000, 348000, 504000, 252000, 624000 } },
-	{ {  561000, 222000, 348000, 420000, 252000, 624000 } },
-	{ {  535500, 209000, 288000, 420000, 252000, 624000 } },
-	{ {  510000, 195000, 288000, 420000, 252000, 624000 } },
-	{ {  484500, 181000, 288000, 420000, 252000, 624000 } },
-	{ {  459000, 167000, 288000, 420000, 252000, 624000 } },
-	{ {  433500, 153000, 288000, 420000, 252000, 396000 } },
-	{ {  408000, 139000, 288000, 420000, 252000, 396000 } },
-	{ {  382500, 126000, 288000, 420000, 252000, 396000 } },
-	{ {  357000, 112000, 288000, 420000, 252000, 396000 } },
-	{ {  331500,  98000, 288000, 420000, 252000, 396000 } },
-	{ {  306000,  84000, 288000, 420000, 252000, 396000 } },
-	{ {  280500,  84000, 288000, 420000, 252000, 396000 } },
-	{ {  255000,  84000, 288000, 420000, 252000, 396000 } },
-	{ {  229500,  84000, 288000, 420000, 252000, 396000 } },
-	{ {  204000,  84000, 288000, 420000, 252000, 396000 } },
-};
-
-static struct balanced_throttle cpu_throttle = {
-	.throt_tab_size = ARRAY_SIZE(cpu_throttle_table),
-	.throt_tab = cpu_throttle_table,
-};
-
-static struct throttle_table gpu_throttle_table[] = {
-	/* CPU_THROT_LOW cannot be used by other than CPU */
-	/*      CPU,    GPU,  C2BUS,  C3BUS,   SCLK,    EMC   */
-	{ { 2499000, 867600, 480000, 756000, 384000, 924000 } },
-	{ { 2397000, 825200, 480000, 756000, 384000, 924000 } },
-	{ { 2295000, 782800, 480000, 756000, 384000, 924000 } },
-	{ { 2269500, 772200, 480000, 756000, 384000, 924000 } },
-	{ { 2244000, 761600, 480000, 756000, 384000, 924000 } },
-	{ { 2218500, 751100, 480000, 756000, 384000, 924000 } },
-	{ { 2193000, 740500, 480000, 756000, 384000, 924000 } },
-	{ { 2167500, 729900, 480000, 756000, 384000, 924000 } },
-	{ { 2142000, 719300, 480000, 756000, 384000, 924000 } },
-	{ { 2116500, 708700, 480000, 756000, 384000, 924000 } },
-	{ { 2091000, 698100, 480000, 756000, 384000, 924000 } },
-	{ { 2065500, 687500, 480000, 756000, 384000, 924000 } },
-	{ { 2040000, 676900, 480000, 756000, 384000, 924000 } },
-	{ { 2014500, 666000, 480000, 756000, 384000, 924000 } },
-	{ { 1989000, 656000, 480000, 756000, 384000, 924000 } },
-	{ { 1963500, 645000, 480000, 756000, 384000, 924000 } },
-	{ { 1938000, 635000, 480000, 756000, 384000, 924000 } },
-	{ { 1912500, 624000, 480000, 756000, 384000, 924000 } },
-	{ { 1887000, 613000, 480000, 756000, 384000, 924000 } },
-	{ { 1861500, 603000, 480000, 756000, 384000, 924000 } },
-	{ { 1836000, 592000, 480000, 756000, 384000, 924000 } },
-	{ { 1810500, 582000, 480000, 756000, 384000, 924000 } },
-	{ { 1785000, 571000, 480000, 756000, 384000, 924000 } },
-	{ { 1759500, 560000, 480000, 756000, 384000, 924000 } },
-	{ { 1734000, 550000, 480000, 756000, 384000, 924000 } },
-	{ { 1708500, 539000, 480000, 756000, 384000, 924000 } },
-	{ { 1683000, 529000, 480000, 756000, 384000, 924000 } },
-	{ { 1657500, 518000, 480000, 756000, 384000, 924000 } },
-	{ { 1632000, 508000, 480000, 756000, 384000, 924000 } },
-	{ { 1606500, 497000, 480000, 756000, 384000, 924000 } },
-	{ { 1581000, 486000, 480000, 756000, 384000, 924000 } },
-	{ { 1555500, 476000, 480000, 756000, 384000, 924000 } },
-	{ { 1530000, 465000, 480000, 756000, 384000, 924000 } },
-	{ { 1504500, 455000, 480000, 756000, 384000, 924000 } },
-	{ { 1479000, 444000, 480000, 756000, 384000, 924000 } },
-	{ { 1453500, 433000, 480000, 756000, 384000, 924000 } },
-	{ { 1428000, 423000, 480000, 756000, 384000, 924000 } },
-	{ { 1402500, 412000, 480000, 756000, 384000, 924000 } },
-	{ { 1377000, 402000, 480000, 756000, 384000, 924000 } },
-	{ { 1351500, 391000, 480000, 756000, 384000, 924000 } },
-	{ { 1326000, 380000, 480000, 756000, 384000, 924000 } },
-	{ { 1300500, 370000, 480000, 756000, 384000, 924000 } },
-	{ { 1275000, 359000, 480000, 756000, 384000, 924000 } },
-	{ { 1249500, 349000, 480000, 756000, 384000, 924000 } },
-	{ { 1224000, 338000, 480000, 756000, 384000, 792000 } },
-	{ { 1198500, 328000, 480000, 756000, 384000, 792000 } },
-	{ { 1173000, 317000, 480000, 756000, 360000, 792000 } },
-	{ { 1147500, 306000, 480000, 756000, 360000, 792000 } },
-	{ { 1122000, 296000, 480000, 684000, 360000, 792000 } },
-	{ { 1096500, 285000, 444000, 684000, 360000, 792000 } },
-	{ { 1071000, 275000, 444000, 684000, 360000, 792000 } },
-	{ { 1045500, 264000, 444000, 684000, 360000, 792000 } },
-	{ { 1020000, 253000, 444000, 684000, 324000, 792000 } },
-	{ {  994500, 243000, 444000, 684000, 324000, 792000 } },
-	{ {  969000, 232000, 444000, 600000, 324000, 792000 } },
-	{ {  943500, 222000, 444000, 600000, 324000, 792000 } },
-	{ {  918000, 211000, 396000, 600000, 324000, 792000 } },
-	{ {  892500, 200000, 396000, 600000, 324000, 792000 } },
-	{ {  867000, 190000, 396000, 600000, 324000, 792000 } },
-	{ {  841500, 179000, 396000, 600000, 288000, 792000 } },
-	{ {  816000, 169000, 396000, 600000, 288000, 792000 } },
-	{ {  790500, 158000, 396000, 600000, 288000, 792000 } },
-	{ {  765000, 148000, 396000, 504000, 288000, 792000 } },
-	{ {  739500, 137000, 348000, 504000, 288000, 792000 } },
-	{ {  714000, 126000, 348000, 504000, 288000, 624000 } },
-	{ {  688500, 116000, 348000, 504000, 288000, 624000 } },
-	{ {  663000, 105000, 348000, 504000, 288000, 624000 } },
-	{ {  637500,  95000, 348000, 504000, 288000, 624000 } },
-	{ {  612000,  84000, 348000, 504000, 252000, 624000 } },
-	{ {  586500,  84000, 348000, 504000, 252000, 624000 } },
-	{ {  561000,  84000, 348000, 420000, 252000, 624000 } },
-	{ {  535500,  84000, 288000, 420000, 252000, 624000 } },
-	{ {  510000,  84000, 288000, 420000, 252000, 624000 } },
-	{ {  484500,  84000, 288000, 420000, 252000, 624000 } },
-	{ {  459000,  84000, 288000, 420000, 252000, 624000 } },
-	{ {  433500,  84000, 288000, 420000, 252000, 396000 } },
-	{ {  408000,  84000, 288000, 420000, 252000, 396000 } },
-	{ {  382500,  84000, 288000, 420000, 252000, 396000 } },
-	{ {  357000,  84000, 288000, 420000, 252000, 396000 } },
-	{ {  331500,  84000, 288000, 420000, 252000, 396000 } },
-	{ {  306000,  84000, 288000, 420000, 252000, 396000 } },
-	{ {  280500,  84000, 288000, 420000, 252000, 396000 } },
-	{ {  255000,  84000, 288000, 420000, 252000, 396000 } },
-	{ {  229500,  84000, 288000, 420000, 252000, 396000 } },
-	{ {  204000,  84000, 288000, 420000, 252000, 396000 } },
-};
-
-static struct balanced_throttle gpu_throttle = {
-	.throt_tab_size = ARRAY_SIZE(gpu_throttle_table),
-	.throt_tab = gpu_throttle_table,
-};
-
-static int __init flounder_tj_throttle_init(void)
-{
-	if (of_machine_is_compatible("google,flounder") ||
-	    of_machine_is_compatible("google,flounder_lte") ||
-	    of_machine_is_compatible("google,flounder64") ||
-	    of_machine_is_compatible("google,flounder64_lte")) {
-		balanced_throttle_register(&cpu_throttle, "cpu-balanced");
-		balanced_throttle_register(&gpu_throttle, "gpu-balanced");
-	}
-
-	return 0;
-}
-late_initcall(flounder_tj_throttle_init);
-
-#ifdef CONFIG_TEGRA_SKIN_THROTTLE
-static struct thermal_trip_info skin_trips[] = {
-	{
-		.cdev_type = "skin-balanced",
-		.trip_temp = 45000,
-		.trip_type = THERMAL_TRIP_PASSIVE,
-		.upper = THERMAL_NO_LIMIT,
-		.lower = THERMAL_NO_LIMIT,
-		.hysteresis = 0,
-	}
-};
-
-static struct therm_est_subdevice skin_devs_wifi[] = {
-	{
-		.dev_data = "Tdiode_tegra",
-		.coeffs = {
-			3, 0, 0, 0,
-			-1, 0, 0, 0,
-			0, 0, 0, 0,
-			0, 0, 0, 0,
-			0, 0, 0, -1
-		},
-	},
-	{
-		.dev_data = "Tboard_tegra",
-		.coeffs = {
-			7, 6, 5, 3,
-			3, 4, 4, 4,
-			4, 4, 4, 4,
-			3, 4, 3, 3,
-			4, 6, 9, 15
-		},
-	},
-};
-
-static struct therm_est_subdevice skin_devs_lte[] = {
-	{
-		.dev_data = "Tdiode_tegra",
-		.coeffs = {
-			2, 0, 0, 0,
-			0, 0, 0, 0,
-			0, 0, 0, 0,
-			0, 0, 0, 0,
-			0, 0, -1, -2
-		},
-	},
-	{
-		.dev_data = "Tboard_tegra",
-		.coeffs = {
-			7, 5, 4, 3,
-			3, 3, 4, 4,
-			3, 3, 3, 3,
-			4, 4, 3, 3,
-			3, 5, 10, 16
-		},
-	},
-};
-
-#ifdef CONFIG_THERMAL_GOV_ADAPTIVE_SKIN
-static struct adaptive_skin_thermal_gov_params skin_astg_params = {
-	.tj_tran_threshold = 2000,
-	.tj_std_threshold = 3000,
-	.tj_std_fup_threshold = 5000,
-
-	.tskin_tran_threshold = 500,
-	.tskin_std_threshold = 1000,
-
-	.target_state_tdp = 12,
-};
-
-static struct thermal_zone_params skin_astg_tzp = {
-	.governor_name = "adaptive_skin",
-	.governor_params = &skin_astg_params,
-};
-#endif
-
-static struct pid_thermal_gov_params skin_pid_params = {
-	.max_err_temp = 4000,
-	.max_err_gain = 1000,
-
-	.gain_p = 1000,
-	.gain_d = 0,
-
-	.up_compensation = 15,
-	.down_compensation = 15,
-};
-
-static struct thermal_zone_params skin_tzp = {
-	.governor_name = "pid_thermal_gov",
-	.governor_params = &skin_pid_params,
-};
-
-static struct thermal_zone_params skin_step_wise_tzp = {
-	.governor_name = "step_wise",
-};
-
-static struct therm_est_data skin_data = {
-	.num_trips = ARRAY_SIZE(skin_trips),
-	.trips = skin_trips,
-	.polling_period = 1100,
-	.passive_delay = 15000,
-	.tc1 = 10,
-	.tc2 = 1,
-	.tzp = &skin_step_wise_tzp,
-};
-
-static struct throttle_table skin_throttle_table[] = {
-	/* CPU_THROT_LOW cannot be used by other than CPU */
-	/*      CPU,    GPU,  C2BUS,  C3BUS,   SCLK,    EMC   */
-       { { 2000000, 804000, 480000, 756000, NO_CAP, NO_CAP } },
-       { { 1900000, 756000, 480000, 648000, NO_CAP, NO_CAP } },
-       { { 1800000, 708000, 444000, 648000, NO_CAP, NO_CAP } },
-       { { 1700000, 648000, 444000, 600000, NO_CAP, NO_CAP } },
-       { { 1600000, 648000, 444000, 600000, NO_CAP, NO_CAP } },
-       { { 1500000, 612000, 444000, 600000, NO_CAP, NO_CAP } },
-       { { 1450000, 612000, 444000, 600000, NO_CAP, NO_CAP } },
-       { { 1400000, 540000, 444000, 600000, NO_CAP, NO_CAP } },
-       { { 1350000, 540000, 444000, 600000, NO_CAP, NO_CAP } },
-       { { 1300000, 540000, 444000, 600000, NO_CAP, NO_CAP } },
-       { { 1250000, 540000, 444000, 600000, NO_CAP, NO_CAP } },
-       { { 1200000, 540000, 444000, 600000, NO_CAP, NO_CAP } },
-       { { 1150000, 468000, 444000, 600000, 240000, NO_CAP } },
-       { { 1100000, 468000, 444000, 600000, 240000, NO_CAP } },
-       { { 1050000, 468000, 396000, 600000, 240000, NO_CAP } },
-       { { 1000000, 468000, 396000, 504000, 204000, NO_CAP } },
-       { {  975000, 468000, 396000, 504000, 204000, 792000 } },
-       { {  950000, 468000, 396000, 504000, 204000, 792000 } },
-       { {  925000, 468000, 396000, 504000, 204000, 792000 } },
-       { {  900000, 468000, 348000, 504000, 204000, 792000 } },
-       { {  875000, 468000, 348000, 504000, 136000, 600000 } },
-       { {  850000, 468000, 348000, 420000, 136000, 600000 } },
-       { {  825000, 396000, 348000, 420000, 136000, 600000 } },
-       { {  800000, 396000, 348000, 420000, 136000, 528000 } },
-       { {  775000, 396000, 348000, 420000, 136000, 528000 } },
-};
-
-static struct balanced_throttle skin_throttle = {
-	.throt_tab_size = ARRAY_SIZE(skin_throttle_table),
-	.throt_tab = skin_throttle_table,
-};
-
-static int __init flounder_skin_init(void)
-{
-	if (of_machine_is_compatible("google,flounder") ||
-	    of_machine_is_compatible("google,flounder64")) {
-		/* turn on tskin only on XE (DVT2) and later revision */
-		if (flounder_get_hw_revision() >= FLOUNDER_REV_DVT2 ) {
-			skin_data.ndevs = ARRAY_SIZE(skin_devs_wifi);
-			skin_data.devs = skin_devs_wifi;
-			skin_data.toffset = -4746;
-#ifdef CONFIG_THERMAL_GOV_ADAPTIVE_SKIN
-			skin_data.tzp = &skin_astg_tzp;
-			skin_data.passive_delay = 6000;
-#endif
-
-			balanced_throttle_register(&skin_throttle,
-							"skin-balanced");
-			tegra_skin_therm_est_device.dev.platform_data =
-							&skin_data;
-			platform_device_register(&tegra_skin_therm_est_device);
-		}
-	}
-	else if (of_machine_is_compatible("google,flounder_lte") ||
-	    of_machine_is_compatible("google,flounder64_lte")) {
-		/* turn on tskin only on LTE XD (DVT1) and later revision  */
-		if (flounder_get_hw_revision() >= FLOUNDER_REV_DVT1 ) {
-			skin_data.ndevs = ARRAY_SIZE(skin_devs_lte);
-			skin_data.devs = skin_devs_lte;
-			skin_data.toffset = -1625;
-#ifdef CONFIG_THERMAL_GOV_ADAPTIVE_SKIN
-			skin_data.tzp = &skin_astg_tzp;
-			skin_data.passive_delay = 6000;
-#endif
-
-			balanced_throttle_register(&skin_throttle,
-							"skin-balanced");
-			tegra_skin_therm_est_device.dev.platform_data =
-							&skin_data;
-			platform_device_register(&tegra_skin_therm_est_device);
-		}
-
-	}
-	return 0;
-}
-late_initcall(flounder_skin_init);
-#endif
 
 static struct nct1008_platform_data flounder_nct72_pdata = {
 	.loc_name = "tegra",
@@ -854,14 +457,14 @@ static struct nct1008_platform_data flounder_nct72_pdata = {
 
 	.sensors = {
 		[LOC] = {
-			.tzp = &therm_est_activ_tzp,
+			.tzp = &board_tzp,
 			.shutdown_limit = 120, /* C */
 			.passive_delay = 1000,
 			.num_trips = 1,
 			.trips = {
 				{
 					.cdev_type = "therm_est_activ",
-					.trip_temp = 26000,
+					.trip_temp = 40000,
 					.trip_type = THERMAL_TRIP_ACTIVE,
 					.hysteresis = 1000,
 					.upper = THERMAL_NO_LIMIT,
@@ -899,6 +502,22 @@ static struct nct1008_platform_data flounder_nct72_pdata = {
 };
 
 #ifdef CONFIG_TEGRA_SKIN_THROTTLE
+static struct pid_thermal_gov_params skin_pid_params = {
+	.max_err_temp = 4000,
+	.max_err_gain = 1000,
+
+	.gain_p = 1000,
+	.gain_d = 0,
+
+	.up_compensation = 15,
+	.down_compensation = 15,
+};
+
+static struct thermal_zone_params skin_tzp = {
+	.governor_name = "pid_thermal_gov",
+	.governor_params = &skin_pid_params,
+};
+
 static struct nct1008_platform_data flounder_nct72_tskin_pdata = {
 	.loc_name = "skin",
 
@@ -920,8 +539,11 @@ static struct nct1008_platform_data flounder_nct72_tskin_pdata = {
 			.tzp = &skin_tzp,
 			.num_trips = 1,
 			.trips = {
-				{
-					.cdev_type = "skin-balanced",
+
+	{
+		.cdev_type = "skin-balanced",
+
+
 					.trip_temp = 50000,
 					.trip_type = THERMAL_TRIP_PASSIVE,
 					.upper = THERMAL_NO_LIMIT,
@@ -951,16 +573,14 @@ static struct i2c_board_info flounder_i2c_nct72_board_info[] = {
 
 static int flounder_nct72_init(void)
 {
-	s32 base_cp, shft_cp;
-	u32 base_ft, shft_ft;
 	int nct72_port = TEGRA_GPIO_PI6;
 	int ret = 0;
 	int i;
 	struct thermal_trip_info *trip_state;
 
 	/* raise NCT's thresholds if soctherm CP,FT fuses are ok */
-	if ((tegra_fuse_calib_base_get_cp(&base_cp, &shft_cp) >= 0) &&
-	    (tegra_fuse_calib_base_get_ft(&base_ft, &shft_ft) >= 0)) {
+	if ((tegra_fuse_calib_base_get_cp(NULL, NULL) >= 0) &&
+	    (tegra_fuse_calib_base_get_ft(NULL, NULL) >= 0)) {
 		flounder_nct72_pdata.sensors[EXT].shutdown_limit += 20;
 		for (i = 0; i < flounder_nct72_pdata.sensors[EXT].num_trips;
 			 i++) {
