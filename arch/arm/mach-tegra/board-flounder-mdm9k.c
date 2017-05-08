@@ -19,11 +19,11 @@
 #include <linux/delay.h>
 #include <linux/err.h>
 #include <linux/platform_device.h>
-#include <mach/pinmux-t12.h>
-#include <mach/pinmux.h>
+
+
 #include <linux/platform_data/qcom_usb_modem_power.h>
 
-#include "cpu-tegra.h"
+#include <linux/platform/tegra/cpu-tegra.h>
 #include "devices.h"
 #include "board.h"
 #include "board-common.h"
@@ -305,7 +305,6 @@ struct tegra_usb_platform_data tegra_ehci2_hsic_modem_pdata = {
 	.phy_intf = TEGRA_USB_PHY_INTF_HSIC,
 	.op_mode	= TEGRA_USB_OPMODE_HOST,
 	.u_data.host = {
-		.vbus_gpio = -1,
 		.hot_plug = false,
 		.remote_wakeup_supported = false,
 		.power_off_on_suspend = true,
