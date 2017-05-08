@@ -111,9 +111,10 @@ int __init set_radio_image_status(char *read_mdm_version)
 
 	return 1;
 }
+
 __setup("androidboot.baseband=", set_radio_image_status);
 
-int get_radio_image_status(void)
+unsigned int get_radio_image_status(void)
 {
 	return radio_image_status;
 }
