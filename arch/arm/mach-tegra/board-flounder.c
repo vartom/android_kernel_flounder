@@ -931,11 +931,13 @@ static void __init tegra_flounder_reserve(void)
 {
 #if defined(CONFIG_NVMAP_CONVERT_CARVEOUT_TO_IOVMM) || \
 		defined(CONFIG_TEGRA_NO_CARVEOUT)
-	/* 1536*2048*4*2 = 25165824 bytes */
-	tegra_reserve4( 0,SZ_16M + SZ_8M, 0, (100 * SZ_1M) );
+	ulong carveout_size = 0;
 #else
-	tegra_reserve4(SZ_1G, SZ_16M + SZ_8M, SZ_4M, 100 * SZ_1M);
+	ulong carveout_size = SZ_1G;
 #endif
+	ulong vpr_size = 186 * SZ_1M;
+
+	tegra_reserve4(carveout_size, 0, 0, vpr_size);
 }
 
 static const char * const flounder_dt_board_compat[] = {
