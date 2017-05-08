@@ -88,6 +88,7 @@ extern struct tegra_panel_ops dsi_l_720p_5_loki_ops;
 extern struct tegra_panel_ops edp_s_uhdtv_15_6_ops;
 extern struct tegra_panel_ops dsi_o_720p_6_0_ops;
 extern struct tegra_panel_ops dsi_o_720p_6_0_01_ops;
+extern struct tegra_panel_ops dsi_j_qxga_8_9_ops;
 
 extern struct tegra_panel_ops *fixed_primary_panel_ops;
 extern struct tegra_panel_ops *fixed_secondary_panel_ops;
@@ -99,6 +100,7 @@ extern struct pwm_bl_data_dt_ops *fixed_pwm_bl_ops;
 extern struct tegra_panel dsi_p_wuxga_10_1;
 extern struct tegra_panel dsi_a_1080p_11_6;
 extern struct tegra_panel dsi_s_wqxga_10_1;
+extern struct tegra_panel dsi_j_qxga_8_9;
 extern struct tegra_panel dsi_lgd_wxga_7_0;
 extern struct tegra_panel dsi_a_1080p_14_0;
 extern struct tegra_panel edp_a_1080p_14_0;
