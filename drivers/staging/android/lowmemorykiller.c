@@ -56,6 +56,7 @@ static short lowmem_adj[6] = {
 	6,
 	12,
 };
+
 static int lowmem_adj_size = 4;
 static int lowmem_minfree[6] = {
 	3 * 512,	/* 6MB */
@@ -63,6 +64,7 @@ static int lowmem_minfree[6] = {
 	4 * 1024,	/* 16MB */
 	16 * 1024,	/* 64MB */
 };
+
 static int lowmem_minfree_size = 4;
 
 static unsigned long lowmem_deathpending_timeout;
@@ -86,7 +88,6 @@ static unsigned long lowmem_scan(struct shrinker *s, struct shrink_control *sc)
 {
 	struct task_struct *tsk;
 	struct task_struct *selected = NULL;
-	struct sysinfo swap_info;
 	unsigned long rem = 0;
 	int tasksize;
 	int i;
@@ -98,11 +99,7 @@ static unsigned long lowmem_scan(struct shrinker *s, struct shrink_control *sc)
 	int other_free;
 	int other_file;
 
-	if (mutex_lock_interruptible(&scan_mutex) < 0)
-		return 0;
-
 	other_free = global_page_state(NR_FREE_PAGES) -
-			 global_page_state(NR_FREE_CMA_PAGES) -
 			 totalreserve_pages
 #ifdef CONFIG_TEGRA_NVMAP
 			 + nvmap_page_pool_get_unused_pages()
@@ -110,11 +107,7 @@ static unsigned long lowmem_scan(struct shrinker *s, struct shrink_control *sc)
 			 ;
 	other_file = global_page_state(NR_FILE_PAGES)
 			- global_page_state(NR_SHMEM)
-			- global_page_state(NR_FILE_MAPPED)
 			- total_swapcache_pages();
-
-	if (other_file < 0)
-		other_file = 0;
 
 	if (lowmem_adj_size < array_size)
 		array_size = lowmem_adj_size;
@@ -129,8 +122,8 @@ static unsigned long lowmem_scan(struct shrinker *s, struct shrink_control *sc)
 	}
 
 	lowmem_print(3, "lowmem_scan %lu, %x, ofree %d %d, ma %hd\n",
-			sc->nr_to_scan, sc->gfp_mask, other_free,
-			other_file, min_score_adj);
+		     sc->nr_to_scan, sc->gfp_mask, other_free,
+		     other_file, min_score_adj);
 
 	if (min_score_adj == OOM_SCORE_ADJ_MAX + 1) {
 		lowmem_print(5, "lowmem_scan %lu, %x, return 0\n",
@@ -201,6 +194,7 @@ static unsigned long lowmem_scan(struct shrinker *s, struct shrink_control *sc)
 		send_sig(SIGKILL, selected, 0);
 		rem += selected_tasksize;
 	}
+
 	lowmem_print(4, "lowmem_shrink %lu, %x, return %lu\n",
 		     sc->nr_to_scan, sc->gfp_mask, rem);
 	rcu_read_unlock();
