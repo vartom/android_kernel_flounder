@@ -787,6 +787,10 @@ static void flounder_usb_init(void)
 	tegra_udc_pdata.id_det_type = TEGRA_USB_GPIO_ID;
 	tegra_udc_pdata.vbus_extcon_dev_name = "palmas-extcon";
 	tegra_ehci1_utmi_pdata.id_det_type = TEGRA_USB_GPIO_ID;
+
+	/* charger needs to be set to 2A - h/w will do 1.8A */
+	tegra_udc_pdata.u_data.dev.dcp_current_limit_ma = 2000;
+
 	if (!is_mdm_modem())
 		tegra_ehci1_utmi_pdata.u_cfg.utmi.xcvr_setup_offset = -3;
 
@@ -1315,10 +1319,16 @@ static void __init tegra_flounder_reserve(void)
 #if defined(CONFIG_NVMAP_CONVERT_CARVEOUT_TO_IOVMM) || \
 		defined(CONFIG_TEGRA_NO_CARVEOUT)
 	/* 1536*2048*4*2 = 25165824 bytes */
-	tegra_reserve4( 0, SZ_16M + SZ_8M, 0, (100 * SZ_1M) );
+	ulong carveout_size = 0;
+	ulong fb2_size = 0;
 #else
-	tegra_reserve4(SZ_1G, SZ_16M + SZ_8M, 0, 100 * SZ_1M);
+	ulong carveout_size = SZ_1G;
+	ulong fb2_size = 0;
 #endif
+	ulong fb1_size = SZ_16M + SZ_8M;
+	ulong vpr_size = 186 * SZ_1M;
+
+	tegra_reserve4(carveout_size, fb1_size, fb2_size, vpr_size);
 }
 
 static const char * const flounder_dt_board_compat[] = {
