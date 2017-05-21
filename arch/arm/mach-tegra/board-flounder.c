@@ -639,6 +639,7 @@ static struct platform_device *flounder_devices[] __initdata = {
 	&tegra_dam_device0,
 	&tegra_dam_device1,
 	&tegra_dam_device2,
+	&tegra_i2s_device0,
 	&tegra_i2s_device1,
 	&tegra_i2s_device2,
 	&tegra_i2s_device3,
@@ -698,7 +699,6 @@ static struct tegra_usb_platform_data tegra_ehci1_utmi_pdata = {
 		.hot_plug = false,
 		.remote_wakeup_supported = true,
 		.power_off_on_suspend = true,
-		.support_y_cable = true,
 	},
 	.u_cfg.utmi = {
 		.hssync_start_delay = 0,
@@ -787,6 +787,11 @@ static void flounder_usb_init(void)
 	tegra_udc_pdata.id_det_type = TEGRA_USB_GPIO_ID;
 	tegra_udc_pdata.vbus_extcon_dev_name = "palmas-extcon";
 	tegra_ehci1_utmi_pdata.id_det_type = TEGRA_USB_GPIO_ID;
+
+	tegra_ehci1_utmi_pdata.u_data.host.turn_off_vbus_on_lp0 = true;
+
+	/* Enable Y-Cable support */
+	tegra_ehci1_utmi_pdata.u_data.host.support_y_cable = true;
 
 	/* charger needs to be set to 2A - h/w will do 1.8A */
 	tegra_udc_pdata.u_data.dev.dcp_current_limit_ma = 2000;
