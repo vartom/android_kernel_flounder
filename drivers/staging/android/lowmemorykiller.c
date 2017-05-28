@@ -40,7 +40,6 @@
 #include <linux/swap.h>
 #include <linux/rcupdate.h>
 #include <linux/notifier.h>
-#include <linux/swap.h>
 #include <linux/fs.h>
 #ifdef CONFIG_TEGRA_NVMAP
 #include <linux/nvmap.h>
@@ -107,7 +106,11 @@ static unsigned long lowmem_scan(struct shrinker *s, struct shrink_control *sc)
 			 ;
 	other_file = global_page_state(NR_FILE_PAGES)
 			- global_page_state(NR_SHMEM)
+			- global_page_state(NR_UNEVICTABLE)
 			- total_swapcache_pages();
+
+	if (other_file < 0)
+		other_file = 0;
 
 	if (lowmem_adj_size < array_size)
 		array_size = lowmem_adj_size;
