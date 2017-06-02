@@ -3,7 +3,7 @@
  *
  * GK20A PMU (aka. gPMU outside gk20a context)
  *
- * Copyright (c) 2011-2014, NVIDIA CORPORATION.  All rights reserved.
+ * Copyright (c) 2011-2015, NVIDIA CORPORATION.  All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms and conditions of the GNU General Public License,
@@ -257,7 +257,7 @@ union pmu_ap_msg {
 #define APCTRL_MINIMUM_IDLE_FILTER_DEFAULT_US                   (100)
 #define APCTRL_MINIMUM_TARGET_SAVING_DEFAULT_US                 (10000)
 #define APCTRL_POWER_BREAKEVEN_DEFAULT_US                       (2000)
-#define APCTRL_CYCLES_PER_SAMPLE_MAX_DEFAULT                    (100)
+#define APCTRL_CYCLES_PER_SAMPLE_MAX_DEFAULT                    (200)
 
 /*
  * Disable reason for Adaptive Power Controller
@@ -1035,7 +1035,6 @@ struct pmu_gk20a {
 	u32 elpg_stat;
 
 	int pmu_state;
-	wait_queue_head_t boot_wq;
 
 #define PMU_ELPG_ENABLE_ALLOW_DELAY_MSEC	1 /* msec */
 	struct work_struct pg_init;

@@ -29,6 +29,7 @@
 #include <linux/tegra-soc.h>
 #include <linux/vmalloc.h>
 #include <linux/dma-buf.h>
+#include <asm/cacheflush.h>
 
 #include "gk20a.h"
 #include "mm_gk20a.h"
@@ -41,6 +42,11 @@
 #include "hw_ltc_gk20a.h"
 
 #include "kind_gk20a.h"
+
+#ifdef CONFIG_ARM64
+#define outer_flush_range(a, b)
+#define __cpuc_flush_dcache_area __flush_dcache_area
+#endif
 
 /*
  * GPU mapping life cycle
@@ -87,7 +93,14 @@ static inline u32 lo32(u64 f)
 	return (u32)(f & 0xffffffff);
 }
 
+#define FLUSH_CPU_DCACHE(va, pa, size)	\
+	do {	\
+		__cpuc_flush_dcache_area((void *)(va), (size_t)(size));	\
+		outer_flush_range(pa, pa + (size_t)(size));		\
+	} while (0)
+
 static void gk20a_vm_unmap_locked(struct mapped_buffer_node *mapped_buffer);
+void __gk20a_mm_tlb_invalidate(struct vm_gk20a *vm);
 static struct mapped_buffer_node *find_mapped_buffer_locked(
 					struct rb_root *root, u64 addr);
 static struct mapped_buffer_node *find_mapped_buffer_reverse_locked(
@@ -449,7 +462,7 @@ static void free_gmmu_pages(struct vm_gk20a *vm, void *handle,
 	kfree(sgt);
 }
 
-int map_gmmu_pages(void *handle, struct sg_table *sgt,
+static int map_gmmu_pages(void *handle, struct sg_table *sgt,
 			  void **va, size_t size)
 {
 	FLUSH_CPU_DCACHE(handle, sg_phys(sgt->sgl), sgt->sgl->length);
@@ -457,7 +470,7 @@ int map_gmmu_pages(void *handle, struct sg_table *sgt,
 	return 0;
 }
 
-void unmap_gmmu_pages(void *handle, struct sg_table *sgt, void *va)
+static void unmap_gmmu_pages(void *handle, struct sg_table *sgt, void *va)
 {
 	FLUSH_CPU_DCACHE(handle, sg_phys(sgt->sgl), sgt->sgl->length);
 }
@@ -557,7 +570,7 @@ static void free_gmmu_pages(struct vm_gk20a *vm, void *handle,
 	iova = 0;
 }
 
-int map_gmmu_pages(void *handle, struct sg_table *sgt,
+static int map_gmmu_pages(void *handle, struct sg_table *sgt,
 			  void **kva, size_t size)
 {
 	int count = PAGE_ALIGN(size) >> PAGE_SHIFT;
@@ -576,7 +589,7 @@ int map_gmmu_pages(void *handle, struct sg_table *sgt,
 	return 0;
 }
 
-void unmap_gmmu_pages(void *handle, struct sg_table *sgt, void *va)
+static void unmap_gmmu_pages(void *handle, struct sg_table *sgt, void *va)
 {
 	gk20a_dbg_fn("");
 
@@ -591,7 +604,7 @@ void unmap_gmmu_pages(void *handle, struct sg_table *sgt, void *va)
  * the whole range is zeroed so it's "invalid"/will fault
  */
 
-int zalloc_gmmu_page_table_gk20a(struct vm_gk20a *vm,
+static int zalloc_gmmu_page_table_gk20a(struct vm_gk20a *vm,
 					enum gmmu_pgsz_gk20a gmmu_pgsz_idx,
 					struct page_table_gk20a *pte)
 {
@@ -621,7 +634,7 @@ int zalloc_gmmu_page_table_gk20a(struct vm_gk20a *vm,
 }
 
 /* given address range (inclusive) determine the pdes crossed */
-void pde_range_from_vaddr_range(struct vm_gk20a *vm,
+static inline void pde_range_from_vaddr_range(struct vm_gk20a *vm,
 					      u64 addr_lo, u64 addr_hi,
 					      u32 *pde_lo, u32 *pde_hi)
 {
@@ -633,12 +646,12 @@ void pde_range_from_vaddr_range(struct vm_gk20a *vm,
 		   *pde_lo, *pde_hi);
 }
 
-u32 *pde_from_index(struct vm_gk20a *vm, u32 i)
+static inline u32 *pde_from_index(struct vm_gk20a *vm, u32 i)
 {
 	return (u32 *) (((u8 *)vm->pdes.kv) + i*gmmu_pde__size_v());
 }
 
-u32 pte_index_from_vaddr(struct vm_gk20a *vm,
+static inline u32 pte_index_from_vaddr(struct vm_gk20a *vm,
 				       u64 addr, enum gmmu_pgsz_gk20a pgsz_idx)
 {
 	u32 ret;
@@ -672,7 +685,7 @@ static inline void pte_space_page_offset_from_index(u32 i, u32 *pte_page,
  * backing store and if not go ahead allocate it and
  * record it in the appropriate pde
  */
-int validate_gmmu_page_table_gk20a_locked(struct vm_gk20a *vm,
+static int validate_gmmu_page_table_gk20a_locked(struct vm_gk20a *vm,
 				u32 i, enum gmmu_pgsz_gk20a gmmu_pgsz_idx)
 {
 	int err;
@@ -1662,6 +1675,7 @@ static int update_gmmu_ptes_locked(struct vm_gk20a *vm,
 	u32 page_size  = gmmu_page_sizes[pgsz_idx];
 	u64 addr = 0;
 	u64 space_to_skip = buffer_offset;
+	bool set_tlb_dirty = false;
 
 	pde_range_from_vaddr_range(vm, first_vaddr, last_vaddr,
 				   &pde_lo, &pde_hi);
@@ -1705,6 +1719,8 @@ static int update_gmmu_ptes_locked(struct vm_gk20a *vm,
 		void *pte_kv_cur;
 
 		struct page_table_gk20a *pte = vm->pdes.ptes[pgsz_idx] + pde_i;
+
+		set_tlb_dirty = true;
 
 		if (pde_i == pde_lo)
 			pte_lo = pte_index_from_vaddr(vm, first_vaddr,
@@ -1785,6 +1801,8 @@ static int update_gmmu_ptes_locked(struct vm_gk20a *vm,
 		unmap_gmmu_pages(pte->ref, pte->sgt, pte_kv_cur);
 
 		if (pte->ref_cnt == 0) {
+			void *pte_ref_ptr = pte->ref;
+
 			/* It can make sense to keep around one page table for
 			 * each flavor (empty)... in case a new map is coming
 			 * right back to alloc (and fill it in) again.
@@ -1792,20 +1810,27 @@ static int update_gmmu_ptes_locked(struct vm_gk20a *vm,
 			 * unmap/map/unmap/map cases where we'd trigger pte
 			 * free/alloc/free/alloc.
 			 */
-			free_gmmu_pages(vm, pte->ref, pte->sgt,
-				vm->mm->page_table_sizing[pgsz_idx].order,
-				pte->size);
 			pte->ref = NULL;
 
 			/* rewrite pde */
 			update_gmmu_pde_locked(vm, pde_i);
+
+			__gk20a_mm_tlb_invalidate(vm);
+			set_tlb_dirty = false;
+
+			free_gmmu_pages(vm, pte_ref_ptr, pte->sgt,
+				vm->mm->page_table_sizing[pgsz_idx].order,
+				pte->size);
+
 		}
 
 	}
 
 	smp_mb();
-	vm->tlb_dirty = true;
-	gk20a_dbg_fn("set tlb dirty");
+	if (set_tlb_dirty) {
+		vm->tlb_dirty = true;
+		gk20a_dbg_fn("set tlb dirty");
+	}
 
 	return 0;
 
@@ -1967,7 +1992,6 @@ err_unmap:
 static void gk20a_vm_unmap_locked(struct mapped_buffer_node *mapped_buffer)
 {
 	struct vm_gk20a *vm = mapped_buffer->vm;
-	struct gk20a *g = vm->mm->g;
 
 	if (mapped_buffer->va_node &&
 	    mapped_buffer->va_node->sparse) {
@@ -1977,7 +2001,7 @@ static void gk20a_vm_unmap_locked(struct mapped_buffer_node *mapped_buffer)
 			gmmu_page_shifts[pgsz_idx];
 
 		/* there is little we can do if this fails... */
-		g->ops.mm.set_sparse(vm, vaddr, num_pages, pgsz_idx);
+		gk20a_vm_put_empty(vm, vaddr, num_pages, pgsz_idx);
 
 	} else
 		__locked_gmmu_unmap(vm,
@@ -2246,7 +2270,6 @@ int gk20a_vm_alloc_space(struct gk20a_as_share *as_share,
 	u32 start_page_nr;
 	struct gk20a_allocator *vma;
 	struct vm_gk20a *vm = as_share->vm;
-	struct gk20a *g = vm->mm->g;
 	struct vm_reserved_va_node *va_node;
 	u64 vaddr_start = 0;
 
@@ -2296,7 +2319,7 @@ int gk20a_vm_alloc_space(struct gk20a_as_share *as_share,
 
 	va_node->vaddr_start = vaddr_start;
 	va_node->size = (u64)args->page_size * (u64)args->pages;
-	va_node->pgsz_idx = pgsz_idx;
+	va_node->pgsz_idx = args->page_size;
 	INIT_LIST_HEAD(&va_node->va_buffers_list);
 	INIT_LIST_HEAD(&va_node->reserved_va_list);
 
@@ -2304,7 +2327,7 @@ int gk20a_vm_alloc_space(struct gk20a_as_share *as_share,
 
 	/* mark that we need to use sparse mappings here */
 	if (args->flags & NVHOST_AS_ALLOC_SPACE_FLAGS_SPARSE) {
-		err = g->ops.mm.set_sparse(vm, vaddr_start, args->pages,
+		err = gk20a_vm_put_empty(vm, vaddr_start, args->pages,
 					 pgsz_idx);
 		if (err) {
 			mutex_unlock(&vm->update_gmmu_lock);
@@ -2398,7 +2421,6 @@ int gk20a_vm_bind_channel(struct gk20a_as_share *as_share,
 
 	gk20a_dbg_fn("");
 
-	gk20a_vm_get(vm);
 	ch->vm = vm;
 	err = channel_gk20a_commit_va(ch);
 	if (err)
@@ -2467,9 +2489,6 @@ int gk20a_vm_map_buffer(struct gk20a_as_share *as_share,
 
 	/* get ref to the mem handle (released on unmap_locked) */
 	dmabuf = dma_buf_get(dmabuf_fd);
-	if (IS_ERR(dmabuf))
-		return PTR_ERR(dmabuf);
-
 	if (!dmabuf)
 		return 0;
 
@@ -2936,7 +2955,7 @@ int gk20a_vm_find_buffer(struct vm_gk20a *vm, u64 gpu_va,
 	return 0;
 }
 
-void gk20a_mm_tlb_invalidate(struct vm_gk20a *vm)
+void __gk20a_mm_tlb_invalidate(struct vm_gk20a *vm)
 {
 	struct gk20a *g = gk20a_from_vm(vm);
 	u32 addr_lo = u64_lo32(gk20a_mm_iova_addr(vm->pdes.sgt->sgl) >> 12);
@@ -2946,21 +2965,8 @@ void gk20a_mm_tlb_invalidate(struct vm_gk20a *vm)
 
 	gk20a_dbg_fn("");
 
-	/* pagetables are considered sw states which are preserved after
-	   prepare_poweroff. When gk20a deinit releases those pagetables,
-	   common code in vm unmap path calls tlb invalidate that touches
-	   hw. Use the power_on flag to skip tlb invalidation when gpu
-	   power is turned off */
-
 	if (!g->power_on)
 		return;
-
-	/* No need to invalidate if tlb is clean */
-	mutex_lock(&vm->update_gmmu_lock);
-	if (!vm->tlb_dirty) {
-		mutex_unlock(&vm->update_gmmu_lock);
-		return;
-	}
 
 	mutex_lock(&tlb_lock);
 	do {
@@ -3000,8 +3006,33 @@ void gk20a_mm_tlb_invalidate(struct vm_gk20a *vm)
 
 out:
 	mutex_unlock(&tlb_lock);
+}
+
+void gk20a_mm_tlb_invalidate(struct vm_gk20a *vm)
+{
+	struct gk20a *g = gk20a_from_vm(vm);
+
+	gk20a_dbg_fn("");
+
+	/* pagetables are considered sw states which are preserved after
+	   prepare_poweroff. When gk20a deinit releases those pagetables,
+	   common code in vm unmap path calls tlb invalidate that touches
+	   hw. Use the power_on flag to skip tlb invalidation when gpu
+	   power is turned off */
+
+	if (!g->power_on)
+		return;
+
+	/* No need to invalidate if tlb is clean */
+	mutex_lock(&vm->update_gmmu_lock);
+	if (!vm->tlb_dirty) {
+		mutex_unlock(&vm->update_gmmu_lock);
+		return;
+	}
 	vm->tlb_dirty = false;
 	mutex_unlock(&vm->update_gmmu_lock);
+
+	__gk20a_mm_tlb_invalidate(vm);
 }
 
 int gk20a_mm_suspend(struct gk20a *g)
@@ -3029,9 +3060,3 @@ bool gk20a_mm_mmu_debug_mode_enabled(struct gk20a *g)
 	return fb_mmu_debug_ctrl_debug_v(debug_ctrl) ==
 		fb_mmu_debug_ctrl_debug_enabled_v();
 }
-
-void gk20a_init_mm(struct gpu_ops *gops)
-{
-	gops->mm.set_sparse = gk20a_vm_put_empty;
-}
-
