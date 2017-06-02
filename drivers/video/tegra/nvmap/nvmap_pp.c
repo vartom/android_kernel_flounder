@@ -69,24 +69,11 @@ static int __nvmap_page_pool_fill_lots_locked(struct nvmap_page_pool *pool,
  */
 static void pp_clean_cache(struct nvmap_page_pool *pool)
 {
-	struct page *page;
-	u32 dirty_pages = pool->dirty_pages;
-
-	if (!dirty_pages)
-		return;
-	if (dirty_pages >= (cache_maint_inner_threshold >> PAGE_SHIFT)) {
+	if (pool->contains_dirty_pages) {
 		inner_clean_cache_all();
 		outer_clean_all();
-	} else {
-		list_for_each_entry_reverse(page, &pool->page_list, lru) {
-			nvmap_clean_cache_page(page);
-			dirty_pages--;
-			if (!dirty_pages)
-				break;
-		}
-		BUG_ON(dirty_pages);
+		pool->contains_dirty_pages = false;
 	}
-	pool->dirty_pages = 0;
 }
 
 static inline struct page *get_zero_list_page(struct nvmap_page_pool *pool)
@@ -174,6 +161,13 @@ static void nvmap_pp_do_background_zero_pages(struct nvmap_page_pool *pool)
 out:
 	for (; ret < i; ret++)
 		__free_page(pending_zero_pages[ret]);
+
+	/* clean cache in the background so that allocations immediately
+	 * after fill don't suffer the cache clean overhead.
+	 */
+	mutex_lock(&pool->lock);
+	pp_clean_cache(pool);
+	mutex_unlock(&pool->lock);
 }
 
 /*
@@ -195,18 +189,10 @@ static int nvmap_background_zero_thread(void *arg)
 	sched_setscheduler(current, SCHED_IDLE, &param);
 
 	while (!kthread_should_stop()) {
-		while (nvmap_bg_should_run(pool))
+		while (nvmap_bg_should_run(pool)) {
 			nvmap_pp_do_background_zero_pages(pool);
-
-		/* clean cache in the background so that allocations immediately
-		 * after fill don't suffer the cache clean overhead.
-		 */
-		if (pool->dirty_pages >=
-		    (cache_maint_inner_threshold >> PAGE_SHIFT)) {
-			mutex_lock(&pool->lock);
-			pp_clean_cache(pool);
-			mutex_unlock(&pool->lock);
 		}
+
 		wait_event_freezable(nvmap_bg_wait,
 				nvmap_bg_should_run(pool) ||
 				kthread_should_stop());
@@ -307,6 +293,8 @@ static int __nvmap_page_pool_fill_lots_locked(struct nvmap_page_pool *pool,
 	if (!enable_pp)
 		return 0;
 
+	pool->contains_dirty_pages = true;
+
 	real_nr = min_t(u32, pool->max - pool->count, nr);
 	if (real_nr == 0)
 		return 0;
@@ -319,7 +307,6 @@ static int __nvmap_page_pool_fill_lots_locked(struct nvmap_page_pool *pool,
 		list_add_tail(&pages[ind++]->lru, &pool->page_list);
 	}
 
-	pool->dirty_pages += ind;
 	pool->count += ind;
 	pp_fill_add(pool, ind);
 
@@ -481,6 +468,7 @@ static void shrink_page_pools(int *total_pages, int *available_pages)
 static int shrink_pp;
 static int shrink_set(const char *arg, const struct kernel_param *kp)
 {
+	int cpu = smp_processor_id();
 	unsigned long long t1, t2;
 	int total_pages, available_pages;
 
@@ -488,9 +476,9 @@ static int shrink_set(const char *arg, const struct kernel_param *kp)
 
 	if (shrink_pp) {
 		total_pages = shrink_pp;
-		t1 = local_clock();
+		t1 = cpu_clock(cpu);
 		shrink_page_pools(&total_pages, &available_pages);
-		t2 = local_clock();
+		t2 = cpu_clock(cpu);
 		pr_debug("shrink page pools: time=%lldns, "
 			"total_pages_released=%d, free_pages_available=%d",
 			t2-t1, total_pages, available_pages);
@@ -593,6 +581,7 @@ int nvmap_page_pool_debugfs_init(struct dentry *nvmap_root)
 
 int nvmap_page_pool_init(struct nvmap_device *dev)
 {
+	unsigned long totalram_mb;
 	struct sysinfo info;
 	struct nvmap_page_pool *pool = &dev->pool;
 
@@ -602,11 +591,11 @@ int nvmap_page_pool_init(struct nvmap_device *dev)
 	INIT_LIST_HEAD(&pool->zero_list);
 
 	si_meminfo(&info);
-	pr_info("Total RAM pages: %lu\n", info.totalram);
+	totalram_mb = (info.totalram * info.mem_unit) >> 20;
+	pr_info("Total MB RAM: %lu\n", totalram_mb);
 
 	if (!CONFIG_NVMAP_PAGE_POOL_SIZE)
-		/* The ratio is pool pages per 1K ram pages.
-		 * So, the >> 10 */
+		/* The ratio is pool pages per 1K ram pages. So, the >> 10. */
 		pool->max = (info.totalram * NVMAP_PP_POOL_SIZE) >> 10;
 	else
 		pool->max = CONFIG_NVMAP_PAGE_POOL_SIZE;
@@ -620,7 +609,7 @@ int nvmap_page_pool_init(struct nvmap_device *dev)
 
 	background_allocator = kthread_run(nvmap_background_zero_thread,
 					    NULL, "nvmap-bz");
-	if (IS_ERR(background_allocator))
+	if (IS_ERR_OR_NULL(background_allocator))
 		goto fail;
 
 	register_shrinker(&nvmap_page_pool_shrinker);
@@ -635,15 +624,8 @@ int nvmap_page_pool_fini(struct nvmap_device *dev)
 {
 	struct nvmap_page_pool *pool = &dev->pool;
 
-	/*
-	 * if background allocator is not initialzed or not
-	 * properly initialized, then shrinker is also not
-	 * registered
-	 */
-	if (!IS_ERR_OR_NULL(background_allocator)) {
-		unregister_shrinker(&nvmap_page_pool_shrinker);
+	if (!IS_ERR_OR_NULL(background_allocator))
 		kthread_stop(background_allocator);
-	}
 
 	WARN_ON(!list_empty(&pool->page_list));
 
