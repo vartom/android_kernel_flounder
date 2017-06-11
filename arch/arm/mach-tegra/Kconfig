@@ -191,6 +191,9 @@ config QCT_9K_MODEM
        select MSM_RMNET_BAM
        select MODEM_SUPPORT
        select MDM_SYSEDP
+       select QCT_USB_MODEM_SUPPORT
+       select USB_U_CTRL_HSIC
+       select USB_U_DATA_HSIC
        help
         Support for Qualcomm 9K modem
 

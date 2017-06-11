@@ -844,8 +844,6 @@ config USB_G_ANDROID
 	select USB_LIBCOMPOSITE
 	select USB_U_SERIAL
 	select USB_F_SERIAL
-	select USB_U_CTRL_HSIC
-	select USB_U_DATA_HSIC
 	help
 	  The Android Composite Gadget supports multiple USB
 	  functions: adb, acm, mass storage, mtp, accessory
@@ -1016,7 +1014,6 @@ endchoice
 config QCT_USB_MODEM_SUPPORT
 	boolean "modem support in generic serial function driver"
 	depends on USB_G_ANDROID && USB_F_SERIAL
-	default y
 	help
 	  This feature enables the modem functionality in the
 	  generic serial function driver.

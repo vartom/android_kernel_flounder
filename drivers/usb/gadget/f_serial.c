@@ -16,8 +16,10 @@
 #include <linux/device.h>
 
 #include "u_serial.h"
+#ifdef CONFIG_QCT_USB_MODEM_SUPPORT
 #include "u_data_hsic.h"
 #include "u_ctrl_hsic.h"
+#endif
 #include "gadget_chips.h"
 
 
@@ -278,6 +280,7 @@ static struct usb_gadget_strings *gser_strings[] = {
 	NULL,
 };
 
+#ifdef CONFIG_QCT_USB_MODEM_SUPPORT
 static struct usb_string modem_string_defs[] = {
 	[0].s = "HTC Modem",
 	[1].s = "HTC 9k Modem",
@@ -294,7 +297,6 @@ static struct usb_gadget_strings *modem_strings[] = {
 	NULL,
 };
 
-#ifdef CONFIG_QCT_USB_MODEM_SUPPORT
 static void gser_complete_set_line_coding(struct usb_ep *ep,
 		struct usb_request *req)
 {
@@ -417,13 +419,13 @@ static int gser_set_alt(struct usb_function *f, unsigned intf, unsigned alt)
 	return 0;
 }
 
+#ifdef CONFIG_QCT_USB_MODEM_SUPPORT
 static int gser_mdm_set_alt(struct usb_function *f, unsigned intf, unsigned alt)
 {
 	struct f_gser		*gser = func_to_gser(f);
 	struct usb_composite_dev *cdev = f->config->cdev;
 	int ret = 0;
 
-#ifdef CONFIG_QCT_USB_MODEM_SUPPORT
 	if (gser->notify->driver_data) {
 		DBG(cdev, "reset generic ctl ttyGS%d\n", gser->port_num);
 		usb_ep_disable(gser->notify);
@@ -443,7 +445,6 @@ static int gser_mdm_set_alt(struct usb_function *f, unsigned intf, unsigned alt)
 		return ret;
 	}
 	gser->notify->driver_data = gser;
-#endif
 
 	/* we know alt == 0, so this is an activation or a reset */
 
@@ -471,11 +472,13 @@ static int gser_mdm_set_alt(struct usb_function *f, unsigned intf, unsigned alt)
 	if (ret) {
 		pr_err("%s: ghsic_data_connect failed: err:%d\n",
 				__func__, ret);
+
 		ghsic_ctrl_disconnect(&gser->port, gser->port_num);
 		return ret;
 	}
 	return ret;
 }
+#endif
 
 static void gser_disable(struct usb_function *f)
 {
@@ -486,21 +489,24 @@ static void gser_disable(struct usb_function *f)
 	gserial_disconnect(&gser->port);
 }
 
+#ifdef CONFIG_QCT_USB_MODEM_SUPPORT
 static void gser_mdm_disable(struct usb_function *f)
 {
 	struct f_gser	*gser = func_to_gser(f);
 	struct usb_composite_dev *cdev = f->config->cdev;
 
 	DBG(cdev, "generic ttyGS%d deactivated\n", gser->port_num);
+
 	ghsic_ctrl_disconnect(&gser->port, gser->port_num);
 	ghsic_data_disconnect(&gser->port, gser->port_num);
 
-#ifdef CONFIG_QCT_USB_MODEM_SUPPORT
+
 	usb_ep_fifo_flush(gser->notify);
 	usb_ep_disable(gser->notify);
-#endif
+
 	gser->notify->driver_data = NULL;
 }
+#endif
 
 #ifdef CONFIG_QCT_USB_MODEM_SUPPORT
 static int gser_notify(struct f_gser *gser, u8 type, u16 value,
@@ -859,6 +865,7 @@ static struct usb_function_instance *gser_alloc_inst(void)
 	return &opts->func_inst;
 }
 
+#ifdef CONFIG_QCT_USB_MODEM_SUPPORT
 static struct usb_function_instance *modem_alloc_inst(void)
 {
 	struct f_serial_opts *opts;
@@ -889,6 +896,7 @@ static struct usb_function_instance *modem_alloc_inst(void)
 
 	return &opts->func_inst;
 }
+#endif
 
 static void gser_free(struct usb_function *f)
 {
@@ -931,11 +939,13 @@ struct usb_function *gser_alloc(struct usb_function_instance *fi)
 	gser->port.func.set_alt = gser_set_alt;
 	gser->port.func.disable = gser_disable;
 	gser->port.func.free_func = gser_free;
+#ifdef CONFIG_QCT_USB_MODEM_SUPPORT
 	gser_interface_desc.iInterface = gser_string_defs[0].id;
-
+#endif
 	return &gser->port.func;
 }
 
+#ifdef CONFIG_QCT_USB_MODEM_SUPPORT
 struct usb_function *modem_alloc(struct usb_function_instance *fi)
 {
 	struct f_gser	*gser;
@@ -948,9 +958,7 @@ struct usb_function *modem_alloc(struct usb_function_instance *fi)
 
 	opts = container_of(fi, struct f_serial_opts, func_inst);
 
-#ifdef CONFIG_QCT_USB_MODEM_SUPPORT
 	spin_lock_init(&gser->lock);
-#endif
 
 	gser->port_num = opts->port_num;
 
@@ -963,7 +971,7 @@ struct usb_function *modem_alloc(struct usb_function_instance *fi)
 	gser->port.func.free_func = gser_free;
 	gser_interface_desc.iInterface = modem_string_defs[0].id;
 
-#ifdef CONFIG_QCT_USB_MODEM_SUPPORT
+
 	gser->port.func.setup = gser_setup;
 	gser->port.connect = gser_connect;
 	gser->port.get_dtr = gser_get_dtr;
@@ -973,11 +981,14 @@ struct usb_function *modem_alloc(struct usb_function_instance *fi)
 	gser->port.send_modem_ctrl_bits = gser_send_modem_ctrl_bits;
 	gser->port.disconnect = gser_disconnect;
 	gser->port.send_break = gser_send_break;
-#endif
+
 	return &gser->port.func;
 }
+#endif
 
+#ifdef CONFIG_QCT_USB_MODEM_SUPPORT
 DECLARE_USB_FUNCTION_INIT(modem, modem_alloc_inst, modem_alloc);
+#endif
 DECLARE_USB_FUNCTION_INIT(gser, gser_alloc_inst, gser_alloc);
 MODULE_LICENSE("GPL");
 MODULE_AUTHOR("Al Borchers");

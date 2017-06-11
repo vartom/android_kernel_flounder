@@ -41,7 +41,9 @@
 #ifdef CONFIG_DIAG_CHAR
 #include "f_diag.c"
 #endif
+#ifdef CONFIG_QCT_USB_MODEM_SUPPORT
 #include "f_rmnet.c"
+#endif
 #include "f_mtp.c"
 #include "f_accessory.c"
 #define USB_ETH_RNDIS y
@@ -1066,7 +1068,9 @@ static int gserial_init_port(int port_num, const char *name, char *serial_type)
 		no_tty_ports++;
 		break;
 	case USB_GADGET_XPORT_HSIC:
+#ifdef CONFIG_QCT_USB_MODEM_SUPPORT
 		gserial_ports[port_num].client_port_num = no_hsic_sports;
+#endif
 		no_hsic_sports++;
 		break;
 	default:
@@ -1089,13 +1093,20 @@ serial_function_init(struct android_usb_function *f,
 	struct serial_function_config *config;
 	char *name, *str[2];
 	char buf[80], *b;
-
+#ifdef CONFIG_QCT_USB_MODEM_SUPPORT
 	serial_modem_config = config = kzalloc(sizeof(struct serial_function_config), GFP_KERNEL);
+#else
+	config = kzalloc(sizeof(struct serial_function_config), GFP_KERNEL);
+#endif
 	if (!config)
 		return -ENOMEM;
 	f->config = config;
 
+#ifdef CONFIG_QCT_USB_MODEM_SUPPORT
 	strcpy(serial_transports, "hsic:modem,tty,tty,tty:serial");
+#else
+	strcpy(serial_transports, "tty,tty,tty:serial");
+#endif
 	strncpy(buf, serial_transports, sizeof(buf));
 	buf[79] = 0;
 	pr_info("%s: init string: %s\n",__func__, buf);
@@ -1131,6 +1142,7 @@ serial_function_init(struct android_usb_function *f,
 		}
 	}
 
+#ifdef CONFIG_QCT_USB_MODEM_SUPPORT
 	for (i = 0; i < no_hsic_sports; i++) {
 		config->f_serial_modem_inst[i] = usb_get_function_instance("modem");
 		if (IS_ERR(config->f_serial_modem_inst[i])) {
@@ -1143,7 +1155,7 @@ serial_function_init(struct android_usb_function *f,
 			goto err_usb_get_function;
 		}
 	}
-
+#endif
 	return 0;
 err_usb_get_function_instance:
 	while (--i >= 0) {
@@ -1196,6 +1208,7 @@ err_usb_add_function:
 	return ret;
 }
 
+#ifdef CONFIG_QCT_USB_MODEM_SUPPORT
 /*rmnet transport string format(per port):"ctrl0,data0,ctrl1,data1..." */
 #define MAX_XPORT_STR_LEN 50
 static char rmnet_transports[MAX_XPORT_STR_LEN];
@@ -1294,6 +1307,7 @@ static struct android_usb_function rmnet_function = {
 	.attributes	= rmnet_function_attributes,
 	.init		= rmnet_function_init,
 };
+#endif
 
 /* Diag */
 #ifdef CONFIG_DIAG_CHAR
@@ -1489,7 +1503,9 @@ static struct android_usb_function *supported_functions[] = {
 #ifdef CONFIG_DIAG_CHAR
 	&diag_function,
 #endif
+#ifdef CONFIG_QCT_USB_MODEM_SUPPORT
 	&rmnet_function,
+#endif
 	&midi_function,
 	NULL
 };
