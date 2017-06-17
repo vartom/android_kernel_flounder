@@ -3,7 +3,7 @@
  *
  * GK20A Graphics channel
  *
- * Copyright (c) 2011-2015, NVIDIA CORPORATION.  All rights reserved.
+ * Copyright (c) 2011-2016, NVIDIA CORPORATION.  All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms and conditions of the GNU General Public License,
@@ -30,9 +30,11 @@
 #include <linux/dma-buf.h>
 
 #include "debug_gk20a.h"
-
 #include "gk20a.h"
+
+#if defined(CONFIG_TEGRA_GK20A_DEBUG_SESSION)
 #include "dbg_gpu_gk20a.h"
+#endif
 
 #include "hw_ram_gk20a.h"
 #include "hw_fifo_gk20a.h"
@@ -418,23 +420,6 @@ void gk20a_disable_channel_no_update(struct channel_gk20a *ch)
 		     ccsr_channel_enable_clr_true_f());
 }
 
-static void channel_gk20a_enable(struct channel_gk20a *ch)
-{
-	/* enable channel */
-	gk20a_writel(ch->g, ccsr_channel_r(ch->hw_chid),
-		gk20a_readl(ch->g, ccsr_channel_r(ch->hw_chid)) |
-		ccsr_channel_enable_set_true_f());
-}
-
-static void channel_gk20a_disable(struct channel_gk20a *ch)
-{
-	/* disable channel */
-	gk20a_writel(ch->g, ccsr_channel_r(ch->hw_chid),
-		gk20a_readl(ch->g,
-			ccsr_channel_r(ch->hw_chid)) |
-			ccsr_channel_enable_clr_true_f());
-}
-
 int gk20a_wait_channel_idle(struct channel_gk20a *ch)
 {
 	bool channel_idle = false;
@@ -540,10 +525,15 @@ static int gk20a_channel_cycle_stats(struct channel_gk20a *ch,
 static int gk20a_init_error_notifier(struct channel_gk20a *ch,
 		struct nvhost_set_error_notifier *args)
 {
-	struct device *dev = dev_from_gk20a(ch->g);
 	struct dma_buf *dmabuf;
 	void *va;
-	u64 end = args->offset + sizeof(struct nvhost_notification);
+	u64 end;
+
+	if (unlikely(args->offset >
+		     U64_MAX - sizeof(struct nvhost_notification)))
+		return -EINVAL;
+
+	end = args->offset + sizeof(struct nvhost_notification);
 
 	if (!args->mem) {
 		pr_err("gk20a_init_error_notifier: invalid memory handle\n");
@@ -552,8 +542,7 @@ static int gk20a_init_error_notifier(struct channel_gk20a *ch,
 
 	dmabuf = dma_buf_get(args->mem);
 
-	if (ch->error_notifier_ref)
-		gk20a_free_error_notifiers(ch);
+	gk20a_free_error_notifiers(ch);
 
 	if (IS_ERR(dmabuf)) {
 		pr_err("Invalid handle: %d\n", args->mem);
@@ -562,7 +551,7 @@ static int gk20a_init_error_notifier(struct channel_gk20a *ch,
 
 	if (end > dmabuf->size || end < sizeof(struct nvhost_notification)) {
 		dma_buf_put(dmabuf);
-		gk20a_err(dev, "gk20a_init_error_notifier: invalid offset\n");
+		pr_err("gk20a_init_error_notifier: invalid offset\n");
 		return -EINVAL;
 	}
 
@@ -574,16 +563,23 @@ static int gk20a_init_error_notifier(struct channel_gk20a *ch,
 		return -ENOMEM;
 	}
 
-	/* set channel notifiers pointer */
-	ch->error_notifier_ref = dmabuf;
 	ch->error_notifier = va + args->offset;
 	ch->error_notifier_va = va;
 	memset(ch->error_notifier, 0, sizeof(struct nvhost_notification));
+
+	/* set channel notifiers pointer */
+	mutex_lock(&ch->error_notifier_mutex);
+	ch->error_notifier_ref = dmabuf;
+	mutex_unlock(&ch->error_notifier_mutex);
+
 	return 0;
 }
 
 void gk20a_set_error_notifier(struct channel_gk20a *ch, __u32 error)
 {
+	bool notifier_set = false;
+
+	mutex_lock(&ch->error_notifier_mutex);
 	if (ch->error_notifier_ref) {
 		struct timespec time_data;
 		u64 nsec;
@@ -596,20 +592,27 @@ void gk20a_set_error_notifier(struct channel_gk20a *ch, __u32 error)
 				(u32)(nsec >> 32);
 		ch->error_notifier->info32 = error;
 		ch->error_notifier->status = 0xffff;
-		gk20a_err(dev_from_gk20a(ch->g),
-				"error notifier set to %d\n", error);
+
+		notifier_set = true;
 	}
+	mutex_unlock(&ch->error_notifier_mutex);
+
+	if (notifier_set)
+		gk20a_err(dev_from_gk20a(ch->g),
+		    "error notifier set to %d for ch %d", error, ch->hw_chid);
 }
 
 static void gk20a_free_error_notifiers(struct channel_gk20a *ch)
 {
+	mutex_lock(&ch->error_notifier_mutex);
 	if (ch->error_notifier_ref) {
 		dma_buf_vunmap(ch->error_notifier_ref, ch->error_notifier_va);
 		dma_buf_put(ch->error_notifier_ref);
-		ch->error_notifier_ref = 0;
-		ch->error_notifier = 0;
-		ch->error_notifier_va = 0;
+		ch->error_notifier_ref = NULL;
+		ch->error_notifier = NULL;
+		ch->error_notifier_va = NULL;
 	}
+	mutex_unlock(&ch->error_notifier_mutex);
 }
 
 void gk20a_free_channel(struct channel_gk20a *ch, bool finish)
@@ -620,7 +623,9 @@ void gk20a_free_channel(struct channel_gk20a *ch, bool finish)
 	struct gr_gk20a *gr = &g->gr;
 	struct vm_gk20a *ch_vm = ch->vm;
 	unsigned long timeout = gk20a_get_gr_idle_timeout(g);
+#if defined(CONFIG_TEGRA_GK20A_DEBUG_SESSION)
 	struct dbg_session_gk20a *dbg_s;
+#endif
 
 	gk20a_dbg_fn("");
 
@@ -656,7 +661,7 @@ void gk20a_free_channel(struct channel_gk20a *ch, bool finish)
 	memset(&ch->ramfc, 0, sizeof(struct mem_desc_sub));
 
 	/* free gpfifo */
-	if (ch->gpfifo.gpu_va)
+	if (ch->vm && ch->gpfifo.gpu_va)
 		gk20a_gmmu_unmap(ch_vm, ch->gpfifo.gpu_va,
 			ch->gpfifo.size, gk20a_mem_flag_none);
 	if (ch->gpfifo.cpu_va)
@@ -685,17 +690,20 @@ unbind:
 	channel_gk20a_unbind(ch);
 	channel_gk20a_free_inst(g, ch);
 
-	ch->vpr = false;
+	gk20a_vm_put(ch->vm); /* Don't use VM after this. */
 	ch->vm = NULL;
+	ch->vpr = false;
 	WARN_ON(ch->sync);
 
 	/* unlink all debug sessions */
 	mutex_lock(&ch->dbg_s_lock);
 
+#if defined(CONFIG_TEGRA_GK20A_DEBUG_SESSION)
 	list_for_each_entry(dbg_s, &ch->dbg_s_list, dbg_s_list_node) {
 		dbg_s->ch = NULL;
 		list_del_init(&dbg_s->dbg_s_list_node);
 	}
+#endif
 
 	mutex_unlock(&ch->dbg_s_lock);
 
@@ -706,9 +714,13 @@ unbind:
 int gk20a_channel_release(struct inode *inode, struct file *filp)
 {
 	struct channel_gk20a *ch = (struct channel_gk20a *)filp->private_data;
-	struct gk20a *g = ch->g;
+	struct gk20a *g;
 	int err;
 
+	if (!ch || !ch->g)
+		return -EFAULT;
+
+	g = ch->g;
 	trace_gk20a_channel_release(dev_name(&g->dev->dev));
 
 	err = gk20a_busy(ch->g->dev);
@@ -1439,7 +1451,6 @@ static int gk20a_submit_channel_gpfifo(struct channel_gk20a *c,
 	/* we might need two extra gpfifo entries - one for pre fence
 	 * and one for post fence. */
 	const int extra_entries = 2;
-	bool need_wfi = !(flags & NVHOST_SUBMIT_GPFIFO_FLAGS_SUPPRESS_WFI);
 
 	if (c->has_timedout)
 		return -ETIMEDOUT;
@@ -1480,6 +1491,15 @@ static int gk20a_submit_channel_gpfifo(struct channel_gk20a *c,
 
 	gk20a_dbg_info("pre-submit put %d, get %d, size %d",
 		c->gpfifo.put, c->gpfifo.get, c->gpfifo.entry_num);
+
+	/* an address space needs to have been bound at this point.   */
+	if (!gk20a_channel_as_bound(c)) {
+		gk20a_err(d,
+				"not bound to an address space at time of gpfifo"
+				" submit.  Attempting to create and bind to"
+				" one...");
+		return -EINVAL;
+	}
 
 	/* Invalidate tlb if it's dirty...                                   */
 	/* TBD: this should be done in the cmd stream, not with PRIs.        */
@@ -1532,12 +1552,10 @@ static int gk20a_submit_channel_gpfifo(struct channel_gk20a *c,
 			flags & NVHOST_SUBMIT_GPFIFO_FLAGS_SYNC_FENCE)
 		err = c->sync->incr_user_fd(c->sync, &incr_cmd,
 					    &c->last_submit_fence,
-					    need_wfi,
 					    &fence->syncpt_id);
 	else if (flags & NVHOST_SUBMIT_GPFIFO_FLAGS_FENCE_GET)
 		err = c->sync->incr_user_syncpt(c->sync, &incr_cmd,
 						&c->last_submit_fence,
-						need_wfi,
 						&fence->syncpt_id,
 						&fence->value);
 	else
@@ -1552,8 +1570,7 @@ static int gk20a_submit_channel_gpfifo(struct channel_gk20a *c,
 		c->gpfifo.cpu_va[c->gpfifo.put].entry1 =
 			u64_hi32(wait_cmd->gva) |
 			pbdma_gp_entry1_length_f(wait_cmd->size);
-		trace_gk20a_push_cmdbuf(c->g->dev->name,
-			0, wait_cmd->size, 0, wait_cmd->ptr);
+		trace_write_pushbuffer(c, &c->gpfifo.cpu_va[c->gpfifo.put]);
 
 		c->gpfifo.put = (c->gpfifo.put + 1) &
 			(c->gpfifo.entry_num - 1);
@@ -1578,8 +1595,7 @@ static int gk20a_submit_channel_gpfifo(struct channel_gk20a *c,
 		c->gpfifo.cpu_va[c->gpfifo.put].entry1 =
 			u64_hi32(incr_cmd->gva) |
 			pbdma_gp_entry1_length_f(incr_cmd->size);
-		trace_gk20a_push_cmdbuf(c->g->dev->name,
-			0, incr_cmd->size, 0, incr_cmd->ptr);
+		trace_write_pushbuffer(c, &c->gpfifo.cpu_va[c->gpfifo.put]);
 
 		c->gpfifo.put = (c->gpfifo.put + 1) &
 			(c->gpfifo.entry_num - 1);
@@ -1629,6 +1645,7 @@ int gk20a_init_channel_support(struct gk20a *g, u32 chid)
 	c->hw_chid = chid;
 	c->bound = false;
 	c->remove_support = gk20a_remove_channel_support;
+	mutex_init(&c->error_notifier_mutex);
 	mutex_init(&c->jobs_lock);
 	INIT_LIST_HEAD(&c->jobs);
 #if defined(CONFIG_GK20A_CYCLE_STATS)
@@ -1748,6 +1765,10 @@ static int gk20a_channel_wait(struct channel_gk20a *ch,
 	case NVHOST_WAIT_TYPE_NOTIFIER:
 		id = args->condition.notifier.nvmap_handle;
 		offset = args->condition.notifier.offset;
+
+		if (unlikely(offset > U32_MAX - sizeof(struct notification)))
+			return -EINVAL;
+
 		end = offset + sizeof(struct notification);
 
 		dmabuf = dma_buf_get(id);
@@ -1973,8 +1994,6 @@ clean_up:
 void gk20a_init_channel(struct gpu_ops *gops)
 {
 	gops->fifo.bind_channel = channel_gk20a_bind;
-	gops->fifo.disable_channel = channel_gk20a_disable;
-	gops->fifo.enable_channel = channel_gk20a_enable;
 }
 
 long gk20a_channel_ioctl(struct file *filp,
@@ -1982,7 +2001,7 @@ long gk20a_channel_ioctl(struct file *filp,
 {
 	struct channel_gk20a *ch = filp->private_data;
 	struct platform_device *dev = ch->g->dev;
-	u8 buf[NVHOST_IOCTL_CHANNEL_MAX_ARG_SIZE];
+	u8 buf[NVHOST_IOCTL_CHANNEL_MAX_ARG_SIZE] = {0};
 	int err = 0;
 
 	if ((_IOC_TYPE(cmd) != NVHOST_IOCTL_MAGIC) ||

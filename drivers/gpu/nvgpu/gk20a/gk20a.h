@@ -3,7 +3,7 @@
  *
  * GK20A Graphics
  *
- * Copyright (c) 2011-2015, NVIDIA CORPORATION.  All rights reserved.
+ * Copyright (c) 2011-2014, NVIDIA CORPORATION.  All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms and conditions of the GNU General Public License,
@@ -136,9 +136,6 @@ struct gpu_ops {
 		void (*bind_channel)(struct channel_gk20a *ch_gk20a);
 		void (*trigger_mmu_fault)(struct gk20a *g,
 				unsigned long engine_ids);
-		void (*disable_channel)(struct channel_gk20a *ch);
-		void (*enable_channel)(struct channel_gk20a *ch);
-		int (*preempt_channel)(struct gk20a *g, u32 hw_chid);
 	} fifo;
 	struct pmu_v {
 		/*used for change of enum zbc update cmd id from ver 0 to ver1*/
@@ -205,6 +202,28 @@ struct gpu_ops {
 		int (*get_netlist_name)(int index, char *name);
 		bool (*is_fw_defined)(void);
 	} gr_ctx;
+	struct {
+		int (*set_sparse)(struct vm_gk20a *vm, u64 vaddr,
+			       u32 num_pages, u32 pgsz_idx);
+	} mm;
+	struct {
+		const struct regop_offset_range* (
+				*get_global_whitelist_ranges)(void);
+		int (*get_global_whitelist_ranges_count)(void);
+		const struct regop_offset_range* (
+				*get_context_whitelist_ranges)(void);
+		int (*get_context_whitelist_ranges_count)(void);
+		const u32* (*get_runcontrol_whitelist)(void);
+		int (*get_runcontrol_whitelist_count)(void);
+		const struct regop_offset_range* (
+				*get_runcontrol_whitelist_ranges)(void);
+		int (*get_runcontrol_whitelist_ranges_count)(void);
+		const u32* (*get_qctl_whitelist)(void);
+		int (*get_qctl_whitelist_count)(void);
+		const struct regop_offset_range* (
+				*get_qctl_whitelist_ranges)(void);
+		int (*get_qctl_whitelist_ranges_count)(void);
+	} regops;
 };
 
 struct gk20a {
@@ -359,7 +378,9 @@ struct gk20a_cyclestate_buffer_elem {
 
 #ifdef CONFIG_DEBUG_FS
     /* debug info, default is compiled-in but effectively disabled (0 mask) */
-    #define GK20A_DEBUG
+    // Disable GK20A_DEBUG - trace_printks in the kernel will initialize the
+    // ftrace buffer.
+    // #define GK20A_DEBUG
     /*e.g: echo 1 > /d/tegra_host/dbg_mask */
     #define GK20A_DEFAULT_DBG_MASK 0
 #else

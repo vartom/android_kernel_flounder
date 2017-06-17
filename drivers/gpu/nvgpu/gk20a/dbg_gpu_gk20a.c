@@ -1,7 +1,7 @@
 /*
  * Tegra GK20A GPU Debugger/Profiler Driver
  *
- * Copyright (c) 2013-2014, NVIDIA CORPORATION.  All rights reserved.
+ * Copyright (c) 2013-2017, NVIDIA CORPORATION.  All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms and conditions of the GNU General Public License,
@@ -91,6 +91,7 @@ int gk20a_dbg_gpu_do_dev_open(struct inode *inode, struct file *filp, bool is_pr
 
 	INIT_LIST_HEAD(&dbg_session->dbg_s_list_node);
 	init_waitqueue_head(&dbg_session->dbg_events.wait_queue);
+	mutex_init(&dbg_session->ioctl_lock);
 	dbg_session->dbg_events.events_enabled = false;
 	dbg_session->dbg_events.num_pending_events = 0;
 
@@ -274,6 +275,12 @@ static int dbg_unbind_channel_gk20a(struct dbg_session_gk20a *dbg_s)
 
 	--g->dbg_sessions;
 
+	/* Powergate enable is called here as possibility of dbg_session
+	 * which called powergate disable ioctl, to be killed without calling
+	 * powergate enable ioctl
+	 */
+	dbg_set_powergate(dbg_s, NVHOST_DBG_GPU_POWERGATE_MODE_ENABLE);
+
 	dbg_s->ch = NULL;
 	fput(dbg_s->ch_f);
 	dbg_s->ch_f = NULL;
@@ -289,21 +296,12 @@ static int dbg_unbind_channel_gk20a(struct dbg_session_gk20a *dbg_s)
 int gk20a_dbg_gpu_dev_release(struct inode *inode, struct file *filp)
 {
 	struct dbg_session_gk20a *dbg_s = filp->private_data;
-	struct gk20a *g = dbg_s->g;
 
 	gk20a_dbg(gpu_dbg_gpu_dbg | gpu_dbg_fn, "%s", dev_name(dbg_s->dev));
 
 	/* unbind if it was bound */
 	if (dbg_s->ch)
 		dbg_unbind_channel_gk20a(dbg_s);
-
-	/* Powergate enable is called here as possibility of dbg_session
-	 * which called powergate disable ioctl, to be killed without calling
-	 * powergate enable ioctl
-	 */
-	mutex_lock(&g->dbg_sessions_lock);
-	dbg_set_powergate(dbg_s, NVHOST_DBG_GPU_POWERGATE_MODE_ENABLE);
-	mutex_unlock(&g->dbg_sessions_lock);
 
 	kfree(dbg_s);
 	return 0;
@@ -392,6 +390,9 @@ long gk20a_dbg_gpu_dev_ioctl(struct file *filp, unsigned int cmd,
 		gk20a_idle(g->dev);
 	}
 
+	/* protect from threaded user space calls */
+	mutex_lock(&dbg_s->ioctl_lock);
+
 	switch (cmd) {
 	case NVHOST_DBG_GPU_IOCTL_BIND_CHANNEL:
 		err = dbg_bind_channel_gk20a(dbg_s,
@@ -428,6 +429,8 @@ long gk20a_dbg_gpu_dev_ioctl(struct file *filp, unsigned int cmd,
 		err = -ENOTTY;
 		break;
 	}
+
+	mutex_unlock(&dbg_s->ioctl_lock);
 
 	if ((err == 0) && (_IOC_DIR(cmd) & _IOC_READ))
 		err = copy_to_user((void __user *)arg,
@@ -591,13 +594,13 @@ static int dbg_set_powergate(struct dbg_session_gk20a *dbg_s,
 		    --g->dbg_powergating_disabled_refcount == 0) {
 
 			g->elcg_enabled = true;
-			gr_gk20a_init_elcg_mode(g, ELCG_AUTO, ENGINE_CE2_GK20A);
 			gr_gk20a_init_elcg_mode(g, ELCG_AUTO, ENGINE_GR_GK20A);
+			gr_gk20a_init_elcg_mode(g, ELCG_AUTO, ENGINE_CE2_GK20A);
 			gr_gk20a_init_blcg_mode(g, BLCG_AUTO, ENGINE_GR_GK20A);
 
-			g->ops.clock_gating.slcg_perf_load_gating_prod(g,
-					g->slcg_enabled);
 			g->ops.clock_gating.slcg_gr_load_gating_prod(g,
+					g->slcg_enabled);
+			g->ops.clock_gating.slcg_perf_load_gating_prod(g,
 					g->slcg_enabled);
 
 			gk20a_pmu_enable_elpg(g);

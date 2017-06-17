@@ -1,7 +1,7 @@
 /*
  * GK20A Graphics
  *
- * Copyright (c) 2011-2015, NVIDIA CORPORATION.  All rights reserved.
+ * Copyright (c) 2011-2014, NVIDIA CORPORATION.  All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms and conditions of the GNU General Public License,
@@ -49,8 +49,12 @@
 #include "hw_therm_gk20a.h"
 #include "hw_pbdma_gk20a.h"
 #include "gr_pri_gk20a.h"
+
 #include "regops_gk20a.h"
+
+#if defined(CONFIG_TEGRA_GK20A_DEBUG_SESSION)
 #include "dbg_gpu_gk20a.h"
+#endif
 
 #define BLK_SIZE (256)
 
@@ -1629,15 +1633,6 @@ int gr_gk20a_update_smpc_ctxsw_mode(struct gk20a *g,
 	struct channel_ctx_gk20a *ch_ctx = &c->ch_ctx;
 	void *ctx_ptr = NULL;
 	u32 data;
-	int ret;
-
-	c->g->ops.fifo.disable_channel(c);
-	ret = c->g->ops.fifo.preempt_channel(c->g, c->hw_chid);
-	if (ret) {
-		gk20a_err(dev_from_gk20a(g),
-			"failed to preempt channel\n");
-		return ret;
-	}
 
 	/* Channel gr_ctx buffer is gpu cacheable.
 	   Flush and invalidate before cpu update. */
@@ -1658,9 +1653,6 @@ int gr_gk20a_update_smpc_ctxsw_mode(struct gk20a *g,
 		 data);
 
 	vunmap(ctx_ptr);
-
-	/* enable channel */
-	c->g->ops.fifo.enable_channel(c);
 
 	return 0;
 }
@@ -4247,6 +4239,10 @@ static int gk20a_init_gr_setup_hw(struct gk20a *g)
 	gk20a_writel(g, gr_exception2_r(), 0xFFFFFFFF);
 	gk20a_writel(g, gr_exception2_en_r(), 0xFFFFFFFF);
 
+	/* ignore status from some units */
+	data = gk20a_readl(g, gr_status_mask_r());
+	gk20a_writel(g, gr_status_mask_r(), data & gr->status_disable_mask);
+
 	if (gr->sw_ready)
 		gr_gk20a_load_zbc_table(g, gr);
 	else
@@ -5022,7 +5018,7 @@ static inline bool is_valid_cyclestats_bar0_offset_gk20a(struct gk20a *g,
 	bool valid = !(offset & 0xFF000003);
 	/* whitelist check */
 	valid = valid &&
-		is_bar0_global_offset_whitelisted_gk20a(offset);
+		is_bar0_global_offset_whitelisted_gk20a(g, offset);
 	/* resource size check in case there was a problem
 	 * with allocating the assumed size of bar0 */
 	valid = valid &&
@@ -5154,7 +5150,6 @@ static int gk20a_gr_handle_notify_pending(struct gk20a *g,
 
 /* Used by sw interrupt thread to translate current ctx to chid.
  * For performance, we don't want to go through 128 channels every time.
- * curr_ctx should be the value read from gr_fecs_current_ctx_r().
  * A small tlb is used here to cache translation */
 static int gk20a_gr_get_chid_from_ctx(struct gk20a *g, u32 curr_ctx)
 {
@@ -5162,13 +5157,6 @@ static int gk20a_gr_get_chid_from_ctx(struct gk20a *g, u32 curr_ctx)
 	struct gr_gk20a *gr = &g->gr;
 	u32 chid = -1;
 	u32 i;
-
-	/* when contexts are unloaded from GR, the valid bit is reset
-	 * but the instance pointer information remains intact. So the
-	 * valid bit must be checked to be absolutely certain that a
-	 * valid context is currently resident. */
-	if (!gr_fecs_current_ctx_valid_v(curr_ctx))
-		return -1;
 
 	spin_lock(&gr->ch_tlb_lock);
 
@@ -5294,12 +5282,6 @@ static void gk20a_gr_clear_sm_hww(struct gk20a *g, u32 global_esr)
 			gr_gpc0_tpc0_sm_hww_warp_esr_error_none_f());
 }
 
-static struct channel_gk20a *
-channel_from_hw_chid(struct gk20a *g, u32 hw_chid)
-{
-	return g->fifo.channel+hw_chid;
-}
-
 static int gk20a_gr_handle_sm_exception(struct gk20a *g,
 		struct gr_isr_data *isr_data)
 {
@@ -5315,7 +5297,9 @@ static int gk20a_gr_handle_sm_exception(struct gk20a *g,
 			  gr_gpc0_tpc0_sm_hww_global_esr_single_step_complete_pending_f();
 	u32 global_esr, warp_esr;
 	bool sm_debugger_attached = gk20a_gr_sm_debugger_attached(g);
+#if defined(CONFIG_TEGRA_GK20A_DEBUG_SESSION)
 	struct channel_gk20a *fault_ch;
+#endif
 
 	gk20a_dbg(gpu_dbg_fn | gpu_dbg_gpu_dbg, "");
 
@@ -5345,10 +5329,12 @@ static int gk20a_gr_handle_sm_exception(struct gk20a *g,
 		}
 	}
 
+#if defined(CONFIG_TEGRA_GK20A_DEBUG_SESSION)
 	/* finally, signal any client waiting on an event */
-	fault_ch = channel_from_hw_chid(g, isr_data->chid);
+	fault_ch = g->fifo.channel + isr_data->chid;
 	if (fault_ch)
 		gk20a_dbg_gpu_post_events(fault_ch);
+#endif
 
 	return ret;
 }
