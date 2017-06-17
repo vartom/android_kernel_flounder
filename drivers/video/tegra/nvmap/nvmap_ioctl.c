@@ -31,6 +31,7 @@
 #include <linux/uaccess.h>
 #include <linux/nvmap.h>
 #include <linux/vmalloc.h>
+#include <linux/highmem.h>
 
 #include <asm/memory.h>
 
@@ -88,6 +89,7 @@ int nvmap_ioctl_pinop(struct file *filp, bool is_pin, void __user *arg,
 			return -EFAULT;
 		op.handles = (__u32 *)(uintptr_t)op32.handles;
 		op.count = op32.count;
+                op.addr = (unsigned long *)(uintptr_t)op32.addr;
 	} else
 #endif
 		if (copy_from_user(&op, arg, sizeof(op)))
@@ -226,6 +228,33 @@ const struct file_operations nvmap_fd_fops = {
 	.mmap		= nvmap_share_mmap,
 };
 
+int nvmap_install_fd(struct nvmap_client *client,
+	struct nvmap_handle *handle, int fd, void __user *arg,
+	void *op, size_t op_size, bool free)
+{
+	int err = 0;
+
+	if (IS_ERR_VALUE(fd)) {
+		err = fd;
+		goto fd_fail;
+	}
+
+	if (copy_to_user(arg, op, op_size)) {
+		err = -EFAULT;
+		goto copy_fail;
+	}
+
+	fd_install(fd, handle->dmabuf->file);
+	return err;
+
+copy_fail:
+	put_unused_fd(fd);
+fd_fail:
+	if (free)
+		nvmap_free_handle(client, handle);
+	return err;
+}
+
 int nvmap_ioctl_getfd(struct file *filp, void __user *arg)
 {
 	struct nvmap_handle *handle;
@@ -241,14 +270,9 @@ int nvmap_ioctl_getfd(struct file *filp, void __user *arg)
 
 	op.fd = nvmap_get_dmabuf_fd(client, handle);
 	nvmap_handle_put(handle);
-	if (op.fd < 0)
-		return op.fd;
 
-	if (copy_to_user(arg, &op, sizeof(op))) {
-		sys_close(op.fd);
-		return -EFAULT;
-	}
-	return 0;
+	return nvmap_install_fd(client, handle, op.fd,
+				arg, &op, sizeof(op), 0);
 }
 
 int nvmap_ioctl_alloc(struct file *filp, void __user *arg)
@@ -309,30 +333,11 @@ int nvmap_ioctl_alloc_kind(struct file *filp, void __user *arg)
 	return err;
 }
 
-int nvmap_create_fd(struct nvmap_client *client, struct nvmap_handle *h)
-{
-	int fd;
-
-	fd = __nvmap_dmabuf_fd(client, h->dmabuf, O_CLOEXEC);
-	BUG_ON(fd == 0);
-	if (fd < 0) {
-		pr_err("Out of file descriptors");
-		return fd;
-	}
-	/* __nvmap_dmabuf_fd() associates fd with dma_buf->file *.
-	 * fd close drops one ref count on dmabuf->file *.
-	 * to balance ref count, ref count dma_buf.
-	 */
-	get_dma_buf(h->dmabuf);
-	return fd;
-}
-
 int nvmap_ioctl_create(struct file *filp, unsigned int cmd, void __user *arg)
 {
 	struct nvmap_create_handle op;
 	struct nvmap_handle_ref *ref = NULL;
 	struct nvmap_client *client = filp->private_data;
-	int err = 0;
 	int fd = 0;
 
 	if (copy_from_user(&op, arg, sizeof(op)))
@@ -354,20 +359,10 @@ int nvmap_ioctl_create(struct file *filp, unsigned int cmd, void __user *arg)
 	if (IS_ERR(ref))
 		return PTR_ERR(ref);
 
-	fd = nvmap_create_fd(client, ref->handle);
-	if (fd < 0)
-		err = fd;
-
+	fd = nvmap_get_dmabuf_fd(client, ref->handle);
 	op.handle = fd;
-
-	if (copy_to_user(arg, &op, sizeof(op))) {
-		err = -EFAULT;
-		nvmap_free_handle(client, __nvmap_ref_to_id(ref));
-	}
-
-	if (err && fd > 0)
-		sys_close(fd);
-	return err;
+	return nvmap_install_fd(client, ref->handle, fd,
+				arg, &op, sizeof(op), 1);
 }
 
 int nvmap_map_into_caller_ptr(struct file *filp, void __user *arg, bool is32)
@@ -496,10 +491,14 @@ int nvmap_ioctl_get_param(struct file *filp, void __user *arg, bool is32)
 	ref = __nvmap_validate_locked(client, h);
 	if (IS_ERR_OR_NULL(ref)) {
 		err = ref ? PTR_ERR(ref) : -EINVAL;
-		goto ref_fail;
+		goto out;
 	}
 
+	result = 0;
 	err = nvmap_get_handle_param(client, ref, op.param, &result);
+	if (err) {
+		goto out;
+	}
 
 #ifdef CONFIG_COMPAT
 	if (is32)
@@ -508,7 +507,7 @@ int nvmap_ioctl_get_param(struct file *filp, void __user *arg, bool is32)
 #endif
 		err = put_user((unsigned long)result, &uarg->result);
 
-ref_fail:
+out:
 	nvmap_ref_unlock(client);
 	nvmap_handle_put(h);
 	return err;
@@ -681,8 +680,7 @@ static void outer_cache_maint(unsigned int op, phys_addr_t paddr, size_t size)
 
 static void heap_page_cache_maint(
 	struct nvmap_handle *h, unsigned long start, unsigned long end,
-	unsigned int op, bool inner, bool outer,
-	unsigned long kaddr, pgprot_t prot, bool clean_only_dirty)
+	unsigned int op, bool inner, bool outer, bool clean_only_dirty)
 {
 	if (h->userflags & NVMAP_HANDLE_CACHE_SYNC) {
 		/*
@@ -704,7 +702,8 @@ static void heap_page_cache_maint(
 			if (!pages)
 				goto per_page_cache_maint;
 			vaddr = vm_map_ram(pages,
-					h->size >> PAGE_SHIFT, -1, prot);
+					h->size >> PAGE_SHIFT, -1,
+					nvmap_pgprot(h, PG_PROT_KERNEL));
 			nvmap_altfree(pages,
 				(h->size >> PAGE_SHIFT) * sizeof(*pages));
 		}
@@ -724,6 +723,7 @@ per_page_cache_maint:
 
 	while (start < end) {
 		struct page *page;
+		void *kaddr, *vaddr;
 		phys_addr_t paddr;
 		unsigned long next;
 		unsigned long off;
@@ -736,12 +736,11 @@ per_page_cache_maint:
 		paddr = page_to_phys(page) + off;
 
 		if (inner) {
-			void *vaddr = (void *)kaddr + off;
+			kaddr = kmap(page);
+			vaddr = (void *)kaddr + off;
 			BUG_ON(!kaddr);
-			ioremap_page_range(kaddr, kaddr + PAGE_SIZE,
-				paddr, prot);
 			inner_cache_maint(op, vaddr, size);
-			unmap_kernel_range(kaddr, PAGE_SIZE);
+			kunmap(page);
 		}
 
 		if (outer)
@@ -819,7 +818,7 @@ static bool fast_cache_maint(struct nvmap_handle *h,
 		{
 			if (h->heap_pgalloc) {
 				heap_page_cache_maint(h, start,
-					end, op, false, true, 0, 0,
+					end, op, false, true,
 					clean_only_dirty);
 			} else  {
 				phys_addr_t pstart;
@@ -877,19 +876,10 @@ static int do_cache_maint(struct cache_maint_op *cache_work)
 	if (fast_cache_maint(h, pstart, pend, op, cache_work->clean_only_dirty))
 		goto out;
 
-	prot = nvmap_pgprot(h, PG_PROT_KERNEL);
-	area = alloc_vm_area(PAGE_SIZE, NULL);
-	if (!area) {
-		err = -ENOMEM;
-		goto out;
-	}
-	kaddr = (ulong)area->addr;
-
 	if (h->heap_pgalloc) {
 		heap_page_cache_maint(h, pstart, pend, op, true,
 			(h->flags == NVMAP_HANDLE_INNER_CACHEABLE) ?
-			false : true, kaddr, prot,
-			cache_work->clean_only_dirty);
+			false : true, cache_work->clean_only_dirty);
 		goto out;
 	}
 
@@ -898,6 +888,14 @@ static int do_cache_maint(struct cache_maint_op *cache_work)
 		err = -EINVAL;
 		goto out;
 	}
+
+	prot = nvmap_pgprot(h, PG_PROT_KERNEL);
+	area = alloc_vm_area(PAGE_SIZE, NULL);
+	if (!area) {
+		err = -ENOMEM;
+		goto out;
+	}
+	kaddr = (ulong)area->addr;
 
 	pstart += h->carveout->base;
 	pend += h->carveout->base;
@@ -1036,7 +1034,7 @@ static ssize_t rw_handle(struct nvmap_client *client, struct nvmap_handle *h,
 		elem_size > sys_stride ||
 		elem_size > h_stride ||
 		sys_stride > (h->size - h_offs) / count ||
-		h_stride > (h->size - h_offs) / count)
+		h_offs + h_stride * (count - 1) + elem_size > h->size)
 		return -EINVAL;
 
 	area = alloc_vm_area(PAGE_SIZE, NULL);

@@ -265,6 +265,9 @@ void *__nvmap_mmap(struct nvmap_handle *h)
 	if (!h)
 		return NULL;
 
+	if (!h->alloc)
+		return NULL;
+
 	prot = nvmap_pgprot(h, PG_PROT_KERNEL);
 
 	if (h->heap_pgalloc) {
@@ -288,11 +291,14 @@ void *__nvmap_mmap(struct nvmap_handle *h)
 	}
 
 	/* carveout - explicitly map the pfns into a vmalloc area */
+	if (!h->carveout)
+		return NULL;
+
 	adj_size = h->carveout->base & ~PAGE_MASK;
 	adj_size += h->size;
 	adj_size = PAGE_ALIGN(adj_size);
 
-	v = alloc_vm_area(adj_size, 0);
+	v = alloc_vm_area(adj_size, NULL);
 	if (!v) {
 		nvmap_handle_put(h);
 		return NULL;
