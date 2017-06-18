@@ -228,6 +228,8 @@ int __init flounder_edp_init(void)
 	pr_info("%s: CPU regulator %d mA\n", __func__, regulator_mA);
 	tegra_init_cpu_edp_limits(regulator_mA);
 
+	regulator_mA = 16800;
+
 	pr_info("%s: GPU regulator %d mA\n", __func__, regulator_mA);
 	tegra_init_gpu_edp_limits(regulator_mA);
 
@@ -300,7 +302,7 @@ static struct soctherm_platform_data flounder_soctherm_data = {
 				},
 				{
 					.cdev_type = "cpu-balanced",
-					.trip_temp = 85000,
+					.trip_temp = 65000,
 					.trip_type = THERMAL_TRIP_PASSIVE,
 					.upper = THERMAL_NO_LIMIT,
 					.lower = THERMAL_NO_LIMIT,
@@ -330,7 +332,7 @@ static struct soctherm_platform_data flounder_soctherm_data = {
 				},
 				{
 					.cdev_type = "gpu-balanced",
-					.trip_temp = 85000,
+					.trip_temp = 65000,
 					.trip_type = THERMAL_TRIP_PASSIVE,
 					.upper = THERMAL_NO_LIMIT,
 					.lower = THERMAL_NO_LIMIT,
