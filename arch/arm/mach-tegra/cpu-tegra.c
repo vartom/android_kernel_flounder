@@ -890,7 +890,7 @@ static int tegra_pm_notify(struct notifier_block *nb, unsigned long event,
 		if (is_edp_reg_idle_supported())
 			reg_mode_force_normal = true;
 #endif
-		pr_info("Tegra cpufreq suspend: setting frequency to %d kHz\n",
+		pr_debug("Tegra cpufreq suspend: setting frequency to %d kHz\n",
 			freq_table[suspend_index].frequency);
 		tegra_update_cpu_speed(freq_table[suspend_index].frequency);
 		tegra_auto_hotplug_governor(
