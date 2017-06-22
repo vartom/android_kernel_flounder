@@ -188,14 +188,13 @@ alloc_zeroed_user_highpage_movable(struct vm_area_struct *vma,
 #endif
 }
 
-<<<<<<< HEAD
 static inline struct page *
 alloc_zeroed_user_highpage(gfp_t gfp, struct vm_area_struct *vma,
 			   unsigned long vaddr)
 {
 	return __alloc_zeroed_user_highpage(gfp, vma, vaddr);
 }
-=======
+
 #ifdef CONFIG_CMA
 static inline struct page *
 alloc_zeroed_user_highpage_movable_cma(struct vm_area_struct *vma,
@@ -205,7 +204,6 @@ alloc_zeroed_user_highpage_movable_cma(struct vm_area_struct *vma,
 						vaddr);
 }
 #endif
->>>>>>> c05d569... cma: redirect page allocation to CMA
 
 static inline void clear_highpage(struct page *page)
 {
