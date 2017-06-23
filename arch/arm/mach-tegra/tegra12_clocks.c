@@ -9264,7 +9264,7 @@ struct tegra_cpufreq_table_data *tegra_cpufreq_table_get(void)
 #define GRANULARITY_KHZ   25500
 #define GRANULARITY_END 1020000
 #define CPU_THROTTLE_FREQ 408000
-#define CPU_SUSPEND_FREQ  306000
+#define CPU_SUSPEND_FREQ  408000
 
 struct tegra_cpufreq_table_data *tegra_cpufreq_table_get(void)
 {
@@ -9288,7 +9288,7 @@ struct tegra_cpufreq_table_data *tegra_cpufreq_table_get(void)
 		return NULL;
 	}
 
-	cpu_min_freq = CPU_SUSPEND_FREQ;
+	cpu_min_freq = 510000;
 
 	cpu_clk_g->min_rate = cpu_min_freq*1000;
 
