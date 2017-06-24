@@ -81,6 +81,7 @@
 				compatible = "ti,palmas-usb";
 				ti,wakeup;
 				#extcon-cells = <1>;
+				ti,enable-id-detection;
 				ti,enable-vbus-detection;
 			};
 
@@ -297,6 +298,8 @@
 						regulator-name = "vdd-1v2";
 						regulator-min-microvolt = <1200000>;
 						regulator-max-microvolt = <1200000>;
+						regulator-always-on;
+						regulator-boot-on;
 
 						consumers {
 						};
@@ -306,6 +309,8 @@
 						regulator-name = "vdd-hdmi";
 						regulator-min-microvolt = <5000000>;
 						regulator-max-microvolt = <5000000>;
+						regulator-always-on;
+						regulator-boot-on;
 
 						consumers {
 							c1 {
@@ -319,6 +324,8 @@
 						regulator-name = "vdd-out2-5v0";
 						regulator-min-microvolt = <5000000>;
 						regulator-max-microvolt = <5000000>;
+						regulator-always-on;
+						regulator-boot-on;
 
 						consumers {
 							c1 {
@@ -487,10 +494,12 @@
 						};
 					};
 
-					ldo6 {
+					ldo6_reg: ldo6 {
 						regulator-name = "vdd-1v5-ldo6";
 						regulator-min-microvolt = <1500000>;
 						regulator-max-microvolt = <1800000>;
+						regulator-always-on;
+						regulator-boot-on;
 
 						consumers {
 						};
@@ -500,6 +509,8 @@
 						regulator-name = "v-slim-1v0";
 						regulator-min-microvolt = <1000000>;
 						regulator-max-microvolt = <1100000>;
+						regulator-always-on;
+						regulator-boot-on;
 
 						consumers {
 							c1 {
@@ -592,6 +603,39 @@
 					};
 				};
 			};
+		};
+	};
+
+	extcon {
+		extcon_cable_xlate: extcon@0 {
+			compatible = "extcon-cable-xlate";
+			reg = <0x0>;
+			extcon-name = "cable-xlate";
+			output-cable-names = "USB", "USB-Host", "ACA-A", "Y-Cable", "ACA-B", "ACA-C", "ACA-NV";
+					extcon-cables = <&palmas_extcon 0 &palmas_extcon 1 &palmas_extcon 2 &palmas_extcon 3 &palmas_extcon 4>;
+			extcon-cable-names = "vbus", "id", "aca-ra", "aca-rb", "aca-rc";
+			cable-new-states = <0x0     0x0     0x3F    0x0 0x0
+					0x0     0x1     0x3F    0x1   0x0
+					0x2     0x1     0x3F    0x0   0x0
+					0x0     0x2     0x3F    0x2   0x0
+					0x0     0x3     0x3F    0x8   0x0
+					0x2     0x3     0x3F    0x2   0x0
+					0x3     0x1     0x3F    0x0   0x0
+					0x3     0x2     0x3F    0x2   0x0
+					0x0     0x5     0x3F    0x4   0x0
+					0x1     0x5     0x3F    0x4   0x0
+					0x0     0x4     0x3F    0x4   0x0
+					0x0     0x11    0x3F    0x20  0x0
+					0x1     0x11    0x3F    0x20  0x0
+					0x0     0x10    0x3F    0x20  0x0
+					0x1     0x10    0x3F    0x20  0x0
+					0x0     0x9     0x3F    0x10  0x0
+					0x1     0x9     0x3F    0x10  0x0
+					0x8     0x9     0x3F    0x10  0x0
+					0x11     0x1    0x3F    0x1  0x0
+					0x0     0x8     0x3F    0x10  0x0>;
+			#extcon-cells = <1>;
+			status = "okay";
 		};
 	};
 };
