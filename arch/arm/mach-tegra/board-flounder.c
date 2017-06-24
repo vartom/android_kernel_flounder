@@ -412,6 +412,7 @@ static struct tegra_usb_platform_data tegra_udc_pdata = {
 	},
 };
 
+#if !defined(CONFIG_ARM64)
 static struct tegra_usb_platform_data tegra_ehci1_utmi_pdata = {
 	.port_otg = true,
 	.has_hostpc = true,
@@ -495,9 +496,13 @@ static struct tegra_usb_otg_data tegra_otg_pdata = {
 	.ehci_device = &tegra_ehci1_device,
 	.ehci_pdata = &tegra_ehci1_utmi_pdata,
 };
+#else
+static struct tegra_usb_otg_data tegra_otg_pdata;
+#endif
 
 static void flounder_usb_init(void)
 {
+#if !defined(CONFIG_ARM64)
 	int usb_port_owner_info = tegra_get_usb_port_owner_info();
 
 	tegra_ehci1_utmi_pdata.u_data.host.turn_off_vbus_on_lp0 = true;
@@ -507,9 +512,9 @@ static void flounder_usb_init(void)
 	tegra_ehci1_utmi_pdata.support_pmu_vbus = true;
 	tegra_ehci1_utmi_pdata.vbus_extcon_dev_name = "palmas-extcon";
 	/* Host cable is detected through PMU Interrupt */
-	tegra_udc_pdata.id_det_type = TEGRA_USB_PMU_ID;
+	tegra_udc_pdata.id_det_type = TEGRA_USB_VIRTUAL_ID;
 	tegra_udc_pdata.vbus_extcon_dev_name = "palmas-extcon";
-	tegra_ehci1_utmi_pdata.id_det_type = TEGRA_USB_PMU_ID;
+	tegra_ehci1_utmi_pdata.id_det_type = TEGRA_USB_VIRTUAL_ID;
 	tegra_ehci1_utmi_pdata.id_extcon_dev_name = "palmas-extcon";
 
 	/*
@@ -533,11 +538,11 @@ static void flounder_usb_init(void)
 
 	tegra_otg_device.dev.platform_data = &tegra_otg_pdata;
 	platform_device_register(&tegra_otg_device);
-
+#endif
 	/* Setup the udc platform data */
 	tegra_udc_device.dev.platform_data = &tegra_udc_pdata;
 
-
+#if !defined(CONFIG_ARM64)
 	platform_device_register(&tegra_udc_device);
 
 	if ((!(usb_port_owner_info & UTMI2_PORT_OWNER_XUSB))
@@ -552,6 +557,7 @@ static void flounder_usb_init(void)
 		tegra_ehci3_device.dev.platform_data = &tegra_ehci3_utmi_pdata;
 		platform_device_register(&tegra_ehci3_device);
 	}
+#endif
 }
 
 static struct tegra_xusb_platform_data xusb_pdata = {
