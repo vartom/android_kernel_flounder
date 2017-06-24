@@ -39,7 +39,7 @@
 			};
 		};
 
-		usb0_vbus: regulator@1 {
+		regulator@1 {
 			compatible = "regulator-fixed-sync";
 			reg = <1>;
 			regulator-name = "usb0-vbus";
