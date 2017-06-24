@@ -26,7 +26,10 @@
 		/* tegradc.0 */
 		dc@54200000 {
 			avdd_dsi_csi-supply = <&ldo5_reg>;
-			vdd_lcd_bl_en-supply = <&en_lcd_bl>;
+			avdd_lcd-supply = <&avdd_lcd>;
+			dvdd_lcd-supply = <&vdd_lcd>;
+			vdd_lcd_bl-supply = <&en_lcd_bl>;
+
 		};
 		/* tegradc.1 */
 		dc@54240000 {
@@ -49,6 +52,7 @@
 		pwrdet-audio-supply = <&palmas_smps8>;
 		pwrdet-uart-supply = <&palmas_smps8>;
 		pwrdet-bb-supply = <&palmas_smps8>;
+		pwrdet-cam-supply = <&palmas_smps8>;
 		pwrdet-mipi-supply = <&ldo5_reg>;
 		pwrdet-sdmmc3-supply = <&palmas_ldo9>;
 		pwrdet-hv-supply = <&ldoln_reg>;
