@@ -298,8 +298,6 @@
 						regulator-name = "vdd-1v2";
 						regulator-min-microvolt = <1200000>;
 						regulator-max-microvolt = <1200000>;
-						regulator-always-on;
-						regulator-boot-on;
 
 						consumers {
 						};
@@ -309,8 +307,6 @@
 						regulator-name = "vdd-hdmi";
 						regulator-min-microvolt = <5000000>;
 						regulator-max-microvolt = <5000000>;
-						regulator-always-on;
-						regulator-boot-on;
 
 						consumers {
 							c1 {
@@ -324,8 +320,6 @@
 						regulator-name = "vdd-out2-5v0";
 						regulator-min-microvolt = <5000000>;
 						regulator-max-microvolt = <5000000>;
-						regulator-always-on;
-						regulator-boot-on;
 
 						consumers {
 							c1 {
@@ -498,8 +492,6 @@
 						regulator-name = "vdd-1v5-ldo6";
 						regulator-min-microvolt = <1500000>;
 						regulator-max-microvolt = <1800000>;
-						regulator-always-on;
-						regulator-boot-on;
 
 						consumers {
 						};
@@ -509,8 +501,6 @@
 						regulator-name = "v-slim-1v0";
 						regulator-min-microvolt = <1000000>;
 						regulator-max-microvolt = <1100000>;
-						regulator-always-on;
-						regulator-boot-on;
 
 						consumers {
 							c1 {
