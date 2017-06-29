@@ -27,9 +27,9 @@
 		dc@54200000 {
 			avdd_dsi_csi-supply = <&ldo5_reg>;
 			avdd_lcd-supply = <&avdd_lcd>;
-			dvdd_lcd-supply = <&vdd_lcd>;
-			vdd_lcd_bl-supply = <&en_lcd_bl>;
-
+			dvdd_lcd-supply = <&palmas_smps8>;
+			vdd_lcd_bl_en-supply = <&en_lcd_bl>;
+			vdd_lcd_bl-supply = <&ldo5_reg>;
 		};
 		/* tegradc.1 */
 		dc@54240000 {
@@ -52,27 +52,19 @@
 		pwrdet-audio-supply = <&palmas_smps8>;
 		pwrdet-uart-supply = <&palmas_smps8>;
 		pwrdet-bb-supply = <&palmas_smps8>;
-		pwrdet-cam-supply = <&palmas_smps8>;
 		pwrdet-mipi-supply = <&ldo5_reg>;
 		pwrdet-sdmmc3-supply = <&palmas_ldo9>;
 		pwrdet-hv-supply = <&ldoln_reg>;
 		pwrdet-pex-ctl-supply = <&ldousb_reg>;
 	};
 
-	udc@7d000000 {
-		avdd_usb-supply = <&ldousb_reg>;
+	xusb@70090000 {
+		usb_vbus0-supply = <&usb0_vbus>;
+		usb_vbus1-supply = <&usb1_vbus>;
+		usb_vbus2-supply = <&usb2_vbus>;
+		hvdd_usb-supply = <&ldousb_reg>;
 		avdd_pll_utmip-supply = <&palmas_smps8>;
-		usb_bat_chg-supply = <&battery_charger>;
-	};
-
-	otg@7d000000 {
-		usb_bat_chg-supply = <&battery_charger>;
-		usb_vbus-supply = <&usb0_vbus>;
-	};
-
-	ehci@7d000000 {
-		avdd_usb-supply = <&ldousb_reg>;
-		avdd_pll_utmip-supply = <&palmas_smps8>;
-		usb_vbus-supply = <&usb0_vbus>;
+		vddio_hsic-supply = <&ldo5_reg>;
+		avddio_usb-supply = <&palmas_smps10_out2>;
 	};
 };
