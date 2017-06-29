@@ -39,7 +39,7 @@
 			};
 		};
 
-		regulator@1 {
+		usb0_vbus: regulator@1 {
 			compatible = "regulator-fixed-sync";
 			reg = <1>;
 			regulator-name = "usb0-vbus";
@@ -110,6 +110,7 @@
 			consumers {
 				c1 {
 					regulator-consumer-supply = "avdd_lcd";
+					regulator-consumer-device = "tegradc.0";
 				};
 			};
 		};
@@ -121,12 +122,16 @@
 			regulator-min-microvolt = <1200000>;
 			regulator-max-microvolt = <1200000>;
 			enable-active-high;
-			gpio = <&palmas_gpio 4 0>;
 			vin-supply = <&palmas_smps8>;
 
 			consumers {
 				c1 {
+					regulator-consumer-supply = "dvdd_lcd";
+					regulator-consumer-device = "tegradc.0";
+				};
+				c2 {
 					regulator-consumer-supply = "vdd_lcd_1v2_s";
+					regulator-consumer-device = "tegradc.0";
 				};
 			};
 		};
@@ -178,6 +183,7 @@
 			consumers {
 				c1 {
 					regulator-consumer-supply = "vdd_lcd_bl_en";
+					regulator-consumer-device = "tegradc.0";
 				};
 			};
 		};
