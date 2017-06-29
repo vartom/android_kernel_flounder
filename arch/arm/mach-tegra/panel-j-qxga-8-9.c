@@ -1,7 +1,7 @@
 /*
- * arch/arm/mach-tegra/panel-s-wqxga-10-1.c
+ * arch/arm/mach-tegra/panel-s-wuxga-8-0.c
  *
- * Copyright (c) 2012-2014, NVIDIA CORPORATION. All rights reserved.
+ * Copyright (c) 2015, NVIDIA CORPORATION.  All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms and conditions of the GNU General Public License,
@@ -20,170 +20,141 @@
 #include <linux/delay.h>
 #include <linux/gpio.h>
 #include <linux/regulator/consumer.h>
+#include <linux/tegra_dsi_backlight.h>
+#include <linux/leds.h>
+#include <linux/ioport.h>
+#include <linux/export.h>
+#include <linux/of_gpio.h>
+
+#include <generated/mach-types.h>
 
 #include "board.h"
 #include "board-panel.h"
 #include "devices.h"
 #include "gpio-names.h"
 
-#define DSI_PANEL_RESET		0
 
-static bool reg_requested;
-static struct regulator *avdd_lcd_3v3;
-static struct regulator *vdd_lcd_bl;
-static struct regulator *vdd_lcd_bl_en;
+/*static bool reg_requested;
+static struct regulator *avdd_lcd_3v0;
 static struct regulator *dvdd_lcd_1v8;
-static u16 en_panel_rst;
+static struct regulator *vpp_lcd;
+static struct regulator *vmm_lcd;
+static struct device *dc_dev;
+static u16 en_panel_rst;*/
 
-static int dalmore_dsi_regulator_get(struct device *dev)
+enum panel_gpios {
+	IOVDD_1V8 = 0,
+	AVDD_4V,
+	DCDC_EN,
+	LCM_RST,
+	NUM_PANEL_GPIOS,
+};
+
+static bool gpio_requested;
+//static struct platform_device *disp_device;
+
+static int iovdd_1v8, avdd_4v, dcdc_en, lcm_rst;
+
+static struct gpio panel_init_gpios[] = {
+	{TEGRA_GPIO_PQ2,	GPIOF_OUT_INIT_HIGH,    "iovdd_1v8"},
+	{TEGRA_GPIO_PR0,	GPIOF_OUT_INIT_HIGH,    "avdd_4v"},
+	{TEGRA_GPIO_PEE5,	GPIOF_OUT_INIT_HIGH,    "dcdc_en"},
+	{TEGRA_GPIO_PH5,	GPIOF_OUT_INIT_HIGH,	"lcm_rst"},
+};
+
+static int dsi_j_qxga_8_9_gpio_get(void)
 {
-	int err = 0;
+	int err;
 
-	if (reg_requested)
+	if (gpio_requested)
 		return 0;
-	dvdd_lcd_1v8 = regulator_get(dev, "dvdd_lcd2");
-	if (IS_ERR(dvdd_lcd_1v8)) {
-		pr_info("dvdd_lcd regulator get failed\n");
-		err = PTR_ERR(dvdd_lcd_1v8);
-		dvdd_lcd_1v8 = NULL;
-		goto fail;
-	}
-	avdd_lcd_3v3 = regulator_get(dev, "avdd_lcd2");
-	if (IS_ERR(avdd_lcd_3v3)) {
-		pr_info("avdd_lcd regulator get failed\n");
-		err = PTR_ERR(avdd_lcd_3v3);
-		avdd_lcd_3v3 = NULL;
-		goto fail;
+
+	err = gpio_request_array(panel_init_gpios, ARRAY_SIZE(panel_init_gpios));
+	if(err) {
+		pr_err("gpio array request failed\n");
+		return err;
 	}
 
-	vdd_lcd_bl = regulator_get(dev, "vdd_lcd_bl2");
-	if (IS_ERR(vdd_lcd_bl)) {
-		pr_info("vdd_lcd_bl regulator get failed\n");
-		err = PTR_ERR(vdd_lcd_bl);
-		vdd_lcd_bl = NULL;
-		goto fail;
-	}
+	gpio_requested = true;
 
-	vdd_lcd_bl_en = regulator_get(dev, "vdd_lcd_bl_en2");
-	if (IS_ERR(vdd_lcd_bl_en)) {
-		pr_info("vdd_lcd_bl_en regulator get failed\n");
-		err = PTR_ERR(vdd_lcd_bl_en);
-		vdd_lcd_bl_en = NULL;
-		goto fail;
-	}
-	reg_requested = true;
 	return 0;
-fail:
-	return err;
 }
 
 static int dsi_j_qxga_8_9_postpoweron(struct device *dev)
 {
-	int err = 0;
+	int i, err;
+	struct device_node *np;
 
-	err = dalmore_dsi_regulator_get(dev);
-	if (err < 0) {
-		pr_info("dsi regulator get failed\n");
-		goto fail;
-	}
-
-	err = tegra_panel_gpio_get_dt("j,qxga-8-9", &panel_of);
-	if (err < 0) {
-		pr_info("dsi gpio request failed\n");
-		goto fail;
-	}
-
-	/* If panel rst gpio is specified in device tree,
-	 * use that.
-	 */
-	if (gpio_is_valid(panel_of.panel_gpio[TEGRA_GPIO_RESET]))
-		en_panel_rst = panel_of.panel_gpio[TEGRA_GPIO_RESET];
-
-	if (dvdd_lcd_1v8) {
-		err = regulator_enable(dvdd_lcd_1v8);
-		if (err < 0) {
-			pr_info("dvdd_lcd regulator enable failed\n");
-			goto fail;
+	np = of_find_node_by_name(NULL, "panel_jdi_qxga_8_9");
+	if (np == NULL) {
+		pr_info("can't find device node\n");
+	} else {
+		for (i=0; i<NUM_PANEL_GPIOS; i++) {
+			panel_init_gpios[i].gpio =
+				of_get_gpio_flags(np, i, NULL);
+			pr_info("gpio pin = %d\n", panel_init_gpios[i].gpio);
 		}
 	}
 
-	if (avdd_lcd_3v3) {
-		err = regulator_enable(avdd_lcd_3v3);
-		if (err < 0) {
-			pr_info("avdd_lcd regulator enable failed\n");
-			goto fail;
-		}
+	iovdd_1v8 = panel_init_gpios[IOVDD_1V8].gpio;
+	avdd_4v = panel_init_gpios[AVDD_4V].gpio;
+	dcdc_en = panel_init_gpios[DCDC_EN].gpio;
+	lcm_rst = panel_init_gpios[LCM_RST].gpio;
+
+	err = dsi_j_qxga_8_9_gpio_get();
+	if (err) {
+		pr_err("failed to get panel gpios\n");
+		return err;
 	}
 
-	/* panel ic requirement after vcc enable */
-	msleep(260);
-
-	if (vdd_lcd_bl) {
-		err = regulator_enable(vdd_lcd_bl);
-		if (err < 0) {
-			pr_info("vdd_lcd_bl regulator enable failed\n");
-			goto fail;
-		}
-	}
-
-	if (vdd_lcd_bl_en) {
-		err = regulator_enable(vdd_lcd_bl_en);
-		if (err < 0) {
-			pr_info("vdd_lcd_bl_en regulator enable failed\n");
-			goto fail;
-		}
-	}
-
-	msleep(20);
-
-/*	gpio_set_value(avdd_4v, 1);
+	gpio_set_value(TEGRA_GPIO_PR0, 1);
 	usleep_range(1 * 1000, 1 * 1000 + 500);
-	gpio_set_value(dcdc_en, 1);
-	usleep_range(15 * 1000, 15 * 1000 + 500);*/
-	gpio_direction_output(en_panel_rst, 1);
+	gpio_set_value(TEGRA_GPIO_PI4, 1);
+	usleep_range(15 * 1000, 15 * 1000 + 500);
+
+/*	gpio_direction_output(lcm_rst, 1);
+	usleep_range(1000, 5000);
+	gpio_set_value(lcm_rst, 0);
+	usleep_range(1000, 5000);*/
+
+	gpio_set_value(TEGRA_GPIO_PH5, 1);
 	usleep_range(15 * 1000, 15 * 1000 + 500);
 
 	return 0;
-fail:
-	return err;
 }
 
 static int dsi_j_qxga_8_9_enable(struct device *dev)
 {
-	int err = 0;
-/*	gpio_set_value(iovdd_1v8, 1);
-	usleep_range(15 * 1000, 15 * 1000 + 500);*/
-	if (dvdd_lcd_1v8) {
-		err = regulator_enable(dvdd_lcd_1v8);
-		if (err < 0) {
-			pr_info("dvdd_lcd regulator enable failed\n");
-		}
-	}
+/*	int err;
 
+	err = dsi_j_qxga_8_9_gpio_get();
+	if (err) {
+		pr_err("failed to get panel gpios\n");
+		return err;
+	}*/
+
+	gpio_set_value(TEGRA_GPIO_PQ2, 1);
+	usleep_range(15 * 1000, 15 * 1000 + 500);
 	return 0;
 }
 
 static int dsi_j_qxga_8_9_disable(struct device *dev)
 {
-	if (vdd_lcd_bl)
-		regulator_disable(vdd_lcd_bl);
+/*	int err;
 
-	if (vdd_lcd_bl_en)
-		regulator_disable(vdd_lcd_bl_en);
+	err = dsi_j_qxga_8_9_gpio_get();
+	if (err) {
+		pr_err("failed to get panel gpios\n");
+		return err;
+	}*/
 
-	if (avdd_lcd_3v3)
-		regulator_disable(avdd_lcd_3v3);
-
-	if (dvdd_lcd_1v8)
-		regulator_disable(dvdd_lcd_1v8);
-
-/*	gpio_set_value(lcm_rst, 0);
+	gpio_set_value(TEGRA_GPIO_PH5, 0);
 	msleep(1);
-	gpio_set_value(dcdc_en, 0);
+	gpio_set_value(TEGRA_GPIO_PI4, 0);
 	msleep(15);
-	gpio_set_value(avdd_4v, 0);
-	gpio_set_value(iovdd_1v8, 0);
-	msleep(10);*/
+	gpio_set_value(TEGRA_GPIO_PR0, 0);
+	gpio_set_value(TEGRA_GPIO_PQ2, 0);
+	msleep(10);
 
 	return 0;
 }
@@ -195,12 +166,13 @@ static int dsi_j_qxga_8_9_postsuspend(void)
 
 static int dsi_j_qxga_8_9_bl_notify(struct device *dev, int brightness)
 {
+	int cur_sd_brightness;
 	struct backlight_device *bl = NULL;
 	struct pwm_bl_data *pb = NULL;
-	int cur_sd_brightness = atomic_read(&sd_brightness);
 	bl = (struct backlight_device *)dev_get_drvdata(dev);
 	pb = (struct pwm_bl_data *)dev_get_drvdata(&bl->dev);
 
+	cur_sd_brightness = atomic_read(&sd_brightness);
 	/* SD brightness is a percentage */
 	brightness = (brightness * cur_sd_brightness) / 255;
 
@@ -213,7 +185,8 @@ static int dsi_j_qxga_8_9_bl_notify(struct device *dev, int brightness)
 	return brightness;
 }
 
-static int dsi_j_qxga_8_9_check_fb(struct device *dev, struct fb_info *info)
+static int dsi_j_qxga_8_9_check_fb(struct device *dev,
+	struct fb_info *info)
 {
 	struct platform_device *pdev = NULL;
 	pdev = to_platform_device(bus_find_device_by_name(
@@ -221,12 +194,11 @@ static int dsi_j_qxga_8_9_check_fb(struct device *dev, struct fb_info *info)
 	return info->device == &pdev->dev;
 }
 
-static struct pwm_bl_data_dt_ops  dsi_j_qxga_8_9_pwm_bl_ops = {
+static struct pwm_bl_data_dt_ops dsi_j_qxga_8_9_pwm_bl_ops = {
 	.notify = dsi_j_qxga_8_9_bl_notify,
 	.check_fb = dsi_j_qxga_8_9_check_fb,
 	.blnode_compatible = "j,qxga-8-9-bl",
 };
-
 struct tegra_panel_ops dsi_j_qxga_8_9_ops = {
 	.enable = dsi_j_qxga_8_9_enable,
 	.disable = dsi_j_qxga_8_9_disable,
@@ -234,3 +206,4 @@ struct tegra_panel_ops dsi_j_qxga_8_9_ops = {
 	.postsuspend = dsi_j_qxga_8_9_postsuspend,
 	.pwm_bl_ops = &dsi_j_qxga_8_9_pwm_bl_ops,
 };
+EXPORT_SYMBOL(dsi_j_qxga_8_9);
