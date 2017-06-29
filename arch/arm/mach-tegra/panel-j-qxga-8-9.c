@@ -107,17 +107,11 @@ static int dsi_j_qxga_8_9_postpoweron(struct device *dev)
 		return err;
 	}
 
-	gpio_set_value(TEGRA_GPIO_PR0, 1);
+	gpio_set_value(avdd_4v, 1);
 	usleep_range(1 * 1000, 1 * 1000 + 500);
-	gpio_set_value(TEGRA_GPIO_PI4, 1);
+	gpio_set_value(dcdc_en, 1);
 	usleep_range(15 * 1000, 15 * 1000 + 500);
-
-/*	gpio_direction_output(lcm_rst, 1);
-	usleep_range(1000, 5000);
-	gpio_set_value(lcm_rst, 0);
-	usleep_range(1000, 5000);*/
-
-	gpio_set_value(TEGRA_GPIO_PH5, 1);
+	gpio_set_value(lcm_rst, 1);
 	usleep_range(15 * 1000, 15 * 1000 + 500);
 
 	return 0;
@@ -125,35 +119,35 @@ static int dsi_j_qxga_8_9_postpoweron(struct device *dev)
 
 static int dsi_j_qxga_8_9_enable(struct device *dev)
 {
-/*	int err;
+	int err;
 
 	err = dsi_j_qxga_8_9_gpio_get();
 	if (err) {
 		pr_err("failed to get panel gpios\n");
 		return err;
-	}*/
+	}
 
-	gpio_set_value(TEGRA_GPIO_PQ2, 1);
+	gpio_set_value(iovdd_1v8, 1);
 	usleep_range(15 * 1000, 15 * 1000 + 500);
 	return 0;
 }
 
 static int dsi_j_qxga_8_9_disable(struct device *dev)
 {
-/*	int err;
+	int err;
 
 	err = dsi_j_qxga_8_9_gpio_get();
 	if (err) {
 		pr_err("failed to get panel gpios\n");
 		return err;
-	}*/
+	}
 
-	gpio_set_value(TEGRA_GPIO_PH5, 0);
+	gpio_set_value(lcm_rst, 0);
 	msleep(1);
-	gpio_set_value(TEGRA_GPIO_PI4, 0);
+	gpio_set_value(dcdc_en, 0);
 	msleep(15);
-	gpio_set_value(TEGRA_GPIO_PR0, 0);
-	gpio_set_value(TEGRA_GPIO_PQ2, 0);
+	gpio_set_value(avdd_4v, 0);
+	gpio_set_value(iovdd_1v8, 0);
 	msleep(10);
 
 	return 0;
