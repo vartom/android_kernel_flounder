@@ -22,12 +22,12 @@
 / {
 	model = "flounder";
 	nvidia,dtsfilename = __FILE__;
-	nvidia-boardids = "1780:1100:2:B:7","1794:1000:0:A:6";
+	nvidia,boardids = "1780:1100:2";
 	#address-cells = <2>;
 	#size-cells = <2>;
 
 	chosen {
-		bootargs = "tegraid=40.0.0.00.00 vmalloc=300M video=tegrafb no_console_suspend=1 console=ttyS0,115200n8 earlyprintk vpr_resize board_info=0x06F4:0x04d2:0x04:0x00:0x00";
+		bootargs = "tegraid=40.0.0.00.00 vmalloc=256M video=tegrafb console=ttyS0,115200n8 earlyprintk vpr_resize board_info=0x06F4:0x04d2:0x04:0x00:0x00 displayboard=0x06F4:0x03e8:0x00:0x00:0x00";
 		linux,initrd-start = <0x85000000>;
 		linux,initrd-end = <0x851bc400>;
 	};
@@ -63,10 +63,11 @@
 			nvidia,dsi-controller-vs = <DSI_VS_1>;
 			status = "okay";
 			panel-j-qxga-8-9 {
-		                gpios = <&gpio TEGRA_GPIO(Q, 2) 0>,
-		                        <&gpio TEGRA_GPIO(R, 0) 0>,
-		                        <&gpio TEGRA_GPIO(I, 4) 0>,
-		                        <&gpio TEGRA_GPIO(H, 5) 0>;
+				nvidia,panel-rst-gpio = <&gpio TEGRA_GPIO(H, 5) 0>;
+				nvidia,panel-bl-pwm-gpio = <&gpio TEGRA_GPIO(H, 1) 0>; /* PH1 */
+				disp-default-out {
+					nvidia,out-rotation = <180>;
+				};
 			};
 		};
 		hdmi {
@@ -75,12 +76,7 @@
 		vi {
 			status = "disabled";
 		};
-		tsec {
-			carveout {
-				carveout_addr = <0xfe000000>;
-				carveout_size = <0x2000000>;
-			};
-		};
+
 	};
 
 	backlight {
@@ -198,9 +194,8 @@
 				};
 			};
 
-			usb0_vbus: vbus {
+			vbus {
 				regulator-name = "vbus_regulator";
-				ti,otg-iusb-gpio = <&gpio TEGRA_GPIO(I, 4) 0>;
 				consumers {
 					c1 {
 						regulator-consumer-supply = "usb_vbus";
@@ -306,6 +301,17 @@
 		};
 	};
 
+	xusb@70090000 {
+		/* nvidia,uses_external_pmic;
+		nvidia,gpio_controls_muxed_ss_lanes; */
+		nvidia,gpio_ss1_sata = <0>;
+		nvidia,portmap = <0x101>; /* SSP0, USB2P0 */
+		nvidia,ss_portmap = <0x0>; /* SSP0 on USB2P0 */
+		nvidia,lane_owner = <4>; /* USB3P0 */
+		nvidia,ulpicap = <0>; /* No ulpi support. can we remove */
+		status = "okay";
+	};
+
 	udc@7d000000 {
 		nvidia,port-otg;
 		nvidia,charging-supported;
@@ -317,7 +323,7 @@
 		extcon-cables = <&palmas_extcon 0 &palmas_extcon 1>;
 		extcon-cable-names = "vbus", "id";
 		#extcon-cells = <1>;
-		avdd_usb-supply = <&ldousb_reg>;
+		avdd_usb-supply = <&palmas_smps10_out2>;
 		avdd_pll_utmip-supply = <&palmas_smps8>;
 		usb_bat_chg-supply = <&battery_charger>;
 		status = "okay";
@@ -334,15 +340,7 @@
 	};
 
 	psy_extcon {
-		compatible = "power-supply-extcon";
-		extcon-cables = <&udc 1 &udc 2 &udc 3
-				&udc 4 &udc 5 &udc 6
-				&udc 7 &udc 8 &udc 9
-				&udc 10 &otg 0>;
-		extcon-cable-names = "usb-charger", "ta-charger", "maxim-charger",
-				"qc2-charger", "downstream-charger","fast-charger",
-				"slow-charger", "apple-500ma", "apple-1a",
-				"apple-2a", "y-cable";
+		power-supply,y-cable-extcon-dev = "tegra-otg";
 	};
 
 	therm_est_sensor {
