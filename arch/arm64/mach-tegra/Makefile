@@ -74,7 +74,7 @@ obj-${CONFIG_MACH_T132REF}              += panel-s-edp-wqxgap-15-6.o
 
 obj-${CONFIG_MACH_T132_FLOUNDER}        += board-flounder.o
 obj-${CONFIG_MACH_T132_FLOUNDER}        += board-flounder-gps.o
-obj-${CONFIG_MACH_T132_FLOUNDER}        += board-flounder-kbc.o
+# obj-${CONFIG_MACH_T132_FLOUNDER}        += board-flounder-kbc.o
 obj-${CONFIG_MACH_T132_FLOUNDER}        += board-flounder-sdhci.o
 obj-${CONFIG_MACH_T132_FLOUNDER}        += board-flounder-sensors.o
 obj-${CONFIG_MACH_T132_FLOUNDER}        += board-flounder-memory.o
@@ -84,7 +84,7 @@ obj-${CONFIG_MACH_T132_FLOUNDER}        += flounder-bdaddress.o
 obj-${CONFIG_MACH_T132_FLOUNDER}        += board-flounder-sysedp.o
 
 #CAM
-obj-${CONFIG_MACH_T132_FLOUNDER}        += htc_awb_cal.o
+# obj-${CONFIG_MACH_T132_FLOUNDER}        += htc_awb_cal.o
 
 obj-${CONFIG_MACH_T132_FLOUNDER}        += board-flounder-bootparams.o
 obj-${CONFIG_MACH_T132_FLOUNDER}        += board-flounder-mdm9k.o

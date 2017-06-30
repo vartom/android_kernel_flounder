@@ -894,8 +894,8 @@ static void __init tegra_flounder_late_init(void)
 
 	isomgr_init();
 /*	flounder_headset_init();*/
-/*	flounder_panel_init();*/
-	flounder_kbc_init();
+/*	flounder_panel_init();
+	flounder_kbc_init();*/
 
 	/* put PEX pads into DPD mode to save additional power */
 	tegra_io_dpd_enable(&pexbias_io);
