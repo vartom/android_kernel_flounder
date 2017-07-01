@@ -252,6 +252,8 @@ unsigned long tegra_emc_to_cpu_ratio(unsigned long cpu_rate)
 		return 0;		/* emc min */
 }
 
+static int cpu_emc_table_src = CPU_EMC_TABLE_SRC_DT;
+#ifndef CONFIG_ARCH_TEGRA_13x_SOC
 static struct device_node *of_get_scaling_node(const char *name)
 {
 	struct device_node *scaling_np = NULL;
@@ -281,7 +283,7 @@ static struct device_node *of_get_scaling_node(const char *name)
  */
 static unsigned long emc_max_rate;
 static u32 *emc_cpu_table;
-static int cpu_emc_table_src = CPU_EMC_TABLE_SRC_DT;
+
 static int emc_cpu_table_size;
 
 static u32 *cpufreq_emc_table_get(int *table_size)
@@ -373,6 +375,7 @@ static unsigned long default_emc_cpu_limit(unsigned long cpu_rate,
 	else
 		return 0;       /* emc min */
 }
+#endif
 
 #ifdef CONFIG_ARCH_TEGRA_13x_SOC
 /* EMC/CPU frequency operational requirement limit */
