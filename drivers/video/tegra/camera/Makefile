@@ -1,6 +1,7 @@
 GCOV_PROFILE := y
 EXTRA_CFLAGS += -Idrivers/video/tegra/host
 ccflags-y += -Idrivers/media/platform/tegra
+ccflags-y += -Idrivers/video/tegra/camera
 
 # camera*.c and camera*.h are legacy code no longer in use
 ifdef CONFIG_TEGRA_CAMERA_PLATFORM
