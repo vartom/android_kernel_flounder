@@ -20,13 +20,6 @@
 #include <linux/delay.h>
 #include <linux/gpio.h>
 #include <linux/regulator/consumer.h>
-#include <linux/tegra_dsi_backlight.h>
-#include <linux/leds.h>
-#include <linux/ioport.h>
-#include <linux/export.h>
-#include <linux/of_gpio.h>
-
-#include <generated/mach-types.h>
 
 #include "board.h"
 #include "board-panel.h"
@@ -40,7 +33,7 @@ static struct regulator *dvdd_lcd_1v8;
 static struct regulator *vpp_lcd;
 static struct regulator *vmm_lcd;
 static struct device *dc_dev;
-static u16 en_panel_rst;*/
+static u16 en_panel_rst;*
 
 enum panel_gpios {
 	IOVDD_1V8 = 0,
@@ -78,11 +71,11 @@ static int dsi_j_qxga_8_9_gpio_get(void)
 	gpio_requested = true;
 
 	return 0;
-}
+}*/
 
 static int dsi_j_qxga_8_9_postpoweron(struct device *dev)
 {
-	int i, err;
+/*	int i, err;
 	struct device_node *np;
 
 	np = of_find_node_by_name(NULL, "panel_jdi_qxga_8_9");
@@ -105,13 +98,13 @@ static int dsi_j_qxga_8_9_postpoweron(struct device *dev)
 	if (err) {
 		pr_err("failed to get panel gpios\n");
 		return err;
-	}
-
-	gpio_set_value(avdd_4v, 1);
+	}*/
+	pr_info("panel dsi_j_qxga_8_9_postpoweron\n");
+	gpio_set_value(TEGRA_GPIO_PR0, 1);
 	usleep_range(1 * 1000, 1 * 1000 + 500);
-	gpio_set_value(dcdc_en, 1);
+	gpio_set_value(TEGRA_GPIO_PI4, 1);
 	usleep_range(15 * 1000, 15 * 1000 + 500);
-	gpio_set_value(lcm_rst, 1);
+	gpio_set_value(TEGRA_GPIO_PH5, 1);
 	usleep_range(15 * 1000, 15 * 1000 + 500);
 
 	return 0;
@@ -119,37 +112,38 @@ static int dsi_j_qxga_8_9_postpoweron(struct device *dev)
 
 static int dsi_j_qxga_8_9_enable(struct device *dev)
 {
-	int err;
+/*	int err;
 
 	err = dsi_j_qxga_8_9_gpio_get();
 	if (err) {
 		pr_err("failed to get panel gpios\n");
 		return err;
-	}
-
-	gpio_set_value(iovdd_1v8, 1);
+	}*/
+	pr_info("panel dsi_j_qxga_8_9_enable\n");
+	gpio_set_value(TEGRA_GPIO_PQ2, 1);
 	usleep_range(15 * 1000, 15 * 1000 + 500);
 	return 0;
 }
 
 static int dsi_j_qxga_8_9_disable(struct device *dev)
 {
-	int err;
+/*	int err;
 
 	err = dsi_j_qxga_8_9_gpio_get();
 	if (err) {
 		pr_err("failed to get panel gpios\n");
 		return err;
-	}
-
-	gpio_set_value(lcm_rst, 0);
+	}*/
+	pr_info("panel dsi_j_qxga_8_9_disable\n");
+	gpio_set_value(TEGRA_GPIO_PH5, 0);
 	msleep(1);
-	gpio_set_value(dcdc_en, 0);
+	gpio_set_value(TEGRA_GPIO_PI4, 0);
 	msleep(15);
-	gpio_set_value(avdd_4v, 0);
-	gpio_set_value(iovdd_1v8, 0);
+	gpio_set_value(TEGRA_GPIO_PR0, 0);
+	gpio_set_value(TEGRA_GPIO_PQ2, 0);
 	msleep(10);
 
+	pr_info("panel dsi_j_qxga_8_9_disable 2\n");
 	return 0;
 }
 
@@ -200,4 +194,3 @@ struct tegra_panel_ops dsi_j_qxga_8_9_ops = {
 	.postsuspend = dsi_j_qxga_8_9_postsuspend,
 	.pwm_bl_ops = &dsi_j_qxga_8_9_pwm_bl_ops,
 };
-EXPORT_SYMBOL(dsi_j_qxga_8_9);
