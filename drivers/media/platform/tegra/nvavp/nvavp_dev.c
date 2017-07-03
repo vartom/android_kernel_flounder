@@ -1759,6 +1759,8 @@ static int nvavp_pushbuffer_submit_compat_ioctl(struct file *filp,
 							unsigned int cmd,
 							unsigned long arg)
 {
+	struct nvavp_clientctx *clientctx = filp->private_data;
+	struct nvavp_info *nvavp = clientctx->nvavp;
 	struct nvavp_pushbuffer_submit_hdr_v32 hdr_v32;
 	struct nvavp_pushbuffer_submit_hdr __user *user_hdr;
 	int ret = 0;
