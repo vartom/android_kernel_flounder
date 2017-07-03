@@ -30,7 +30,7 @@
 #include <linux/pm_runtime.h>
 #include <linux/cpufreq.h>
 #include <mach/tegra_asoc_pdata.h>
-#include <mach/gpio-tegra.h>
+#include <linux/platform_data/gpio-tegra.h>
 #include <linux/sysedp.h>
 #include <linux/sound_on.h>
 
@@ -400,7 +400,7 @@ static int tegra_rt5677_spk_startup(struct snd_pcm_substream *substream)
 	pr_info("%s:mi2s amp on\n",__func__);
 	mdmsp_on = true;
 
-	tegra_asoc_utils_tristate_pd_dap(i2s->id, false);
+	tegra_asoc_utils_tristate_dap(i2s->id, false);
 
 	if (substream->stream == SNDRV_PCM_STREAM_PLAYBACK) {
 		if (rtd->dai_link->be_id == DAI_LINK_I2S_OFFLOAD_SPEAKER_BE) {
@@ -490,7 +490,7 @@ static void tegra_rt5677_spk_shutdown(struct snd_pcm_substream *substream)
 		set_tfa9895l_spkamp(0, 0);
 		mutex_unlock(&machine->spk_amp_lock);
 	}
-	tegra_asoc_utils_tristate_pd_dap(i2s->id, true);
+	tegra_asoc_utils_tristate_dap(i2s->id, true);
 }
 
 static int tegra_rt5677_startup(struct snd_pcm_substream *substream)
@@ -506,7 +506,7 @@ static int tegra_rt5677_startup(struct snd_pcm_substream *substream)
 
 	pr_debug("%s i2s->id=%d %d\n", __func__, i2s->id,
 			pdata->i2s_param[HIFI_CODEC].audio_port_id);
-	tegra_asoc_utils_tristate_pd_dap(i2s->id, false);
+	tegra_asoc_utils_tristate_dap(i2s->id, false);
 	if (i2s->id == pdata->i2s_param[HIFI_CODEC].audio_port_id) {
 		cancel_delayed_work_sync(&machine->power_work);
 		if (substream->stream == SNDRV_PCM_STREAM_PLAYBACK)
@@ -585,7 +585,7 @@ static void tegra_rt5677_shutdown(struct snd_pcm_substream *substream)
 			i2s->playback_fifo_cif = -1;
 		}
 	}
-	tegra_asoc_utils_tristate_pd_dap(i2s->id, true);
+	tegra_asoc_utils_tristate_dap(i2s->id, true);
 
 	if (machine->codec && machine->codec->active)
 		return;
