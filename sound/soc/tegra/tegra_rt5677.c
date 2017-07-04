@@ -1413,32 +1413,6 @@ static struct snd_soc_dai_link tegra_rt5677_dai[NUM_DAI_LINKS] = {
 	},
 };
 
-void mclk_enable(struct tegra_rt5677 *machine, bool on)
-{
-	struct tegra_asoc_platform_data *pdata = machine->pdata;
-	int ret;
-	if (on && !machine->clock_enabled) {
-		gpio_free(pdata->codec_mclk.id);
-		pr_debug("%s: gpio_free for gpio[%d] %s\n",
-				__func__, pdata->codec_mclk.id, pdata->codec_mclk.name);
-		machine->clock_enabled = 1;
-		tegra_asoc_utils_clk_enable(&machine->util_data);
-	} else if (!on && machine->clock_enabled){
-		machine->clock_enabled = 0;
-		tegra_asoc_utils_clk_disable(&machine->util_data);
-		ret = gpio_request(pdata->codec_mclk.id,
-					 pdata->codec_mclk.name);
-		if (ret) {
-			pr_err("Fail gpio_request codec_mclk, %d\n",
-				ret);
-			return;
-		}
-		gpio_direction_output(pdata->codec_mclk.id, 0);
-		pr_debug("%s: gpio_request for gpio[%d] %s, return %d\n",
-				__func__, pdata->codec_mclk.id, pdata->codec_mclk.name, ret);
-	}
-}
-
 static int tegra_rt5677_suspend_post(struct snd_soc_card *card)
 {
 	struct tegra_rt5677 *machine = snd_soc_card_get_drvdata(card);
@@ -1457,7 +1431,8 @@ static int tegra_rt5677_suspend_post(struct snd_soc_card *card)
 		some cases, may be due to a wrong dapm map*/
 		mutex_lock(&machine->rt5677_lock);
 		if (machine->clock_enabled) {
-			mclk_enable(machine, 0);
+			machine->clock_enabled = 0;
+			tegra_asoc_utils_clk_disable(&machine->util_data);
 		}
 		mutex_unlock(&machine->rt5677_lock);
 		/*TODO: Disable Audio Regulators*/
@@ -1484,7 +1459,7 @@ static int tegra_rt5677_resume_pre(struct snd_soc_card *card)
 		mutex_lock(&machine->rt5677_lock);
 		if (!machine->clock_enabled &&
 				machine->bias_level != SND_SOC_BIAS_OFF) {
-			mclk_enable(machine, 1);
+			machine->clock_enabled = 1;
 			tegra_asoc_utils_clk_enable(&machine->util_data);
 			__set_rt5677_power(machine, true, true);
 		}
@@ -1504,7 +1479,8 @@ static int tegra_rt5677_set_bias_level(struct snd_soc_card *card,
 	mutex_lock(&machine->rt5677_lock);
 	if (machine->bias_level == SND_SOC_BIAS_OFF &&
 		level != SND_SOC_BIAS_OFF && (!machine->clock_enabled)) {
-		mclk_enable(machine, 1);
+		machine->clock_enabled = 1;
+		tegra_asoc_utils_clk_enable(&machine->util_data);
 		machine->bias_level = level;
 		__set_rt5677_power(machine, true, false);
 	}
@@ -1570,10 +1546,6 @@ void __set_rt5677_power(struct tegra_rt5677 *machine, bool enable, bool hp_depop
 		if (hp_depop)
 			set_rt5506_hp_en(1);
 		pr_info("tegra_rt5677 power_on\n");
-		if (!machine->clock_enabled) {
-			pr_debug("%s: call mclk_enable(true)\n", __func__);
-			mclk_enable(machine, 1);
-		}
 		/*V_IO_1V8*/
 		if (gpio_is_valid(pdata->gpio_ldo1_en)) {
 			pr_debug("gpio_ldo1_en %d is valid\n", pdata->gpio_ldo1_en);
@@ -1688,8 +1660,6 @@ void __set_rt5677_power(struct tegra_rt5677 *machine, bool enable, bool hp_depop
 		/* set hp_en low to prevent power leakage */
 		set_rt5506_hp_en(0);
 		status = false;
-		if (machine->clock_enabled)
-			mclk_enable(machine, 0);
 		machine->bias_level = SND_SOC_BIAS_OFF;
 	}
 
@@ -1717,6 +1687,7 @@ static void trgra_do_power_work(struct work_struct *work)
 	struct snd_soc_card *card = &snd_soc_tegra_rt5677;
 	struct tegra_rt5677 *machine = snd_soc_card_get_drvdata(card);
 	mutex_lock(&machine->rt5677_lock);
+
 	__set_rt5677_power(machine, false, false);
 	mutex_unlock(&machine->rt5677_lock);
 }
@@ -1966,11 +1937,6 @@ static int tegra_rt5677_driver_probe(struct platform_device *pdev)
 	}
 #endif
 
-	if (machine->clock_enabled == 1) {
-		pr_info("%s to close MCLK\n", __func__);
-		mclk_enable(machine, 0);
-	}
-
 	machine->bias_level = SND_SOC_BIAS_OFF;
 
 	sysedpc = sysedp_create_consumer("speaker", "speaker");
@@ -2000,10 +1966,7 @@ err_free_machine:
 		kfree(machine->pdata);
 
 	kfree(machine);
-	if (machine->clock_enabled == 1) {
-		pr_info("%s to close MCLK\n", __func__);
-		mclk_enable(machine, 0);
-	}
+
 	return ret;
 }
 
