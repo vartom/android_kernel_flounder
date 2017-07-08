@@ -1918,6 +1918,7 @@ static int nvavp_pushbuffer_submit_compat_ioctl(struct file *filp,
 
 	if (copy_to_user((void __user *)arg, &hdr_v32,
 			  sizeof(struct nvavp_pushbuffer_submit_hdr_v32))) {
+		mutex_unlock(&nvavp->submit_lock);
 		ret = -EFAULT;
 	}
 
@@ -2825,13 +2826,16 @@ static int tegra_nvavp_runtime_suspend(struct device *dev)
 #if defined(CONFIG_TEGRA_NVAVP_AUDIO)
 			if (nvavp_check_idle(nvavp, NVAVP_AUDIO_CHANNEL))
 				nvavp_uninit(nvavp);
-			else
+			else {
+				mutex_unlock(&nvavp->open_lock);
 				ret = -EBUSY;
+			}
 #else
 			nvavp_uninit(nvavp);
 #endif
 		}
 		else {
+			mutex_unlock(&nvavp->open_lock);
 			ret = -EBUSY;
 		}
 	}
@@ -2875,7 +2879,9 @@ static int tegra_nvavp_resume(struct device *dev)
 	tegra_nvavp_runtime_resume(dev);
 
 #ifdef CONFIG_TRUSTED_LITTLE_KERNEL
+	mutex_lock(&nvavp->open_lock);
 	nvavp_clks_enable(nvavp);
+	mutex_unlock(&nvavp->open_lock);
 	te_restore_keyslots();
 	nvavp_clks_disable(nvavp);
 #endif
