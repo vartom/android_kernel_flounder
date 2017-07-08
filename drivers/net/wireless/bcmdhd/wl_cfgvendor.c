@@ -2008,6 +2008,7 @@ static int wl_cfgvendor_set_country(struct wiphy *wiphy,
 	return err;
 }
 
+#ifdef DEBUG_RESET_LOGGING
 static int wl_cfgvendor_dbg_start_logging(struct wiphy *wiphy,
 	struct wireless_dev *wdev, const void  *data, int len)
 {
@@ -2374,7 +2375,7 @@ static void wl_cfgvendor_dbg_send_urgent_evt(void *ctx, const void *data,
 	nla_put(skb, DEBUG_ATTRIBUTE_RING_DATA, len, data);
 	cfg80211_vendor_event(skb, kflags);
 }
-
+#endif /* DEBUG_RESET_LOGGING */
 
 #if defined(KEEP_ALIVE)
 static int wl_cfgvendor_start_mkeep_alive(struct wiphy *wiphy, struct wireless_dev *wdev,
@@ -2704,6 +2705,7 @@ static const struct wiphy_vendor_command wl_vendor_cmds [] = {
 	},
 #endif /* DHD_ANQPO_SUPPORT */
 #endif /* GSCAN_SUPPORT */
+#ifdef DEBUG_RESET_LOGGING
 	{
 		{
 			.vendor_id = OUI_GOOGLE,
@@ -2768,6 +2770,7 @@ static const struct wiphy_vendor_command wl_vendor_cmds [] = {
 		.flags = WIPHY_VENDOR_CMD_NEED_WDEV | WIPHY_VENDOR_CMD_NEED_NETDEV,
 		.doit = wl_cfgvendor_dbg_get_feature
 	},
+#endif /* DEBUG_RESET_LOGGING */
 #ifdef KEEP_ALIVE
 	{
 		{
@@ -2826,10 +2829,12 @@ int wl_cfgvendor_attach(struct wiphy *wiphy, dhd_pub_t *dhd)
 	wiphy->n_vendor_commands = ARRAY_SIZE(wl_vendor_cmds);
 	wiphy->vendor_events	= wl_vendor_events;
 	wiphy->n_vendor_events	= ARRAY_SIZE(wl_vendor_events);
+#ifdef DEBUG_RESET_LOGGING
 	dhd_os_dbg_register_callback(FW_VERBOSE_RING_ID, wl_cfgvendor_dbg_ring_send_evt);
 	dhd_os_dbg_register_callback(FW_EVENT_RING_ID, wl_cfgvendor_dbg_ring_send_evt);
 	dhd_os_dbg_register_callback(DHD_EVENT_RING_ID, wl_cfgvendor_dbg_ring_send_evt);
 	dhd_os_dbg_register_urgent_notifier(dhd, wl_cfgvendor_dbg_send_urgent_evt);
+#endif /* DEBUG_RESET_LOGGING */
 	return 0;
 }
 
