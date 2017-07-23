@@ -2783,7 +2783,7 @@ static void sdhci_cmd_irq(struct sdhci_host *host, u32 intmask)
 	} else if (intmask & (SDHCI_INT_CRC | SDHCI_INT_END_BIT |
 			SDHCI_INT_INDEX)) {
 		host->cmd->error = -EILSEQ;
-		sdhci_dumpregs(host);
+/*		sdhci_dumpregs(host);*/
 		if (intmask & SDHCI_INT_INDEX)
 			pr_err("%s: Command INDEX error, intmask: %x Interface clock = %uHz\n",
 			mmc_hostname(host->mmc), intmask, host->max_clk);
@@ -2805,10 +2805,13 @@ static void sdhci_cmd_irq(struct sdhci_host *host, u32 intmask)
 		 * If the card did not receive the command or returned an
 		 * error which prevented it sending data, the data phase
 		 * will time out.
+		 *
+		 * Even in case of cmd INDEX OR ENDBIT error we
+		 * handle it the same way.
 		 */
 		if (host->cmd->data &&
-		    (intmask & (SDHCI_INT_CRC | SDHCI_INT_TIMEOUT)) ==
-		     SDHCI_INT_CRC) {
+		    (((intmask & (SDHCI_INT_CRC | SDHCI_INT_TIMEOUT)) ==
+		     SDHCI_INT_CRC) || (host->cmd->error == -EILSEQ))) {
 			host->cmd = NULL;
 			return;
 		}
@@ -2912,7 +2915,7 @@ static void sdhci_data_irq(struct sdhci_host *host, u32 intmask)
 		host->data->error = -ETIMEDOUT;
 		pr_err("%s: Data Timeout error, intmask: %x Interface clock = %uHz\n",
 			mmc_hostname(host->mmc), intmask, host->max_clk);
-		sdhci_dumpregs(host);
+/*		sdhci_dumpregs(host);*/
 	} else if (intmask & SDHCI_INT_DATA_END_BIT) {
 		host->data->error = -EILSEQ;
 		pr_err("%s: Data END Bit error, intmask: %x Interface clock = %uHz\n",
@@ -2923,10 +2926,10 @@ static void sdhci_data_irq(struct sdhci_host *host, u32 intmask)
 		host->data->error = -EILSEQ;
 		pr_err("%s: Data CRC error, intmask: %x Interface clock = %uHz\n",
 			mmc_hostname(host->mmc), intmask, host->max_clk);
-		sdhci_dumpregs(host);
+/*		sdhci_dumpregs(host);*/
 	} else if (intmask & SDHCI_INT_ADMA_ERROR) {
 		pr_err("%s: ADMA error\n", mmc_hostname(host->mmc));
-		sdhci_dumpregs(host);
+/*		sdhci_dumpregs(host);*/
 		sdhci_show_adma_error(host);
 		host->data->error = -EIO;
 		if (host->ops->adma_workaround)
