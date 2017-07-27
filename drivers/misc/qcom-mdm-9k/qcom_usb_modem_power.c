@@ -1376,10 +1376,11 @@ long mdm_modem_ioctl(struct file *filp, unsigned int cmd, unsigned long arg)
 			if (modem->mdm_status & MDM_STATUS_RESET)
 			{
 				pr_info("%s: modem is under reset: complete mdm_boot\n", __func__);
-				complete(&modem->mdm_boot);
+
 				modem->mdm_status &= ~MDM_STATUS_RESET;
 				if(modem->mdm_debug_on)
 					pr_info("%s: modem->mdm_status=0x%x\n", __func__, modem->mdm_status);
+				complete(&modem->mdm_boot);
 			}
 #endif
 
@@ -1579,7 +1580,7 @@ static struct miscdevice mdm_modem_misc = {
 	.fops = &mdm_modem_fops
 };
 
-static int mdm_debug_on_set(void *data, u64 val)
+/*static int mdm_debug_on_set(void *data, u64 val)
 {
 	struct device *dev;
 	struct qcom_usb_modem *modem;
@@ -1636,7 +1637,7 @@ static int mdm_debugfs_init(void)
 
 	debugfs_create_file("debug_on", 0644, dent, NULL, &mdm_debug_on_fops);
 	return 0;
-}
+}*/
 
 #ifdef CONFIG_MSM_SUBSYSTEM_RESTART
 static int mdm_subsys_shutdown(const struct subsys_data *crashed_subsys)
@@ -1703,8 +1704,8 @@ static int mdm_subsys_powerup(const struct subsys_data *crashed_subsys)
 		modem->ramdump_save = -1;
 	}
 	modem->boot_type = CHARM_NORMAL_BOOT;
-	mutex_unlock(&modem->lock);
 	complete(&modem->mdm_needs_reload);
+	mutex_unlock(&modem->lock);
 	if (!wait_for_completion_timeout(&modem->mdm_boot, msecs_to_jiffies(MDM_BOOT_TIMEOUT))) {
 		mdm_boot_status = -ETIMEDOUT;
 		pr_err("%s: mdm modem restart timed out.\n", __func__);
@@ -1865,8 +1866,8 @@ static int mdm_init(struct qcom_usb_modem *modem, struct platform_device *pdev)
 	register_pm_notifier(&modem->pm_notifier);
 
 	mdm_loaded_info(modem);
-	if (modem->ops && modem->ops->debug_state_changed_cb)
-		modem->ops->debug_state_changed_cb(modem, (get_radio_flag() & RADIO_FLAG_MORE_LOG)?1:0);
+/*	if (modem->ops && modem->ops->debug_state_changed_cb)
+		modem->ops->debug_state_changed_cb(modem, (get_radio_flag() & RADIO_FLAG_MORE_LOG)?1:0);*/
 
 #ifdef CONFIG_MDM_FTRACE_DEBUG
 	if(get_radio_flag() & RADIO_FLAG_FTRACE_ENABLE)
@@ -1881,7 +1882,8 @@ static int mdm_init(struct qcom_usb_modem *modem, struct platform_device *pdev)
 
 	/* Register kernel panic notification */
 	atomic_notifier_chain_register(&panic_notifier_list, &mdm_panic_blk);
-	mdm_debugfs_init();
+/*	mdm_debugfs_init();*/
+	modem->mdm_debug_on = false;
 
 #ifdef CONFIG_MSM_SUBSYSTEM_RESTART
 	/* Register subsystem handlers */

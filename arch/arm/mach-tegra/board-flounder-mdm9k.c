@@ -246,17 +246,17 @@ static void trigger_modem_errfatal(struct qcom_usb_modem *modem)
 	return;
 }
 
-static void modem_debug_state_changed(struct qcom_usb_modem *modem, int value)
+/*static void modem_debug_state_changed(struct qcom_usb_modem *modem, int value)
 {
 	if (!modem) {
 		pr_err("%s: mdm_drv = NULL\n", __func__);
 		return;
 	}
 
-	modem->mdm_debug_on = value?true:false;
+	modem->mdm_debug_on = false;
 
 	return;
-}
+}*/
 
 static void modem_dump_gpio_value(struct qcom_usb_modem *modem, int gpio_value, char *label)
 {
@@ -294,7 +294,7 @@ static const struct qcom_modem_operations mdm_operations = {
 	.normal_boot_done_cb = modem_boot_done,
 	.nv_write_done_cb = modem_nv_write_done,
 	.fatal_trigger_cb = trigger_modem_errfatal,
-	.debug_state_changed_cb = modem_debug_state_changed,
+/*	.debug_state_changed_cb = modem_debug_state_changed,*/
 	.dump_mdm_gpio_cb = modem_dump_gpio_value,
 };
 
