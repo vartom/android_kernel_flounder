@@ -1,5 +1,5 @@
 #
-# Copyright (c) 2013-2016, NVIDIA Corporation. All rights reserved.
+# Copyright (c) 2013-2014, NVIDIA Corporation. All rights reserved.
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -29,6 +29,4 @@ AFLAGS_ote_asm.o :=-Wa,-march=armv7-a$(plus_sec)
 endif
 
 obj-$(CONFIG_TRUSTED_LITTLE_KERNEL) += tlk_driver.o
-ifeq ($(CONFIG_ARM64),y)
-obj-$(CONFIG_FIQ_GLUE) += ote_fiq_glue.o
-endif
+obj-$(CONFIG_ARM64) += ote_fiq_glue.o
