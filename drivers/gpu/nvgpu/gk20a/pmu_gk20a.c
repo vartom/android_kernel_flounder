@@ -3,7 +3,7 @@
  *
  * GK20A PMU (aka. gPMU outside gk20a context)
  *
- * Copyright (c) 2011-2014, NVIDIA CORPORATION.  All rights reserved.
+ * Copyright (c) 2011-2015, NVIDIA CORPORATION.  All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms and conditions of the GNU General Public License,
@@ -1157,7 +1157,7 @@ int pmu_mutex_acquire(struct pmu_gk20a *pmu, u32 id, u32 *token)
 	u32 data, owner, max_retry;
 
 	if (!pmu->initialized)
-		return 0;
+		return -EINVAL;
 
 	BUG_ON(!token);
 	BUG_ON(!PMU_MUTEX_ID_IS_VALID(id));
@@ -1226,7 +1226,7 @@ int pmu_mutex_release(struct pmu_gk20a *pmu, u32 id, u32 *token)
 	u32 owner, data;
 
 	if (!pmu->initialized)
-		return 0;
+		return -EINVAL;
 
 	BUG_ON(!token);
 	BUG_ON(!PMU_MUTEX_ID_IS_VALID(id));
@@ -1300,18 +1300,11 @@ static bool pmu_queue_is_empty(struct pmu_gk20a *pmu,
 {
 	u32 head, tail;
 
-	if (pmu_queue_head(pmu, queue, &head, QUEUE_GET)) {
-		gk20a_err(dev_from_gk20a(pmu->g),
-			"pmu_queue_is_empty: head queue index out of range");
-		return false;
-	}
+	pmu_queue_head(pmu, queue, &head, QUEUE_GET);
 	if (queue->opened && queue->oflag == OFLAG_READ)
 		tail = queue->position;
-	else if (pmu_queue_tail(pmu, queue, &tail, QUEUE_GET)) {
-		gk20a_err(dev_from_gk20a(pmu->g),
-			"pmu_queue_is_empty: tail queue index out of range");
-		return false;
-	}
+	else
+		pmu_queue_tail(pmu, queue, &tail, QUEUE_GET);
 
 	return head == tail;
 }
@@ -1324,12 +1317,8 @@ static bool pmu_queue_has_room(struct pmu_gk20a *pmu,
 
 	size = ALIGN(size, QUEUE_ALIGNMENT);
 
-	if (pmu_queue_head(pmu, queue, &head, QUEUE_GET) ||
-	    pmu_queue_tail(pmu, queue, &tail, QUEUE_GET)) {
-		gk20a_err(dev_from_gk20a(pmu->g),
-			"pmu_queue_has_room: queue index out of range");
-		return false;
-	}
+	pmu_queue_head(pmu, queue, &head, QUEUE_GET);
+	pmu_queue_tail(pmu, queue, &tail, QUEUE_GET);
 
 	if (head >= tail) {
 		free = queue->offset + queue->size - head;
@@ -1380,11 +1369,7 @@ static int pmu_queue_pop(struct pmu_gk20a *pmu,
 		return -EINVAL;
 	}
 
-	if (pmu_queue_head(pmu, queue, &head, QUEUE_GET)) {
-		gk20a_err(dev_from_gk20a(pmu->g),
-			"pmu_queue_pop: head queue index out of range");
-		return -EINVAL;
-	}
+	pmu_queue_head(pmu, queue, &head, QUEUE_GET);
 	tail = queue->position;
 
 	if (head == tail)
@@ -1754,10 +1739,10 @@ static void pmu_handle_pg_buf_config_msg(struct gk20a *g, struct pmu_msg *msg,
 
 	pmu->buf_loaded = (eng_buf_stat->status == PMU_PG_MSG_ENG_BUF_LOADED);
 	if ((!pmu->buf_loaded) &&
-	    (pmu->pmu_state == PMU_STATE_LOADING_PG_BUF))
-		gk20a_err(dev_from_gk20a(g), "failed to load PGENG buffer");
+		(pmu->pmu_state == PMU_STATE_LOADING_PG_BUF))
+			gk20a_err(dev_from_gk20a(g), "failed to load PGENG buffer");
 	else {
-	  schedule_work(&pmu->pg_init);
+		schedule_work(&pmu->pg_init);
 	}
 }
 
@@ -1769,7 +1754,6 @@ int gk20a_init_pmu_setup_hw1(struct gk20a *g)
 	gk20a_dbg_fn("");
 
 	mutex_lock(&pmu->isr_enable_lock);
-	pmu->pmu_state = PMU_STATE_STARTING;
 	pmu_reset(pmu);
 	pmu->isr_enabled = true;
 	mutex_unlock(&pmu->isr_enable_lock);
@@ -1916,8 +1900,6 @@ static void pmu_setup_hw_enable_elpg(struct gk20a *g)
 		gk20a_aelpg_init(g);
 		gk20a_aelpg_init_and_enable(g, PMU_AP_CTRL_ID_GRAPHICS);
 	}
-
-	wake_up(&g->pmu.boot_wq);
 }
 
 int gk20a_init_pmu_support(struct gk20a *g)
@@ -1944,6 +1926,8 @@ int gk20a_init_pmu_support(struct gk20a *g)
 		err = gk20a_init_pmu_setup_hw1(g);
 		if (err)
 			return err;
+
+		pmu->pmu_state = PMU_STATE_STARTING;
 	}
 
 	return err;
@@ -2566,7 +2550,7 @@ static int pmu_handle_perfmon_event(struct pmu_gk20a *pmu,
 
 static int pmu_handle_event(struct pmu_gk20a *pmu, struct pmu_msg *msg)
 {
-	int err;
+	int err = 0;
 
 	gk20a_dbg_fn("");
 
