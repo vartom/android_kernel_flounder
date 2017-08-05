@@ -55,7 +55,7 @@
 #define __GFP_NVMAP     (GFP_KERNEL | __GFP_HIGHMEM)
 #endif
 
-#define GFP_NVMAP              (__GFP_NVMAP | __GFP_NOWARN)
+#define GFP_NVMAP       (__GFP_NVMAP | __GFP_NOWARN)
 
 #ifdef CONFIG_64BIT
 #define NVMAP_LAZY_VFREE
@@ -91,6 +91,7 @@ struct nvmap_vma_list {
 	struct list_head list;
 	struct vm_area_struct *vma;
 	pid_t pid;
+	atomic_t ref;
 };
 
 /* handles allocated using shared system memory (either IOVMM- or high-order
@@ -176,7 +177,7 @@ struct nvmap_page_pool {
 	int to_zero; /* Number of pages on the zero list */
 	struct list_head page_list;
 	struct list_head zero_list;
-	u32 dirty_pages;
+	bool contains_dirty_pages;
 
 #ifdef CONFIG_NVMAP_PAGE_POOL_DEBUG
 	u64 allocs;
@@ -226,9 +227,7 @@ struct nvmap_device {
 	struct nvmap_page_pool pool;
 #endif
 	struct list_head clients;
-	struct rb_root pids;
-	struct mutex	clients_lock;
-	struct dentry *handles_by_pid;
+	spinlock_t	clients_lock;
 };
 
 enum nvmap_stats_t {
@@ -385,7 +384,6 @@ extern void __clean_dcache_all(void *arg);
 void inner_flush_cache_all(void);
 void inner_clean_cache_all(void);
 void nvmap_clean_cache(struct page **pages, int numpages);
-void nvmap_clean_cache_page(struct page *page);
 void nvmap_flush_cache(struct page **pages, int numpages);
 
 int nvmap_do_cache_maint_list(struct nvmap_handle **handles, u32 *offsets,

@@ -51,9 +51,7 @@ bool zero_memory;
 static int zero_memory_set(const char *arg, const struct kernel_param *kp)
 {
 	param_set_bool(arg, kp);
-#ifdef CONFIG_NVMAP_PAGE_POOLS
 	nvmap_page_pool_clear();
-#endif
 	return 0;
 }
 
@@ -124,10 +122,8 @@ void _nvmap_handle_free(struct nvmap_handle *h)
 	for (i = 0; i < nr_page; i++)
 		h->pgalloc.pages[i] = nvmap_to_page(h->pgalloc.pages[i]);
 
-#if defined(CONFIG_NVMAP_PAGE_POOLS)
 	page_index = nvmap_page_pool_fill_lots(&nvmap_dev->pool,
 				h->pgalloc.pages, nr_page);
-#endif
 
 	for (i = page_index; i < nr_page; i++)
 		__free_page(h->pgalloc.pages[i]);
@@ -615,7 +611,7 @@ struct nvmap_handle *nvmap_duplicate_handle_id_ex(struct nvmap_client *client,
 	struct nvmap_handle_ref *ref = nvmap_duplicate_handle(client, h, 0);
 
 	if (IS_ERR(ref))
-		return NULL;
+		return 0;
 
 	return __nvmap_ref_to_id(ref);
 }
