@@ -75,11 +75,13 @@ static inline void tegra_fb_update_fix(struct tegra_fb_info *fb_info,
 					struct fb_monspecs *specs)
 {
 }
-
+#ifdef CONFIG_FB_TEGRA
+	/*fix build adf*/
 static struct fb_var_screeninfo *tegra_fb_get_var(struct tegra_fb_info *fb_info)
 {
-	return NULL;
+	return NULL; 
 }
+#endif
 
 static inline int tegra_fb_create_sysfs(struct device *dev)
 {

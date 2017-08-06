@@ -1209,9 +1209,15 @@ static ssize_t dbg_dc_out_type_set(struct file *file,
 			dbg_dc_out_info[cur_dc_out].out_data)
 			tegra_dc_destroy_dsi_resources(dc, cur_dc_out);
 
+#ifdef CONFIG_ADF_TEGRA
+		/*fix build adf*/
 		if (!is_valid_fake_support(dc, cur_dc_out))
-			dbg_dc_out_info[cur_dc_out].fblistindex =
+			dbg_dc_out_info[cur_dc_out].fblistindex = 1;
+#else
+		if (!is_valid_fake_support(dc, cur_dc_out))
+			dbg_dc_out_info[cur_dc_out].fblistindex = 1;
 						tegra_fb_update_modelist(dc, 0);
+#endif
 
 		set_avdd(dc, cur_dc_out, out_type);
 	}
@@ -1233,10 +1239,13 @@ static ssize_t dbg_dc_out_type_set(struct file *file,
 		if (is_valid_dsi_out(dc, out_type))
 			ret = tegra_dc_reinit_dsi_resources(dc, out_type);
 
+#ifdef CONFIG_ADF_TEGRA
+		/*fix build adf*/
+#else
 		if (!is_valid_fake_support(dc, out_type))
 			tegra_fb_update_modelist(dc,
 					dbg_dc_out_info[out_type].fblistindex);
-
+#endif
 		mutex_unlock(&dc->lock);
 		mutex_unlock(&dc->lp_lock);
 
