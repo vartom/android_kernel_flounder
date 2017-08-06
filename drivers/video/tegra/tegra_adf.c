@@ -1099,7 +1099,7 @@ static int tegra_adf_intf_alloc_simple_buffer(struct adf_interface *intf,
 	if (IS_ERR(vb2_buf))
 		return PTR_ERR(vb2_buf);
 
-	*dma_buf = mem_ops->get_dmabuf(vb2_buf);
+	*dma_buf = mem_ops->get_dmabuf(vb2_buf, O_RDWR);
 	mem_ops->put(vb2_buf);
 	if (!*dma_buf)
 		return -ENOMEM;
