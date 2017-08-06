@@ -374,8 +374,8 @@ static unsigned long default_emc_cpu_limit(unsigned long cpu_rate,
 		return 0;       /* emc min */
 }
 
-#ifdef CONFIG_ARCH_TEGRA_13x_SOC
-/* EMC/CPU frequency operational requirement limit */
+#ifdef CONFIG_ARCH_TEGRA_21x_SOC
+/* EMC/CPU frequency operational requirement limit */ /*HAK 13x - 21x*/
 unsigned long tegra_emc_cpu_limit(unsigned long cpu_rate)
 {
 	static unsigned long last_emc_rate;
