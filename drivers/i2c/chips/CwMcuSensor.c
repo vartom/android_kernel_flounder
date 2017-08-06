@@ -44,7 +44,6 @@
 #include <linux/iio/iio.h>
 #include <linux/iio/sysfs.h>
 #include <linux/iio/trigger.h>
-#include <linux/iio/triggered_buffer.h>
 #include <linux/iio/trigger_consumer.h>
 #include <linux/iio/kfifo_buf.h>
 #include <linux/irq_work.h>
@@ -4213,7 +4212,7 @@ static int CWMCU_i2c_probe(struct i2c_client *client,
 	indio_dev->info = &cw_info;
 	indio_dev->channels = cw_channels;
 	indio_dev->num_channels = ARRAY_SIZE(cw_channels);
-	indio_dev->modes |= INDIO_BUFFER_TRIGGERED;
+	indio_dev->modes |= INDIO_BUFFER_TRIGGERED | INDIO_KFIFO_USE_VMALLOC;
 
 	mcu_data = iio_priv(indio_dev);
 	mcu_data->client = client;
@@ -4410,7 +4409,7 @@ MODULE_DEVICE_TABLE(i2c, cwmcu_id);
 static struct i2c_driver cwmcu_driver = {
 	.driver = {
 		.name = CWMCU_I2C_NAME,
-		.owner = THIS_MODULE,
+		   .owner = THIS_MODULE,
 		.pm = &cwmcu_pm_ops,
 		.of_match_table = mcu_match_table,
 	},
