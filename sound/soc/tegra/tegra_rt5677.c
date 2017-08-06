@@ -94,7 +94,7 @@ static int hotword_cpufreq_notifier(struct notifier_block* nb,
 	if (policy == NULL || event != CPUFREQ_ADJUST)
 		return 0;
 
-	pr_debug("%s: adjusting cpu%d min freq to %d for hotword (currently "
+	pr_info("%s: adjusting cpu%d min freq to %d for hotword (currently "
 		 "at %d)\n", __func__, policy->cpu, HOTWORD_CPU_FREQ_BOOST_MIN,
 		 policy->cur);
 
@@ -186,7 +186,7 @@ static void tegra_rt5677_set_cif(int cif, unsigned int channels,
 		break;
 
 	default:
-		pr_err("Error in sample_size\n");
+		pr_info("Error in sample_size\n");
 		break;
 	}
 }
@@ -504,7 +504,7 @@ static int tegra_rt5677_startup(struct snd_pcm_substream *substream)
 	struct tegra_asoc_platform_data *pdata = machine->pdata;
 	int dam_ifc = machine->dam_ifc;
 
-	pr_debug("%s i2s->id=%d %d\n", __func__, i2s->id,
+	pr_info("%s i2s->id=%d %d\n", __func__, i2s->id,
 			pdata->i2s_param[HIFI_CODEC].audio_port_id);
 	tegra_asoc_utils_tristate_dap(i2s->id, false);
 	if (i2s->id == pdata->i2s_param[HIFI_CODEC].audio_port_id) {
@@ -649,7 +649,7 @@ static int tegra_rt5677_hw_params(struct snd_pcm_substream *substream,
 		i2s_daifmt |= SND_SOC_DAIFMT_RIGHT_J;
 		break;
 	default:
-		dev_err(card->dev, "Can't configure i2s format\n");
+		dev_info(card->dev, "Can't configure i2s format\n");
 		return -EINVAL;
 	}
 
@@ -658,7 +658,7 @@ static int tegra_rt5677_hw_params(struct snd_pcm_substream *substream,
 		if (!(machine->util_data.set_mclk % mclk)) {
 			mclk = machine->util_data.set_mclk;
 		} else {
-			dev_err(card->dev, "Can't configure clocks\n");
+			dev_info(card->dev, "Can't configure clocks\n");
 			return err;
 		}
 	}
@@ -671,7 +671,7 @@ static int tegra_rt5677_hw_params(struct snd_pcm_substream *substream,
 		err = snd_soc_dai_set_sysclk(codec_dai, RT5677_SCLK_S_MCLK,
 				rate, SND_SOC_CLOCK_IN);
 		if (err < 0) {
-			dev_err(card->dev, "codec_dai clock not set\n");
+			dev_info(card->dev, "codec_dai clock not set\n");
 			return err;
 		}
 	} else {
@@ -679,13 +679,13 @@ static int tegra_rt5677_hw_params(struct snd_pcm_substream *substream,
 		err = snd_soc_dai_set_pll(codec_dai, 0, RT5677_PLL1_S_MCLK,
 				rate, 512*srate);
 		if (err < 0) {
-			dev_err(card->dev, "codec_dai pll not set\n");
+			dev_info(card->dev, "codec_dai pll not set\n");
 			return err;
 		}
 		err = snd_soc_dai_set_sysclk(codec_dai, RT5677_SCLK_S_PLL1,
 				512*srate, SND_SOC_CLOCK_IN);
 		if (err < 0) {
-			dev_err(card->dev, "codec_dai clock not set\n");
+			dev_info(card->dev, "codec_dai clock not set\n");
 			return err;
 		}
 	}
@@ -696,7 +696,7 @@ static int tegra_rt5677_hw_params(struct snd_pcm_substream *substream,
 	err = snd_soc_dai_set_sysclk(cpu_dai, 0,
 			i2sclock, SND_SOC_CLOCK_OUT);
 	if (err < 0) {
-		dev_err(card->dev, "cpu_dai clock not set\n");
+		dev_info(card->dev, "cpu_dai clock not set\n");
 		return err;
 	}
 
@@ -715,13 +715,13 @@ static int tegra_rt5677_hw_params(struct snd_pcm_substream *substream,
 
 	err = snd_soc_dai_set_fmt(codec_dai, codec_daifmt);
 	if (err < 0) {
-		dev_err(card->dev, "codec_dai fmt not set\n");
+		dev_info(card->dev, "codec_dai fmt not set\n");
 		return err;
 	}
 
 	err = snd_soc_dai_set_fmt(cpu_dai, i2s_daifmt);
 	if (err < 0) {
-		dev_err(card->dev, "cpu_dai fmt not set\n");
+		dev_info(card->dev, "cpu_dai fmt not set\n");
 		return err;
 	}
 
@@ -769,13 +769,13 @@ static int tegra_speaker_hw_params(struct snd_pcm_substream *substream,
 		i2s_daifmt |= SND_SOC_DAIFMT_RIGHT_J;
 		break;
 	default:
-		dev_err(card->dev, "Can't configure i2s format\n");
+		dev_info(card->dev, "Can't configure i2s format\n");
 		return -EINVAL;
 	}
 
 	err = snd_soc_dai_set_fmt(rtd->cpu_dai, i2s_daifmt);
 	if (err < 0) {
-		dev_err(card->dev, "cpu_dai fmt not set\n");
+		dev_info(card->dev, "cpu_dai fmt not set\n");
 		return err;
 	}
 
@@ -840,13 +840,13 @@ static int tegra_bt_sco_hw_params(struct snd_pcm_substream *substream,
 		i2s_daifmt |= SND_SOC_DAIFMT_RIGHT_J;
 		break;
 	default:
-		dev_err(card->dev, "Can't configure i2s format\n");
+		dev_info(card->dev, "Can't configure i2s format\n");
 		return -EINVAL;
 	}
 
 	err = snd_soc_dai_set_fmt(rtd->cpu_dai, i2s_daifmt);
 	if (err < 0) {
-		dev_err(card->dev, "cpu_dai fmt not set\n");
+		dev_info(card->dev, "cpu_dai fmt not set\n");
 		return err;
 	}
 
@@ -1010,14 +1010,14 @@ static int tegra_rt5677_dmic_set(struct snd_kcontrol *kcontrol,
 		state = BIT_DMIC_BIAS_DISABLE;
 		ret = gpio_direction_output(pdata->gpio_int_mic_en, 0);
 		if (ret)
-			pr_err("gpio_int_mic_en=0 fail,%d\n", ret);
+			pr_info("gpio_int_mic_en=0 fail,%d\n", ret);
 		else
 			pr_info("gpio_int_mic_en=0\n");
 	} else {
 		state = BIT_DMIC_BIAS_ENABLE;
 		ret = gpio_direction_output(pdata->gpio_int_mic_en, 1);
 		if (ret)
-			pr_err("gpio_int_mic_en=1 fail,%d\n", ret);
+			pr_info("gpio_int_mic_en=1 fail,%d\n", ret);
 		else
 			pr_info("gpio_int_mic_en=1\n");
 	}
@@ -1068,12 +1068,12 @@ static int tegra_rt5677_amic_test_set(struct snd_kcontrol *kcontrol,
 			pdata->gpio_ext_mic_en);
 		ret = gpio_request(pdata->gpio_ext_mic_en, "ext-mic-enable");
 		if (ret) {
-			pr_err("Fail gpio_request gpio_ext_mic_en, %d\n",
+			pr_info("Fail gpio_request gpio_ext_mic_en, %d\n",
 				ret);
 			return ret;
 		}
 	} else {
-		pr_err("gpio_ext_mic_en %d is invalid\n",
+		pr_info("gpio_ext_mic_en %d is invalid\n",
 			pdata->gpio_ext_mic_en);
 		return -1;
 	}
@@ -1083,14 +1083,14 @@ static int tegra_rt5677_amic_test_set(struct snd_kcontrol *kcontrol,
 		state = BIT_AMIC_BIAS_DISABLE;
 		ret = gpio_direction_output(pdata->gpio_ext_mic_en, 0);
 		if (ret)
-			pr_err("gpio_ext_mic_en=0 fail,%d\n", ret);
+			pr_info("gpio_ext_mic_en=0 fail,%d\n", ret);
 		else
 			pr_info("gpio_ext_mic_en=0\n");
 	} else {
 		state = BIT_AMIC_BIAS_ENABLE;
 		ret = gpio_direction_output(pdata->gpio_ext_mic_en, 1);
 		if (ret)
-			pr_err("gpio_ext_mic_en=1 fail,%d\n", ret);
+			pr_info("gpio_ext_mic_en=1 fail,%d\n", ret);
 		else
 			pr_info("gpio_ext_mic_en=1\n");
 	}
@@ -1288,7 +1288,7 @@ static int tegra_offload_hw_params_be_fixup(struct snd_soc_pcm_runtime *rtd,
 				SNDRV_PCM_HW_PARAM_FIRST_MASK],
 				SNDRV_PCM_FORMAT_S16_LE);
 
-	pr_debug("%s::%d %d %d\n", __func__, params_rate(params),
+	pr_info("%s::%d %d %d\n", __func__, params_rate(params),
 			params_channels(params), params_format(params));
 	return 0;
 }
@@ -1548,33 +1548,33 @@ void __set_rt5677_power(struct tegra_rt5677 *machine, bool enable, bool hp_depop
 		pr_info("tegra_rt5677 power_on\n");
 		/*V_IO_1V8*/
 		if (gpio_is_valid(pdata->gpio_ldo1_en)) {
-			pr_debug("gpio_ldo1_en %d is valid\n", pdata->gpio_ldo1_en);
+			pr_info("gpio_ldo1_en %d is valid\n", pdata->gpio_ldo1_en);
 			ret = gpio_request(pdata->gpio_ldo1_en, "rt5677-ldo-enable");
 			if (ret) {
-				pr_err("Fail gpio_request gpio_ldo1_en, %d\n", ret);
+				pr_info("Fail gpio_request gpio_ldo1_en, %d\n", ret);
 			} else {
 				ret = gpio_direction_output(pdata->gpio_ldo1_en, 1);
 				if (ret) {
-					pr_err("gpio_ldo1_en=1 fail,%d\n", ret);
+					pr_info("gpio_ldo1_en=1 fail,%d\n", ret);
 					gpio_free(pdata->gpio_ldo1_en);
 				} else
-					pr_debug("gpio_ldo1_en=1\n");
+					pr_info("gpio_ldo1_en=1\n");
 			}
 		} else {
-			pr_err("gpio_ldo1_en %d is invalid\n", pdata->gpio_ldo1_en);
+			pr_info("gpio_ldo1_en %d is invalid\n", pdata->gpio_ldo1_en);
 		}
 
 		usleep_range(1000, 2000);
 
 		/*V_AUD_1V2*/
 		if (IS_ERR(rt5677_reg))
-			pr_err("Fail regulator_get v_ldo2\n");
+			pr_info("Fail regulator_get v_ldo2\n");
 		else {
 			ret = regulator_enable(rt5677_reg);
 			if (ret)
-				pr_err("Fail regulator_enable v_ldo2, %d\n", ret);
+				pr_info("Fail regulator_enable v_ldo2, %d\n", ret);
 			else
-				pr_debug("tegra_rt5677_reg v_ldo2 is enabled\n");
+				pr_info("tegra_rt5677_reg v_ldo2 is enabled\n");
 		}
 
 		usleep_range(1000, 2000);
@@ -1583,11 +1583,11 @@ void __set_rt5677_power(struct tegra_rt5677 *machine, bool enable, bool hp_depop
 		if (gpio_is_valid(pdata->gpio_int_mic_en)) {
 			ret = gpio_direction_output(pdata->gpio_int_mic_en, 1);
 			if (ret)
-				pr_err("Turn on gpio_int_mic_en fail,%d\n", ret);
+				pr_info("Turn on gpio_int_mic_en fail,%d\n", ret);
 			else
-				pr_debug("Turn on gpio_int_mic_en\n");
+				pr_info("Turn on gpio_int_mic_en\n");
 		} else {
-			pr_err("gpio_int_mic_en is invalid,%d\n", ret);
+			pr_info("gpio_int_mic_en is invalid,%d\n", ret);
 		}
 
 		usleep_range(1000, 2000);
@@ -1596,11 +1596,11 @@ void __set_rt5677_power(struct tegra_rt5677 *machine, bool enable, bool hp_depop
 		if (gpio_is_valid(pdata->gpio_reset)) {
 			ret = gpio_direction_output(pdata->gpio_reset, 1);
 			if (ret)
-				pr_err("Turn on gpio_reset fail,%d\n", ret);
+				pr_info("Turn on gpio_reset fail,%d\n", ret);
 			else
-				pr_debug("Turn on gpio_reset\n");
+				pr_info("Turn on gpio_reset\n");
 		} else {
-			pr_err("gpio_reset is invalid,%d\n", ret);
+			pr_info("gpio_reset is invalid,%d\n", ret);
 		}
 		status = true;
 	} else if (enable == false && status) {
@@ -1610,51 +1610,51 @@ void __set_rt5677_power(struct tegra_rt5677 *machine, bool enable, bool hp_depop
 		if (gpio_is_valid(pdata->gpio_reset)) {
 			ret = gpio_direction_output(pdata->gpio_reset, 0);
 			if (ret)
-				pr_err("Turn off gpio_reset fail,%d\n", ret);
+				pr_info("Turn off gpio_reset fail,%d\n", ret);
 			else
-				pr_debug("Turn off gpio_reset\n");
+				pr_info("Turn off gpio_reset\n");
 		} else {
-			pr_err("gpio_reset is invalid,%d\n", ret);
+			pr_info("gpio_reset is invalid,%d\n", ret);
 		}
 
 		/*V_AUD_1V8*/
 		if (gpio_is_valid(pdata->gpio_int_mic_en)) {
 			ret = gpio_direction_output(pdata->gpio_int_mic_en, 0);
 			if (ret)
-				pr_err("Turn off gpio_int_mic_en fail,%d\n", ret);
+				pr_info("Turn off gpio_int_mic_en fail,%d\n", ret);
 			else
-				pr_debug("Turn off gpio_int_mic_en\n");
+				pr_info("Turn off gpio_int_mic_en\n");
 		} else {
-			pr_err("gpio_int_mic_en is invalid,%d\n", ret);
+			pr_info("gpio_int_mic_en is invalid,%d\n", ret);
 		}
 
 		usleep_range(1000, 2000);
 
 		/*V_AUD_1V2*/
 		if (IS_ERR(rt5677_reg))
-			pr_err("Fail regulator_get v_ldo2\n");
+			pr_info("Fail regulator_get v_ldo2\n");
 		else {
 			ret = regulator_disable(rt5677_reg);
 			if (ret)
-				pr_err("Fail regulator_disable v_ldo2, %d\n", ret);
+				pr_info("Fail regulator_disable v_ldo2, %d\n", ret);
 			else
-				pr_debug("tegra_rt5677_reg v_ldo2 is disabled\n");
+				pr_info("tegra_rt5677_reg v_ldo2 is disabled\n");
 		}
 
 		usleep_range(1000, 2000);
 
 		/*V_IO_1V8*/
 		if (gpio_is_valid(pdata->gpio_ldo1_en)) {
-			pr_debug("gpio_ldo1_en %d is valid\n", pdata->gpio_ldo1_en);
+			pr_info("gpio_ldo1_en %d is valid\n", pdata->gpio_ldo1_en);
 			ret = gpio_direction_output(pdata->gpio_ldo1_en, 0);
 			if (ret)
-				pr_err("gpio_ldo1_en=0 fail,%d\n", ret);
+				pr_info("gpio_ldo1_en=0 fail,%d\n", ret);
 			else
-				pr_debug("gpio_ldo1_en=0\n");
+				pr_info("gpio_ldo1_en=0\n");
 
 			gpio_free(pdata->gpio_ldo1_en);
 		} else {
-			pr_err("gpio_ldo1_en %d is invalid\n", pdata->gpio_ldo1_en);
+			pr_info("gpio_ldo1_en %d is invalid\n", pdata->gpio_ldo1_en);
 		}
 
 		/* set hp_en low to prevent power leakage */
@@ -1704,7 +1704,7 @@ static int tegra_rt5677_driver_probe(struct platform_device *pdev)
 	u32 val32[7];
 
 	if (!pdev->dev.platform_data && !pdev->dev.of_node) {
-		dev_err(&pdev->dev, "No platform data supplied\n");
+		dev_info(&pdev->dev, "No platform data supplied\n");
 		return -EINVAL;
 	}
 	if (pdev->dev.platform_data) {
@@ -1713,7 +1713,7 @@ static int tegra_rt5677_driver_probe(struct platform_device *pdev)
 		pdata = kzalloc(sizeof(struct tegra_asoc_platform_data),
 			GFP_KERNEL);
 		if (!pdata) {
-			dev_err(&pdev->dev, "Can't allocate tegra_asoc_platform_data struct\n");
+			dev_info(&pdev->dev, "Can't allocate tegra_asoc_platform_data struct\n");
 			return -ENOMEM;
 		}
 
@@ -1751,7 +1751,7 @@ static int tegra_rt5677_driver_probe(struct platform_device *pdev)
 	}
 
 	if (!pdata) {
-		dev_err(&pdev->dev, "No platform data supplied\n");
+		dev_info(&pdev->dev, "No platform data supplied\n");
 		return -EINVAL;
 	}
 
@@ -1763,7 +1763,7 @@ static int tegra_rt5677_driver_probe(struct platform_device *pdev)
 
 	machine = kzalloc(sizeof(struct tegra_rt5677), GFP_KERNEL);
 	if (!machine) {
-		dev_err(&pdev->dev, "Can't allocate tegra_rt5677 struct\n");
+		dev_info(&pdev->dev, "Can't allocate tegra_rt5677 struct\n");
 		if (np)
 			kfree(pdata);
 		return -ENOMEM;
@@ -1781,21 +1781,21 @@ static int tegra_rt5677_driver_probe(struct platform_device *pdev)
 			pdata->gpio_ldo1_en);
 		ret = gpio_request(pdata->gpio_ldo1_en, "rt5677-ldo-enable");
 		if (ret) {
-			dev_err(&pdev->dev, "Fail gpio_request gpio_ldo1_en, %d\n",
+			dev_info(&pdev->dev, "Fail gpio_request gpio_ldo1_en, %d\n",
 				ret);
-			goto err_free_machine;
+			/*goto err_free_machine;*/
 		} else {
 			ret = gpio_direction_output(pdata->gpio_ldo1_en, 1);
 			if (ret) {
-				dev_err(&pdev->dev,
+				dev_info(&pdev->dev,
 					"gpio_ldo1_en=1 fail,%d\n", ret);
 				gpio_free(pdata->gpio_ldo1_en);
-				goto err_free_machine;
+				/*goto err_free_machine;*/
 			} else
 				dev_dbg(&pdev->dev, "gpio_ldo1_en=1\n");
 		}
 	} else {
-		dev_err(&pdev->dev, "gpio_ldo1_en %d is invalid\n",
+		dev_info(&pdev->dev, "gpio_ldo1_en %d is invalid\n",
 			pdata->gpio_ldo1_en);
 	}
 
@@ -1808,21 +1808,21 @@ static int tegra_rt5677_driver_probe(struct platform_device *pdev)
 	if (gpio_is_valid(pdata->gpio_int_mic_en)) {
 		ret = gpio_request(pdata->gpio_int_mic_en, "int-mic-enable");
 		if (ret) {
-			dev_err(&pdev->dev, "Fail gpio_request gpio_int_mic_en, %d\n", ret);
+			dev_info(&pdev->dev, "Fail gpio_request gpio_int_mic_en, %d\n", ret);
 			goto err_free_machine;
 		}
 	} else
-		dev_err(&pdev->dev, "gpio_int_mic_en %d is invalid\n", pdata->gpio_int_mic_en);
+		dev_info(&pdev->dev, "gpio_int_mic_en %d is invalid\n", pdata->gpio_int_mic_en);
 
 	/*AUD_ALC5677_RESET*/
 	if (gpio_is_valid(pdata->gpio_reset)) {
 		ret = gpio_request(pdata->gpio_reset, "rt5677-reset");
 		if (ret) {
-			dev_err(&pdev->dev, "Fail gpio_request gpio_reset, %d\n", ret);
+			dev_info(&pdev->dev, "Fail gpio_request gpio_reset, %d\n", ret);
 			goto err_free_machine;
 		}
 	} else
-		dev_err(&pdev->dev, "gpio_reset %d is invalid\n", pdata->gpio_reset);
+		dev_info(&pdev->dev, "gpio_reset %d is invalid\n", pdata->gpio_reset);
 
 	usleep_range(1000, 2000);
 	mutex_init(&machine->rt5677_lock);
@@ -1842,14 +1842,14 @@ static int tegra_rt5677_driver_probe(struct platform_device *pdev)
 			pdata->gpio_irq1);
 		ret = gpio_request(pdata->gpio_irq1, "rt5677-irq");
 		if (ret) {
-			dev_err(&pdev->dev, "Fail gpio_request gpio_irq1, %d\n",
+			dev_info(&pdev->dev, "Fail gpio_request gpio_irq1, %d\n",
 				ret);
 			goto err_free_machine;
 		}
 
 		ret = gpio_direction_input(pdata->gpio_irq1);
 		if (ret < 0) {
-			dev_err(&pdev->dev, "Fail gpio_direction_input gpio_irq1, %d\n",
+			dev_info(&pdev->dev, "Fail gpio_direction_input gpio_irq1, %d\n",
 			ret);
 			goto err_free_machine;
 		}
@@ -1857,7 +1857,7 @@ static int tegra_rt5677_driver_probe(struct platform_device *pdev)
 		rt5677_irq = gpio_to_irq(pdata->gpio_irq1);
 		if (rt5677_irq < 0) {
 			ret = rt5677_irq;
-			dev_err(&pdev->dev, "Fail gpio_to_irq gpio_irq1, %d\n",
+			dev_info(&pdev->dev, "Fail gpio_to_irq gpio_irq1, %d\n",
 				ret);
 			goto err_free_machine;
 		}
@@ -1866,7 +1866,7 @@ static int tegra_rt5677_driver_probe(struct platform_device *pdev)
 			IRQF_TRIGGER_RISING | IRQF_TRIGGER_FALLING ,
 			"RT5677_IRQ", machine);
 		if (ret) {
-			dev_err(&pdev->dev, "request_irq rt5677_irq failed, %d\n",
+			dev_info(&pdev->dev, "request_irq rt5677_irq failed, %d\n",
 				ret);
 			goto err_free_machine;
 		} else {
@@ -1874,7 +1874,7 @@ static int tegra_rt5677_driver_probe(struct platform_device *pdev)
 			enable_irq_wake(rt5677_irq);
 		}
 	} else {
-		dev_err(&pdev->dev, "gpio_irq1 %d is invalid\n",
+		dev_info(&pdev->dev, "gpio_irq1 %d is invalid\n",
 			pdata->gpio_irq1);
 	}
 
@@ -1915,14 +1915,14 @@ static int tegra_rt5677_driver_probe(struct platform_device *pdev)
 	card->dapm.idle_bias_off = 1;
 	ret = snd_soc_register_card(card);
 	if (ret) {
-		dev_err(&pdev->dev, "snd_soc_register_card failed (%d)\n",
+		dev_info(&pdev->dev, "snd_soc_register_card failed (%d)\n",
 			ret);
 		goto err_unregister_switch;
 	}
 
 	if (!card->instantiated) {
 		ret = -ENODEV;
-		dev_err(&pdev->dev, "sound card not instantiated (%d)\n",
+		dev_info(&pdev->dev, "sound card not instantiated (%d)\n",
 			ret);
 		goto err_unregister_card;
 	}
@@ -1931,7 +1931,7 @@ static int tegra_rt5677_driver_probe(struct platform_device *pdev)
 	ret = tegra_asoc_utils_set_parent(&machine->util_data,
 				pdata->i2s_param[HIFI_CODEC].is_i2s_master);
 	if (ret) {
-		dev_err(&pdev->dev, "tegra_asoc_utils_set_parent failed (%d)\n",
+		dev_info(&pdev->dev, "tegra_asoc_utils_set_parent failed (%d)\n",
 			ret);
 		goto err_unregister_card;
 	}
@@ -1948,7 +1948,7 @@ static int tegra_rt5677_driver_probe(struct platform_device *pdev)
 
 	machine->dam_ifc = tegra30_dam_allocate_controller();
 	if (machine->dam_ifc < 0) {
-		dev_err(&pdev->dev, "DAM allocation failed\n");
+		dev_info(&pdev->dev, "DAM allocation failed\n");
 		goto err_unregister_card;
 	}
 	mutex_init(&machine->dam_mutex);
@@ -1986,7 +1986,7 @@ static int tegra_rt5677_driver_remove(struct platform_device *pdev)
 		rt5677_irq = gpio_to_irq(pdata->gpio_irq1);
 		if (rt5677_irq < 0) {
 			ret = rt5677_irq;
-			dev_err(&pdev->dev, "Fail gpio_to_irq gpio_irq1, %d\n",
+			dev_info(&pdev->dev, "Fail gpio_to_irq gpio_irq1, %d\n",
 				ret);
 		} else {
 			disable_irq_wake(rt5677_irq);
@@ -1994,7 +1994,7 @@ static int tegra_rt5677_driver_remove(struct platform_device *pdev)
 		}
 		cancel_work_sync(&machine->hotword_work);
 	} else {
-		dev_err(&pdev->dev, "gpio_irq1 %d is invalid\n",
+		dev_info(&pdev->dev, "gpio_irq1 %d is invalid\n",
 			pdata->gpio_irq1);
 	}
 
@@ -2014,14 +2014,14 @@ static int tegra_rt5677_driver_remove(struct platform_device *pdev)
 			pdata->gpio_ldo1_en);
 		ret = gpio_direction_output(pdata->gpio_ldo1_en, 0);
 		if (ret)
-			dev_err(&pdev->dev,
+			dev_info(&pdev->dev,
 				"gpio_ldo1_en=0 fail,%d\n", ret);
 		else
 			dev_dbg(&pdev->dev, "gpio_ldo1_en=0\n");
 
 		gpio_free(pdata->gpio_ldo1_en);
 	} else {
-		dev_err(&pdev->dev, "gpio_ldo1_en %d is invalid\n",
+		dev_info(&pdev->dev, "gpio_ldo1_en %d is invalid\n",
 			pdata->gpio_ldo1_en);
 	}
 
