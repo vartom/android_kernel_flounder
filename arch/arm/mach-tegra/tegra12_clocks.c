@@ -9380,9 +9380,9 @@ unsigned long tegra_emc_cpu_limit(unsigned long cpu_rate)
 	else if (cpu_rate >= 725000)
 		return  396000000;	/* cpu >= 725 MHz, emc 396 MHz */
 	else if (cpu_rate >= 500000)
-		return  204000000;	/* cpu >= 500 MHz, emc 204 MHz */
+		return  300000000;	/* cpu >= 500 MHz, emc 204 MHz */
 	else
-		return 204000000;		/* emc min */
+		return 300000000;		/* emc min */
 }
 #endif
 
