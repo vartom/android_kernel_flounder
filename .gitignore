@@ -80,8 +80,9 @@ GRTAGS
 GSYMS
 GTAGS
 
+STLinux-Initramfs-master*/*
 out/*
-working/*
+working*/*
 *.log
 *.sh
 *.orig
