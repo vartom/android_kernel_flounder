@@ -729,20 +729,23 @@ static int nvhost_pod_estimate_freq(struct devfreq *df,
 	int stat;
 	ktime_t now;
 
-	stat = df->profile->get_dev_status(df->dev.parent, &dev_stat);
-	if (stat < 0)
-		return stat;
-
 	/* Ensure maximal clock when scaling is disabled */
 	if (!podgov->enable) {
 		*freq = df->max_freq;
-		return 0;
+		if (*freq == df->previous_freq)
+			return GET_TARGET_FREQ_DONTSCALE;
+		else
+			return 0;
 	}
 
 	if (podgov->p_user) {
 		*freq = podgov->p_freq_request;
 		return 0;
 	}
+
+	stat = df->profile->get_dev_status(df->dev.parent, &dev_stat);
+	if (stat < 0)
+		return stat;
 
 	if (dev_stat.total_time == 0) {
 		*freq = dev_stat.current_frequency;
