@@ -15,8 +15,4 @@
 int rt5677_spi_write(u32 addr, const u8 *txbuf, size_t len);
 int rt5677_spi_read(u32 addr, u8 *rxbuf, size_t len);
 
-struct rt5677_spi_platform_data {
-    void (*spi_suspend) (bool);
-};
-
 #endif /* __RT5677_SPI_H__ */
