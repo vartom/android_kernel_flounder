@@ -39,5 +39,6 @@ extern inline int tegra_gpio_is_enabled(int gpio, int *is_gpio, int *is_input)
 }
 #endif
 void tegra_gpio_disable(int gpio);
+int tegra_is_gpio(int);
 
 #endif
