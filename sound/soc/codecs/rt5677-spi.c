@@ -219,31 +219,11 @@ static int rt5677_spi_remove(struct spi_device *spi)
 #ifdef CONFIG_PM
 static int rt5677_suspend(struct device *dev)
 {
-	struct spi_device *spi = to_spi_device(dev);
-	struct rt5677_spi_platform_data *pdata;
-	pr_debug("%s\n", __func__);
-	if (spi == NULL) {
-		pr_debug("spi_device didn't exist");
-		return 0;
-	}
-	pdata = spi->dev.platform_data;
-	if (pdata && (pdata->spi_suspend))
-		pdata->spi_suspend(1);
 	return 0;
 }
 
 static int rt5677_resume(struct device *dev)
 {
-	struct spi_device *spi = to_spi_device(dev);
-	struct rt5677_spi_platform_data *pdata;
-	pr_debug("%s\n", __func__);
-	if (spi == NULL) {
-		pr_debug("spi_device didn't exist");
-		return 0;
-	}
-	pdata = spi->dev.platform_data;
-	if (pdata && (pdata->spi_suspend))
-		pdata->spi_suspend(0);
 	return 0;
 }
 
