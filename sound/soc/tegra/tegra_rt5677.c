@@ -76,8 +76,8 @@ const char *tegra_rt5677_i2s_dai_name[TEGRA30_NR_I2S_IFC] = {
 struct regulator *rt5677_reg;
 static struct sysedp_consumer *sysedpc;
 
-void __set_rt5677_power(struct tegra_rt5677 *machine, bool enable, bool hp_depop);
-void set_rt5677_power_locked(struct tegra_rt5677 *machine, bool enable, bool hp_depop);
+void __set_rt5677_power(struct tegra_rt5677 *machine, bool enable);
+void set_rt5677_power_locked(struct tegra_rt5677 *machine, bool enable);
 
 static int hotword_cpufreq_notifier(struct notifier_block* nb,
 				    unsigned long event, void* data)
@@ -500,10 +500,7 @@ static int tegra_rt5677_startup(struct snd_pcm_substream *substream)
 	tegra_asoc_utils_tristate_pd_dap(i2s->id, false);
 	if (i2s->id == pdata->i2s_param[HIFI_CODEC].audio_port_id) {
 		cancel_delayed_work_sync(&machine->power_work);
-		if (substream->stream == SNDRV_PCM_STREAM_PLAYBACK)
-			set_rt5677_power_locked(machine, true, true);
-		else
-			set_rt5677_power_locked(machine, true, false);
+		set_rt5677_power_locked(machine, true);
 	}
 
 	if (substream->stream == SNDRV_PCM_STREAM_PLAYBACK) {
@@ -1452,7 +1449,7 @@ static int tegra_rt5677_resume_pre(struct snd_soc_card *card)
 				machine->bias_level != SND_SOC_BIAS_OFF) {
 			machine->clock_enabled = 1;
 			tegra_asoc_utils_clk_enable(&machine->util_data);
-			__set_rt5677_power(machine, true, true);
+			__set_rt5677_power(machine, true);
 		}
 		mutex_unlock(&machine->rt5677_lock);
 		/*TODO: Enable Audio Regulators*/
@@ -1473,7 +1470,7 @@ static int tegra_rt5677_set_bias_level(struct snd_soc_card *card,
 		machine->clock_enabled = 1;
 		tegra_asoc_utils_clk_enable(&machine->util_data);
 		machine->bias_level = level;
-		__set_rt5677_power(machine, true, false);
+		__set_rt5677_power(machine, true);
 	}
 	mutex_unlock(&machine->rt5677_lock);
 
@@ -1537,7 +1534,7 @@ static struct snd_soc_card snd_soc_tegra_rt5677 = {
 	.fully_routed = true,
 };
 
-void __set_rt5677_power(struct tegra_rt5677 *machine, bool enable, bool hp_depop)
+void __set_rt5677_power(struct tegra_rt5677 *machine, bool enable)
 {
 	struct tegra_asoc_platform_data *pdata = machine->pdata;
 	int ret = 0;
@@ -1545,8 +1542,7 @@ void __set_rt5677_power(struct tegra_rt5677 *machine, bool enable, bool hp_depop
 
 	if (enable && status == false) {
 		/* set hp_en high to depop for headset path */
-		if (hp_depop)
-			set_rt5506_hp_en(1);
+		set_rt5506_hp_en(1);
 		pr_info("tegra_rt5677 power_on\n");
 
 		/*V_IO_1V8*/
@@ -1668,10 +1664,10 @@ void __set_rt5677_power(struct tegra_rt5677 *machine, bool enable, bool hp_depop
 	return;
 }
 
-void set_rt5677_power_locked(struct tegra_rt5677 *machine, bool enable, bool hp_depop)
+void set_rt5677_power_locked(struct tegra_rt5677 *machine, bool enable)
 {
 	mutex_lock(&machine->rt5677_lock);
-	__set_rt5677_power(machine, enable, hp_depop);
+	__set_rt5677_power(machine, enable);
 	mutex_unlock(&machine->rt5677_lock);
 }
 
@@ -1680,7 +1676,7 @@ void set_rt5677_power_extern(bool enable)
 	struct snd_soc_card *card = &snd_soc_tegra_rt5677;
 	struct tegra_rt5677 *machine = snd_soc_card_get_drvdata(card);
 
-	set_rt5677_power_locked(machine, enable, false);
+	set_rt5677_power_locked(machine, enable);
 }
 EXPORT_SYMBOL(set_rt5677_power_extern);
 
@@ -1694,7 +1690,7 @@ static void trgra_do_power_work(struct work_struct *work)
 		machine->clock_enabled = 0;
 		tegra_asoc_utils_clk_disable(&machine->util_data);
 	}
-	__set_rt5677_power(machine, false, false);
+	__set_rt5677_power(machine, false);
 	mutex_unlock(&machine->rt5677_lock);
 }
 
@@ -1834,7 +1830,7 @@ static int tegra_rt5677_driver_probe(struct platform_device *pdev)
 	mutex_init(&machine->rt5677_lock);
 	mutex_init(&machine->spk_amp_lock);
 
-	set_rt5677_power_locked(machine, true, false);
+	set_rt5677_power_locked(machine, true);
 
 	usleep_range(500, 1500);
 
@@ -2016,7 +2012,7 @@ static int tegra_rt5677_driver_remove(struct platform_device *pdev)
 			pdata->gpio_irq1);
 	}
 
-	set_rt5677_power_locked(machine, false, false);
+	set_rt5677_power_locked(machine, false);
 
 	if (gpio_is_valid(pdata->gpio_int_mic_en))
 		gpio_free(pdata->gpio_int_mic_en);
