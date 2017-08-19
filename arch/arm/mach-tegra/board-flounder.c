@@ -88,6 +88,7 @@
 #include <linux/htc_headset_pmic.h>
 #include <linux/htc_headset_one_wire.h>
 #include <../../../drivers/staging/android/timed_gpio.h>
+#include <linux/platform_data/gpio-tegra.h>
 
 #include <mach/flounder-bdaddress.h>
 #include "bcm_gps_hostwake.h"
@@ -108,7 +109,6 @@
 #include "../../../sound/soc/codecs/rt5506.h"
 #include "../../../sound/soc/codecs/rt5677.h"
 #include "../../../sound/soc/codecs/tfa9895.h"
-#include "../../../sound/soc/codecs/rt5677-spi.h"
 
 /*static unsigned int flounder_hw_rev;
 static unsigned int flounder_eng_id;
@@ -150,6 +150,65 @@ int flounder_get_eng_id(void)
 {
 	return flounder_eng_id;
 }*/
+
+struct aud_sfio_data {
+	const char *name;
+	int id;
+};
+static struct aud_sfio_data audio_sfio_pins[] = {
+	[0] = {
+		.name = "I2S1_LRCK",
+		.id   = TEGRA_GPIO_PA2,
+	},
+	[1] = {
+		.name = "I2S1_SCLK",
+		.id   = TEGRA_GPIO_PA3,
+	},
+	[2] = {
+		.name = "I2S1_SDATA_IN",
+		.id   = TEGRA_GPIO_PA4,
+	},
+	[3] = {
+		.name = "I2S1_SDATA_OUT",
+		.id   = TEGRA_GPIO_PA5,
+	},
+	[4] = {
+		.name = "I2S2_LRCK",
+		.id   = TEGRA_GPIO_PP0,
+	},
+	[5] = {
+		.name = "I2S2_SDATA_IN",
+		.id   = TEGRA_GPIO_PP1,
+	},
+	[6] = {
+		.name = "I2S2_SDATA_OUT",
+		.id   = TEGRA_GPIO_PP2,
+	},
+	[7] = {
+		.name = "I2S2_SCLK",
+		.id   = TEGRA_GPIO_PP3,
+	},
+	[8] = {
+		.name = "extperiph1_clk",
+		.id   = TEGRA_GPIO_PW4,
+	},
+	[9] = {
+		.name = "SPI_MOSI",
+		.id   = TEGRA_GPIO_PY0,
+	},
+	[10] = {
+		.name = "SPI_MISO",
+		.id   = TEGRA_GPIO_PY1,
+	},
+	[11] = {
+		.name = "SPI_SCLK",
+		.id   = TEGRA_GPIO_PY2,
+	},
+	[12] = {
+		.name = "SPI_CS",
+		.id   = TEGRA_GPIO_PY3,
+	},
+};
 
 static struct resource flounder_bluedroid_pm_resources[] = {
 	[0] = {
@@ -305,16 +364,37 @@ static struct tegra_asoc_platform_data flounder_audio_pdata_rt5677 = {
 		.i2s_mode = TEGRA_DAIFMT_DSP_A,
 	}
 };
+static struct tegra_spi_device_controller_data dev_cdata_rt5677 = {
+	.rx_clk_tap_delay = 0,
+	.tx_clk_tap_delay = 16,
+};
+struct spi_board_info rt5677_flounder_spi_board[1] = {
+	{
+	 .modalias = "rt5677_spidev",
+	 .bus_num = 4,
+	 .chip_select = 0,
+	 .max_speed_hz = 12 * 1000 * 1000,
+	 .mode = SPI_MODE_0,
+	 .controller_data = &dev_cdata_rt5677,
+	 },
+};
 
 static void flounder_audio_init(void)
 {
-/*	flounder_audio_pdata_rt5677.use_codec_jd_irq = true;
-	flounder_audio_pdata_rt5677.gpio_hp_det_active_high = 0;*/
-	flounder_audio_pdata_rt5677.gpio_ldo1_en = TEGRA_GPIO_PK0;
-	flounder_audio_pdata_rt5677.gpio_ldo2_en = TEGRA_GPIO_PQ3;
+	int i;
+
 	flounder_audio_pdata_rt5677.codec_name = "rt5677.1-002d";
 	flounder_audio_pdata_rt5677.codec_dai_name = "rt5677-aif1";
-}
+	spi_register_board_info(&rt5677_flounder_spi_board[0],
+	ARRAY_SIZE(rt5677_flounder_spi_board));
+	for (i = 0; i < ARRAY_SIZE(audio_sfio_pins); i++)
+		if (tegra_is_gpio(audio_sfio_pins[i].id)) {
+			gpio_request(audio_sfio_pins[i].id, audio_sfio_pins[i].name);
+			gpio_free(audio_sfio_pins[i].id);
+			pr_info("%s: gpio_free for gpio[%d] %s\n",
+				__func__, audio_sfio_pins[i].id, audio_sfio_pins[i].name);
+		}
+};
 
 static struct platform_device flounder_audio_device_rt5677 = {
 	.name = "tegra-snd-rt5677",
@@ -339,6 +419,7 @@ static struct platform_device *flounder_devices[] __initdata = {
 	&tegra_i2s_device2,
 	&tegra_i2s_device3,
 	&tegra_i2s_device4,
+	&flounder_audio_device_rt5677,
 	&tegra_spdif_device,
 	&spdif_dit_device,
 	&bluetooth_dit_device,
@@ -620,14 +701,22 @@ static struct of_dev_auxdata flounder_auxdata_lookup[] __initdata = {
 		NULL),
 	OF_DEV_AUXDATA("nvidia,tegra124-nvavp", 0x60001000, "nvavp",
 				NULL),
-	OF_DEV_AUXDATA("nvidia,tegra124-camera", 0, "pcl-generic",
-				NULL),
 	OF_DEV_AUXDATA("nvidia,tegra124-dfll", 0x70110000, "tegra_cl_dvfs",
 		NULL),
 	OF_DEV_AUXDATA("nvidia,tegra132-dfll", 0x70040084, "tegra_cl_dvfs",
 		NULL),
 	OF_DEV_AUXDATA("nvidia,tegra124-efuse", TEGRA_FUSE_BASE, "tegra-fuse",
 			NULL),
+	OF_DEV_AUXDATA("nvidia,tegra124-camera", 0, "pcl-generic",
+				NULL),
+	OF_DEV_AUXDATA("nvidia,tegra-bluedroid_pm", 0, "bluedroid_pm",
+		NULL),
+	OF_DEV_AUXDATA("pwm-backlight", 0, "pwm-backlight", NULL),
+#ifdef CONFIG_TEGRA_CEC_SUPPORT
+	OF_DEV_AUXDATA("nvidia,tegra124-cec", 0x70015000, "tegra_cec", NULL),
+#endif
+	OF_DEV_AUXDATA("nvidia,tegra-audio-rt5677", 0x0, "tegra-snd-rt5677",
+		NULL),
 	{}
 };
 #endif
@@ -845,7 +934,7 @@ static void __init tegra_flounder_late_init(void)
 /*	flounder_spi_init();*/
 	flounder_audio_init();
 	platform_add_devices(flounder_devices, ARRAY_SIZE(flounder_devices));
-	platform_device_register(&flounder_audio_device_rt5677);
+/*	platform_device_register(&flounder_audio_device_rt5677);*/
 	tegra_io_dpd_init();
 	flounder_sdhci_init();
 	flounder_regulator_init();
@@ -856,6 +945,7 @@ static void __init tegra_flounder_late_init(void)
 	flounder_headset_init();
 /*	flounder_panel_init();
 	flounder_kbc_init();*/
+	tegra_fb_copy_or_clear();
 
 	/* put PEX pads into DPD mode to save additional power */
 	tegra_io_dpd_enable(&pexbias_io);
@@ -901,6 +991,8 @@ static void __init tegra_flounder_reserve(void)
 #else
 	ulong carveout_size = SZ_1G;
 #endif
+/*	ulong fb1_size = SZ_16M + SZ_8M;
+	ulong fb2_size = SZ_16M + SZ_8M;*/
 	ulong vpr_size = 186 * SZ_1M;
 
 	tegra_reserve4(carveout_size, 0, 0, vpr_size);
