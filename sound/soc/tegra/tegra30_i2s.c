@@ -45,6 +45,7 @@
 #include "tegra30_ahub.h"
 #include "tegra30_dam.h"
 #include "tegra30_i2s.h"
+#include "tegra_rt5677.h"
 
 #define DRV_NAME "tegra30-i2s"
 
