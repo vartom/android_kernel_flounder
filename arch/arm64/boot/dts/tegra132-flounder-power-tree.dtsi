@@ -49,7 +49,7 @@
 		pwrdet-nand-supply = <&palmas_smps8>;
 		pwrdet-sdmmc1-supply = <&palmas_smps8>;
 		pwrdet-sdmmc4-supply = <&palmas_smps8>;
-		pwrdet-audio-supply = <&palmas_smps8>;
+		pwrdet-audio-supply = <&ldo2_reg>;
 		pwrdet-uart-supply = <&palmas_smps8>;
 		pwrdet-bb-supply = <&palmas_smps8>;
 		pwrdet-mipi-supply = <&ldo5_reg>;

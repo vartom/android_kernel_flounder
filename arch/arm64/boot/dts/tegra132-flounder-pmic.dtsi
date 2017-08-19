@@ -354,7 +354,7 @@
 						};
 					};
 
-					palmas_ldo1: ldo1 {
+					ldo1 {
 						regulator-name = "avdd-pll";
 						regulator-min-microvolt = <1050000>;
 						regulator-max-microvolt = <1050000>;
@@ -401,7 +401,7 @@
 						};
 					};
 
-					ldo2 {
+					ldo2_reg: ldo2 {
 						regulator-name = "vdd-aud";
 						regulator-min-microvolt = <1200000>;
 						regulator-max-microvolt = <1200000>;
