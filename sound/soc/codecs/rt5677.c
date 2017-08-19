@@ -916,10 +916,7 @@ static unsigned int rt5677_set_vad(
 		else
 			rt5677_set_vad_source(codec, RT5677_VAD_IDLE_DMIC1);
 
-		if (!rt5677->mbist_test) {
-			rt5677_dsp_mbist_test(codec);
-			rt5677->mbist_test = true;
-		}
+		rt5677_dsp_mbist_test(codec);
 
 		/* Set PRI-99 with any flags that are passed to the firmware. */
 		rt5677_dsp_mode_i2c_write(codec, RT5677_PRIV_INDEX, 0x99);
@@ -5023,7 +5020,6 @@ static int rt5677_i2c_probe(struct i2c_client *i2c,
 	if (NULL == rt5677)
 		return -ENOMEM;
 
-	rt5677->mbist_test = false;
 	rt5677->vad_sleep = true;
 	rt5677->mic_buf_len = RT5677_PRIV_MIC_BUF_SIZE;
 	rt5677->mic_buf = vmalloc(rt5677->mic_buf_len);
