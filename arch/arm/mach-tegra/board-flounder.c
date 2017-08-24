@@ -404,6 +404,27 @@ static struct platform_device flounder_audio_device_rt5677 = {
 	},
 };
 
+static struct timed_gpio flounder_vib_timed_gpios[] = {
+	{
+		.name = "vibrator",
+		.gpio = TEGRA_GPIO_PU3,
+		.max_timeout = 15000,
+	},
+};
+
+static struct timed_gpio_platform_data flounder_vib_pdata = {
+	.num_gpios = ARRAY_SIZE(flounder_vib_timed_gpios),
+	.gpios     = flounder_vib_timed_gpios,
+};
+
+static struct platform_device flounder_vib_device = {
+	.name = TIMED_GPIO_NAME,
+	.id   = -1,
+	.dev  = {
+		.platform_data = &flounder_vib_pdata,
+	},
+};
+
 static struct platform_device *flounder_devices[] __initdata = {
 	&tegra_rtc_device,
 #if defined(CONFIG_CRYPTO_DEV_TEGRA_SE) && !defined(CONFIG_USE_OF)
@@ -424,7 +445,8 @@ static struct platform_device *flounder_devices[] __initdata = {
 	&spdif_dit_device,
 	&bluetooth_dit_device,
 	&tegra_offload_device,
-	&tegra30_avp_audio_device
+	&tegra30_avp_audio_device,
+	&flounder_vib_device,
 };
 
 static struct tegra_usb_platform_data tegra_udc_pdata = {
