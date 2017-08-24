@@ -46,7 +46,7 @@
 			status = "okay";
 			nvidia,dc-flags = <TEGRA_DC_FLAG_ENABLED>;
 			nvidia,emc-clk-rate = <204000000>;
-			nvidia,cmu-enable = <0>;
+			nvidia,cmu-enable = <1>;
 			nvidia,low-v-win = <0x2>;
 			nvidia,fb-bpp = <32>; /* bits per pixel */
 			nvidia,fb-flags = <TEGRA_FB_FLIP_ON_PROBE>;
@@ -124,7 +124,7 @@
 	i2c@7000c000 {
 		status = "okay";
 
-		battery-gauge@36 {
+		max17050@36 {
 			compatible = "maxim,max17050";
 			reg = <0x36>;
 			battery-id-channel-name = "batt-id-channel";
@@ -148,51 +148,12 @@
 			};
 		};
 
-		battery-charger@6b {
+		bq2419x: bq2419x@6b {
 			compatible = "ti,bq2419x";
 			reg = <0x6b>;
 
-			battery_charger: charger {
-				compatible = "htc,bq2419x_battery";
-				regulator-name = "batt_regulator";
-				regulator-max-microamp = <2000000>;
-				auto-recharge-time = <30>;
-				input-voltage-limit-millivolt = <4440>;
-				fast-charge-current-limit-milliamp = <2944>;
-				pre-charge-current-limit-milliamp = <512>;
-				charge-voltage-limit-millivolt = <4352>;
-				charge-suspend-polling-time-sec = <3600>;
-				temp-polling-time-sec = <30>;
-				thermal-overtemp-control-no-thermister;
-				thermal-temperature-hot-deciC = <551>;
-				thermal-temperature-cold-deciC = <(-1)>;
-				thermal-temperature-warm-deciC = <481>;
-				thermal-temperature-cool-deciC = <100>;
-				thermal-temperature-hysteresis-deciC = <30>;
-				thermal-warm-voltage-millivolt = <4096>;
-				thermal-cool-voltage-millivolt = <4352>;
-				thermal-disable-warm-current-half;
-				thermal-overtemp-output-current-milliamp = <1344>;
-				unknown-battery-id-minimum = <1343>;
-				battery-id-channel-name = "batt-id-channel";
-				input-voltage-min-high-battery-millivolt = <4440>;
-				input-voltage-min-low-battery-millivolt = <4200>;
-				input-voltage-switch-millivolt = <4150>;
-				gauge-power-supply-name = "battery";
-				vbus-channel-name = "charger-vbus";
-				vbus-channel-max-voltage-mv = <6875>;
-				vbus-channel-max-adc = <4096>;
-				consumers {
-					c1 {
-						regulator-consumer-supply = "usb_bat_chg";
-						regulator-consumer-device = "tegra-udc.0";
-					};
-					c2 {
-						regulator-consumer-supply = "usb_bat_chg";
-						regulator-consumer-device = "tegra-otg";
-					};
-				};
-			};
+			interrupt-parent = <&gpio>;
+			interrupts = <TEGRA_GPIO(J, 0) 0x0>;
 
 			vbus {
 				regulator-name = "vbus_regulator";
@@ -201,8 +162,15 @@
 						regulator-consumer-supply = "usb_vbus";
 						regulator-consumer-device = "tegra-ehci.0";
 					};
+
+					c2 {
+						regulator-consumer-supply = "usb_vbus";
+						regulator-consumer-device = "tegra-otg";
+					};
+
 				};
 			};
+
 		};
 
 		htc_mcu@72 {
@@ -299,7 +267,7 @@
 		#extcon-cells = <1>;
 		avdd_usb-supply = <&palmas_smps10_out2>;
 		avdd_pll_utmip-supply = <&palmas_smps8>;
-		usb_bat_chg-supply = <&battery_charger>;
+		usb_bat_chg-supply = <&bq2419x>;
 		status = "okay";
 	};
 
@@ -321,6 +289,62 @@
 		status = "disabled";
 	};
 
+	bluedroid_pm {
+		compatible = "nvidia,tegra-bluedroid_pm";
+		id = <0>;
+		bluedroid_pm,shutdown-gpio = <&gpio TEGRA_GPIO(R, 1) 0>;
+		bluedroid_pm,host-wake-gpio = <&gpio TEGRA_GPIO(U, 6) 0>;
+		bluedroid_pm,ext-wake-gpio = <&gpio TEGRA_GPIO(EE, 1) 0>;
+		interrupt-parent = <&gpio>;
+		interrupts = <166 0x01>;
+	};
+
+	htc_battery_max17050 {
+		compatible = "htc,max17050_battery";
+	};
+
+	htc_battery_bq2419x {
+		compatible = "htc,bq2419x_battery";
+		regulator-name = "batt_regulator";
+		regulator-max-microamp = <2000000>;
+		auto-recharge-time = <30>;
+		input-voltage-limit-millivolt = <4440>;
+		fast-charge-current-limit-milliamp = <2944>;
+		pre-charge-current-limit-milliamp = <512>;
+		charge-voltage-limit-millivolt = <4352>;
+		charge-suspend-polling-time-sec = <3600>;
+		temp-polling-time-sec = <30>;
+		thermal-overtemp-control-no-thermister;
+		thermal-temperature-hot-deciC = <551>;
+		thermal-temperature-cold-deciC = <(-1)>;
+		thermal-temperature-warm-deciC = <481>;
+		thermal-temperature-cool-deciC = <100>;
+		thermal-temperature-hysteresis-deciC = <30>;
+		thermal-warm-voltage-millivolt = <4096>;
+		thermal-cool-voltage-millivolt = <4352>;
+		thermal-disable-warm-current-half;
+		thermal-overtemp-output-current-milliamp = <1344>;
+		unknown-battery-id-minimum = <1343>;
+		battery-id-channel-name = "batt-id-channel";
+		input-voltage-min-high-battery-millivolt = <4440>;
+		input-voltage-min-low-battery-millivolt = <4200>;
+		input-voltage-switch-millivolt = <4150>;
+		gauge-power-supply-name = "battery";
+		vbus-channel-name = "charger-vbus";
+		vbus-channel-max-voltage-mv = <6875>;
+		vbus-channel-max-adc = <4096>;
+		consumers {
+			c1 {
+				regulator-consumer-supply = "usb_bat_chg";
+				regulator-consumer-device = "tegra-udc.0";
+			};
+			c2 {
+				regulator-consumer-supply = "usb_bat_chg";
+				regulator-consumer-device = "tegra-otg";
+			};
+		};
+	};
+
 	cpu_edp {
 		nvidia,edp_limit = <16800>;
 	};
@@ -328,5 +352,4 @@
 	gpu_edp {
 		nvidia,edp_limit = <16800>;
 	};
-
 };

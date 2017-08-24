@@ -210,7 +210,7 @@ static struct aud_sfio_data audio_sfio_pins[] = {
 	},
 };
 
-static struct resource flounder_bluedroid_pm_resources[] = {
+/*static struct resource flounder_bluedroid_pm_resources[] = {
 	[0] = {
 		.name   = "shutdown_gpio",
 		.start  = TEGRA_GPIO_PR1,
@@ -248,7 +248,7 @@ static noinline void __init flounder_setup_bluedroid_pm(void)
 		flounder_bluedroid_pm_resources[1].end =
 				gpio_to_irq(TEGRA_GPIO_PU6);
 	platform_device_register(&flounder_bluedroid_pm_device);
-}
+}*/
 
 static struct tfa9895_platform_data tfa9895_data = {
 	.tfa9895_power_enable = TEGRA_GPIO_PX5,
@@ -829,6 +829,7 @@ static struct platform_device htc_headset_one_wire = {
 	},
 };
 
+#ifdef CONFIG_HEADSET_DEBUG_UART
 static void uart_tx_gpo(int mode)
 {
 	pr_info("[HS_BOARD] (%s) Set uart_tx_gpo mode = %d\n", __func__, mode);
@@ -850,6 +851,7 @@ static void uart_lv_shift_en(int enable)
 	pr_info("[HS_BOARD] (%s) Set uart_lv_shift_en %d\n", __func__, enable);
 	gpio_direction_output(AUD_REMO_TX_OE, enable);
 }
+#endif
 
 /* HTC_HEADSET_MGR Driver */
 static struct platform_device *headset_devices[] = {
@@ -879,8 +881,11 @@ static struct htc_headset_mgr_platform_data htc_headset_mgr_data = {
 	.headset_config		= htc_headset_mgr_config,
 	.headset_init		= headset_init,
 	.headset_power		= headset_power,
+#ifdef CONFIG_HEADSET_DEBUG_UART
 	.uart_tx_gpo		= uart_tx_gpo,
 	.uart_lv_shift_en	= uart_lv_shift_en,
+#endif
+
 };
 
 static struct platform_device htc_headset_mgr = {
@@ -956,7 +961,7 @@ static void __init tegra_flounder_late_init(void)
 
 	flounder_soctherm_init();
 
-	flounder_setup_bluedroid_pm();
+/*	flounder_setup_bluedroid_pm();*/
 
 	flounder_sysedp_dynamic_capping_init();
 
