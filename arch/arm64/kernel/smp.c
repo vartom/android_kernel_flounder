@@ -296,7 +296,7 @@ void __cpu_die(unsigned int cpu)
 		return;
 	}
 
-	pr_debug("CPU%u: shutdown\n", cpu);
+	pr_notice("CPU%u: shutdown\n", cpu);
 
 	/*
 	 * Now that the dying CPU is beyond the point of no return w.r.t.
