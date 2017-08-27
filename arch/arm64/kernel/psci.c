@@ -172,20 +172,22 @@ static const struct of_device_id psci_of_match[] __initconst = {
 	{},
 };
 
-void __init psci_init(void)
+int __init psci_init(void)
 {
 	struct device_node *np;
 	const char *method;
 	u32 id;
+	int err = 0;
 
 	np = of_find_matching_node(NULL, psci_of_match);
 	if (!np)
-		return;
+		return -ENODEV;
 
 	pr_info("probing function IDs from device-tree\n");
 
 	if (of_property_read_string(np, "method", &method)) {
 		pr_warning("missing \"method\" property\n");
+		err = -ENXIO;
 		goto out_put_node;
 	}
 
@@ -195,6 +197,7 @@ void __init psci_init(void)
 		invoke_psci_fn = __invoke_psci_fn_smc;
 	} else {
 		pr_warning("invalid \"method\" property: %s\n", method);
+		err = -EINVAL;
 		goto out_put_node;
 	}
 
@@ -220,7 +223,7 @@ void __init psci_init(void)
 
 out_put_node:
 	of_node_put(np);
-	return;
+	return err;
 }
 
 #ifdef CONFIG_SMP
