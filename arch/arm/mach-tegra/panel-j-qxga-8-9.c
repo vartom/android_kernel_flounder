@@ -20,6 +20,13 @@
 #include <linux/delay.h>
 #include <linux/gpio.h>
 #include <linux/regulator/consumer.h>
+#include <linux/tegra_dsi_backlight.h>
+#include <linux/leds.h>
+#include <linux/ioport.h>
+#include <linux/export.h>
+#include <linux/of_gpio.h>
+
+#include <generated/mach-types.h>
 
 #include "board.h"
 #include "board-panel.h"
@@ -152,23 +159,38 @@ static int dsi_j_qxga_8_9_postsuspend(void)
 	return 0;
 }
 
-static int dsi_j_qxga_8_9_bl_notify(struct device *dev, int brightness)
+#define ORIG_PWM_MAX 255
+#define ORIG_PWM_DEF 133
+#define ORIG_PWM_MIN 10
+
+#define MAP_PWM_MAX     255
+#define MAP_PWM_DEF     90
+#define MAP_PWM_MIN     7
+
+static unsigned char shrink_pwm(int val)
 {
-	int cur_sd_brightness;
-	struct backlight_device *bl = NULL;
-	struct pwm_bl_data *pb = NULL;
-	bl = (struct backlight_device *)dev_get_drvdata(dev);
-	pb = (struct pwm_bl_data *)dev_get_drvdata(&bl->dev);
+	unsigned char shrink_br;
 
-	cur_sd_brightness = atomic_read(&sd_brightness);
-	/* SD brightness is a percentage */
-	brightness = (brightness * cur_sd_brightness) / 255;
+	/* define line segments */
+	if (val <= ORIG_PWM_MIN)
+		shrink_br = MAP_PWM_MIN;
+	else if (val > ORIG_PWM_MIN && val <= ORIG_PWM_DEF)
+		shrink_br = MAP_PWM_MIN +
+			(val-ORIG_PWM_MIN)*(MAP_PWM_DEF-MAP_PWM_MIN)/(ORIG_PWM_DEF-ORIG_PWM_MIN);
+	else
+	shrink_br = MAP_PWM_DEF +
+	(val-ORIG_PWM_DEF)*(MAP_PWM_MAX-MAP_PWM_DEF)/(ORIG_PWM_MAX-ORIG_PWM_DEF);
 
+	return shrink_br;
+}
+
+static int dsi_j_qxga_8_9_bl_notify(struct device *unused, int brightness)
+{
 	/* Apply any backlight response curve */
 	if (brightness > 255)
 		pr_info("Error: Brightness > 255!\n");
-	else if (pb->bl_measured)
-		brightness = pb->bl_measured[brightness];
+	else if (brightness > 0 && brightness <= 255)
+		brightness = shrink_pwm(brightness);
 
 	return brightness;
 }
@@ -182,15 +204,52 @@ static int dsi_j_qxga_8_9_check_fb(struct device *dev,
 	return info->device == &pdev->dev;
 }
 
-static struct pwm_bl_data_dt_ops dsi_j_qxga_8_9_pwm_bl_ops = {
-	.notify = dsi_j_qxga_8_9_bl_notify,
-	.check_fb = dsi_j_qxga_8_9_check_fb,
-	.blnode_compatible = "j,qxga-8-9-bl",
+static struct tegra_dsi_cmd dsi_j_qxga_8_9_backlight_cmd[] = {
+       DSI_CMD_VBLANK_SHORT(DSI_DCS_WRITE_1_PARAM, 0x51, 0xFF, CMD_NOT_CLUBBED),
 };
+
+static struct tegra_dsi_bl_platform_data dsi_j_qxga_8_9_bl_data = {
+	.dsi_backlight_cmd = dsi_j_qxga_8_9_backlight_cmd,
+	.n_backlight_cmd = ARRAY_SIZE(dsi_j_qxga_8_9_backlight_cmd),
+	.dft_brightness	= 127,
+	.notify		= dsi_j_qxga_8_9_bl_notify,
+	/* Only toggle backlight on fb blank notifications for disp1 */
+	.check_fb	= dsi_j_qxga_8_9_check_fb,
+};
+
+static struct platform_device __maybe_unused
+		dsi_j_qxga_8_9_bl_device = {
+	.name	= "tegra-dsi-backlight",
+	.dev	= {
+		.platform_data = &dsi_j_qxga_8_9_bl_data,
+	},
+};
+
+static struct platform_device __maybe_unused
+			*dsi_j_qxga_8_9_bl_devices[] __initdata = {
+	&dsi_j_qxga_8_9_bl_device,
+};
+
+static int __init dsi_j_qxga_8_9_register_bl_dev(void)
+{
+	int err = 0;
+	err = platform_add_devices(dsi_j_qxga_8_9_bl_devices,
+				ARRAY_SIZE(dsi_j_qxga_8_9_bl_devices));
+	if (err) {
+		pr_err("disp1 bl device registration failed");
+		return err;
+	}
+	return err;
+}
+
 struct tegra_panel_ops dsi_j_qxga_8_9_ops = {
 	.enable = dsi_j_qxga_8_9_enable,
 	.disable = dsi_j_qxga_8_9_disable,
 	.postpoweron = dsi_j_qxga_8_9_postpoweron,
 	.postsuspend = dsi_j_qxga_8_9_postsuspend,
-	.pwm_bl_ops = &dsi_j_qxga_8_9_pwm_bl_ops,
 };
+
+struct tegra_panel __initdata dsi_j_qxga_8_9 = {
+	.register_bl_dev = dsi_j_qxga_8_9_register_bl_dev,
+};
+EXPORT_SYMBOL(dsi_j_qxga_8_9);
