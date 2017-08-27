@@ -425,6 +425,18 @@ static struct platform_device flounder_vib_device = {
 	},
 };
 
+static void flounder_panel(void)
+{
+	struct tegra_panel *panel;
+
+	panel = &dsi_j_qxga_8_9;
+
+	if (panel) {
+		if (panel->register_bl_dev)
+			panel->register_bl_dev();
+	}
+};
+
 static struct platform_device *flounder_devices[] __initdata = {
 	&tegra_rtc_device,
 #if defined(CONFIG_CRYPTO_DEV_TEGRA_SE) && !defined(CONFIG_USE_OF)
@@ -733,7 +745,6 @@ static struct of_dev_auxdata flounder_auxdata_lookup[] __initdata = {
 				NULL),
 	OF_DEV_AUXDATA("nvidia,tegra-bluedroid_pm", 0, "bluedroid_pm",
 		NULL),
-	OF_DEV_AUXDATA("pwm-backlight", 0, "pwm-backlight", NULL),
 #ifdef CONFIG_TEGRA_CEC_SUPPORT
 	OF_DEV_AUXDATA("nvidia,tegra124-cec", 0x70015000, "tegra_cec", NULL),
 #endif
@@ -970,8 +981,8 @@ static void __init tegra_flounder_late_init(void)
 
 	isomgr_init();
 	flounder_headset_init();
-/*	flounder_panel_init();
-	flounder_kbc_init();*/
+	flounder_panel();
+/*	flounder_kbc_init();*/
 	tegra_fb_copy_or_clear();
 
 	/* put PEX pads into DPD mode to save additional power */
