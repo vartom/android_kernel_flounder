@@ -79,11 +79,6 @@
 
 	};
 
-	backlight {
-		compatible = "pwm-backlight";
-		status = "okay";
-	};
-
 	pmc@7000e400 {
 		status = "okay";
 		nvidia,invert-interrupt;
