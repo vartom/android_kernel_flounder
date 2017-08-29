@@ -76,10 +76,9 @@ void __init cpu_suspend_set_dbg_restorer(void (*hw_bp_restore)(void *))
 int cpu_suspend(unsigned long arg, int (*fn)(unsigned long))
 {
 	struct mm_struct *mm = current->active_mm;
-	int ret;
-#ifdef CONFIG_ARM64_CPU_SUSPEND
-	int cpu = smp_processor_id();
+	int ret, cpu = smp_processor_id();
 
+#ifdef CONFIG_ARM64_CPU_SUSPEND
 	if (!fn && (!cpu_ops[cpu] || !cpu_ops[cpu]->cpu_suspend))
 		return -EOPNOTSUPP;
 
