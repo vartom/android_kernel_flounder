@@ -26,8 +26,6 @@
 #include <asm/errno.h>
 #include <asm/psci.h>
 #include <asm/smp_plat.h>
-#include <asm/proc-fns.h>
-#include <asm/suspend.h>
 
 struct psci_operations psci_ops;
 
@@ -276,15 +274,6 @@ static void cpu_psci_cpu_die(unsigned int cpu)
 }
 #endif
 
-#ifdef CONFIG_ARM64_CPU_SUSPEND
-static int cpu_psci_cpu_suspend(unsigned long arg)
-{
-	struct psci_power_state ps = to_psci_power_state(arg);
-
-	return psci_ops.cpu_suspend(ps, __pa(cpu_resume));
-}
-#endif
-
 const struct cpu_operations cpu_psci_ops = {
 	.name		= "psci",
 	.cpu_init	= cpu_psci_cpu_init,
@@ -293,9 +282,6 @@ const struct cpu_operations cpu_psci_ops = {
 #ifdef CONFIG_HOTPLUG_CPU
 	.cpu_disable	= cpu_psci_cpu_disable,
 	.cpu_die	= cpu_psci_cpu_die,
-#endif
-#ifdef CONFIG_ARM64_CPU_SUSPEND
-	.cpu_suspend	= cpu_psci_cpu_suspend,
 #endif
 };
 
