@@ -365,11 +365,11 @@ static unsigned long default_emc_cpu_limit(unsigned long cpu_rate,
 	else if (cpu_rate >= 828000)
 		return 300000000;  /* cpu >= 828 MHz, emc 300 MHz */
 	else if (cpu_rate >= 696000)
-		return 204000000;  /* cpu >= 696 MHz, emc 204 MHz */
+		return 300000000;  /* cpu >= 696 MHz, emc 204 MHz */
 	else if (cpu_rate >= 564000)
-		return 102000000;   /* cpu >= 564 MHz, emc 102 MHz */
+		return 300000000;   /* cpu >= 564 MHz, emc 102 MHz */
 	else if (cpu_rate >= 312000)
-		return 50000000;   /* cpu >= 312 MHz, emc 50 MHz */
+		return 300000000;   /* cpu >= 312 MHz, emc 50 MHz */
 	else
 		return 0;       /* emc min */
 }
@@ -446,7 +446,7 @@ int tegra_update_mselect_rate(unsigned long cpu_rate)
 	   keep mselect at half of cpu rate up to 102 MHz;
 	   cpu rate is in kHz, mselect rate is in Hz */
 	mselect_rate = DIV_ROUND_UP(cpu_rate, 2) * 1000;
-	mselect_rate = min(mselect_rate, 102000000UL);
+	mselect_rate = min(mselect_rate, 300000000UL);
 	return clk_set_rate(mselect, mselect_rate);
 }
 
