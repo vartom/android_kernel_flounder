@@ -381,7 +381,13 @@ void __init smp_init_cpus(void)
 		}
 		hwid = of_read_number(cell, of_n_addr_cells(dn));
 
-		hwid &= MPIDR_HWID_BITMASK;
+		/*
+		 * Non affinity bits must be set to 0 in the DT
+		 */
+		if (hwid & ~MPIDR_HWID_BITMASK) {
+			pr_err("%s: invalid reg property\n", dn->full_name);
+			goto next;
+		}
 
 		/*
 		 * Check to see if the cpu is disabled.
@@ -427,9 +433,6 @@ void __init smp_init_cpus(void)
 			 */
 			continue;
 		}
-
-		if (!bootcpu_valid)
-			continue;
 
 		if (cpu >= NR_CPUS)
 			goto next;
