@@ -16,6 +16,7 @@
 #include "tegra132-platforms/tegra132-flounder-pinmux.dtsi"
 #include "tegra132-platforms/tegra132-flounder-keys.dtsi"
 #include "tegra132-flounder-power-tree.dtsi"
+#include "tegra124-platforms/tegra124-tn8-cpufreq.dtsi"
 
 #include "panel-j-qxga-8-9.dtsi"
 
@@ -150,7 +151,7 @@
 			interrupt-parent = <&gpio>;
 			interrupts = <TEGRA_GPIO(J, 0) 0x0>;
 
-			vbus {
+			usb0_vbus: vbus {
 				regulator-name = "vbus_regulator";
 				consumers {
 					c1 {
@@ -260,7 +261,7 @@
 		extcon-cables = <&palmas_extcon 0 &palmas_extcon 1>;
 		extcon-cable-names = "vbus", "id";
 		#extcon-cells = <1>;
-		avdd_usb-supply = <&palmas_smps10_out2>;
+		avdd_usb-supply = <&ldousb_reg>;
 		avdd_pll_utmip-supply = <&palmas_smps8>;
 		usb_bat_chg-supply = <&bq2419x>;
 		status = "okay";
@@ -277,7 +278,22 @@
 	};
 
 	psy_extcon {
-		power-supply,y-cable-extcon-dev = "tegra-otg";
+		compatible = "power-supply-extcon";
+		extcon-cables = <&udc 1 &udc 2 &udc 3
+				&udc 4 &udc 5 &udc 6
+				&udc 7 &udc 8 &udc 9
+				&udc 10 &otg 0>;
+		extcon-cable-names = "usb-charger", "ta-charger", "maxim-charger",
+				"qc2-charger", "downstream-charger","fast-charger",
+				"slow-charger", "apple-500ma", "apple-1a",
+				"apple-2a", "y-cable";
+	};
+
+	ehci@7d004000 {
+		avdd_usb-supply = <&ldousb_reg>;
+		avdd_pll_utmip-supply = <&palmas_smps8>;
+		vddio_hsic-supply = <&ldo5_reg>;
+		status = "disabled";
 	};
 
 	therm_est_sensor {

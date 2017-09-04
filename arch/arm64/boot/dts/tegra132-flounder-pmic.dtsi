@@ -613,7 +613,7 @@
 			};
 		};
 	};
-	
+
 	extcon {
 		extcon_cable_xlate: extcon@0 {
 			compatible = "extcon-cable-xlate";

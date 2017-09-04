@@ -74,7 +74,7 @@ static struct tegra_suspend_platform_data flounder_suspend_data = {
 	.min_residency_crail = 20000,
 };
 
-static struct power_supply_extcon_plat_data extcon_pdata = {
+/*static struct power_supply_extcon_plat_data extcon_pdata = {
 	.extcon_name = "tegra-udc",
 };
 
@@ -84,7 +84,7 @@ static struct platform_device power_supply_extcon_device = {
 	.dev	= {
 		.platform_data = &extcon_pdata,
 	},
-};
+};*/
 
 int __init flounder_suspend_init(void)
 {
@@ -205,7 +205,7 @@ int __init flounder_regulator_init(void)
 	pmc_ctrl = readl(pmc + PMC_CTRL);
 	writel(pmc_ctrl | PMC_CTRL_INTR_LOW, pmc + PMC_CTRL);*/
 
-	platform_device_register(&power_supply_extcon_device);
+/*	platform_device_register(&power_supply_extcon_device);*/
 
 	flounder_cl_dvfs_init();
 	return 0;
