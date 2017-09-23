@@ -916,6 +916,8 @@ static unsigned int rt5677_set_vad(
 		else
 			rt5677_set_vad_source(codec, RT5677_VAD_IDLE_DMIC1);
 
+		rt5677_dsp_mbist_test(codec);
+
 		/* Set PRI-99 with any flags that are passed to the firmware. */
 		rt5677_dsp_mode_i2c_write(codec, RT5677_PRIV_INDEX, 0x99);
 		/* The firmware knows what power state to use given the result
