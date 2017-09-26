@@ -1215,7 +1215,7 @@ static ssize_t dbg_dc_out_type_set(struct file *file,
 			dbg_dc_out_info[cur_dc_out].fblistindex = 1;
 #else
 		if (!is_valid_fake_support(dc, cur_dc_out))
-			dbg_dc_out_info[cur_dc_out].fblistindex = 1;
+			dbg_dc_out_info[cur_dc_out].fblistindex =
 						tegra_fb_update_modelist(dc, 0);
 #endif
 
