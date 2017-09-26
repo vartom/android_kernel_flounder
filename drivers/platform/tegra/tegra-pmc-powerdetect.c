@@ -101,7 +101,9 @@ static struct pwr_detect_cell t124_pwr_detect_cells[] = {
 	POWER_CELL(cam,		(0x1 << 10), (0x1 << 10), 0xFFFFFFFF),
 	POWER_CELL(pex-ctl,	(0x1 << 11), (0x1 << 11), 0xFFFFFFFF),
 	POWER_CELL(sdmmc1,	(0x1 << 12), (0x1 << 12), 0xFFFFFFFF),
+#ifndef CONFIG_MACH_T132_FLOUNDER
 	POWER_CELL(sdmmc3,	(0x1 << 13), (0x1 << 13), 0xFFFFFFFF),
+#endif
 	POWER_CELL(sdmmc4,		  0, (0x1 << 14), 0xFFFFFFFF),
 	POWER_CELL(hv,		(0x1 << 15), (0x1 << 15), 0xFFFFFFFF),
 };
