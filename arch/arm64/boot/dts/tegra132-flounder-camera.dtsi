@@ -86,6 +86,7 @@
 				addr = <0x36>;
 				datalen = <2>;
 				pinmuxgrp = <0xFFFF>;
+				gpios = <3>;
 				clocks = "mclk2";
 				drivername = "ov9760";
 				detect = <0x0002 0x300A 0xFFFF 0x9760>;
@@ -125,6 +126,7 @@
 				addr = <0x33>;
 				datalen = <1>;
 				pinmuxgrp = <0xFFFF>;
+				gpios = <3>;
 				drivername = "tps61310";
 				detect = <0x0001 0x0003 0x00F0 0x00C0>;
 				devid = <0x6131>;
@@ -146,6 +148,7 @@
 				addr = <0xe>;
 				datalen = <1>;
 				pinmuxgrp = <0xFFFF>;
+				gpios = <3>;
 				drivername = "drv201";
 				detect = <0x0001 0x0007 0x00FF 0x0083>;
 				devid = <0x0201>;

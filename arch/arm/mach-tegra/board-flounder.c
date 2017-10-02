@@ -613,10 +613,10 @@ static void flounder_usb_init(void)
 
 	tegra_otg_device.dev.platform_data = &tegra_otg_pdata;
 	platform_device_register(&tegra_otg_device);
-#endif
+
 	/* Setup the udc platform data */
 	tegra_udc_device.dev.platform_data = &tegra_udc_pdata;
-
+#endif
 #if !defined(CONFIG_ARM64)
 	platform_device_register(&tegra_udc_device);
 
@@ -643,6 +643,7 @@ static struct tegra_xusb_platform_data xusb_pdata = {
 #ifdef CONFIG_TEGRA_XUSB_PLATFORM
 static void flounder_xusb_init(void)
 {
+#if !defined(CONFIG_ARM64)
 	int usb_port_owner_info = tegra_get_usb_port_owner_info();
 
 	xusb_pdata.lane_owner = (u8) tegra_get_lane_owner_info();
@@ -660,6 +661,7 @@ static void flounder_xusb_init(void)
 
 	if (usb_port_owner_info & HSIC2_PORT_OWNER_XUSB)
 		xusb_pdata.portmap |= TEGRA_XUSB_HSIC_P1;
+#endif
 }
 #endif
 

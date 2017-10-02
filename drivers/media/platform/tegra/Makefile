@@ -54,4 +54,6 @@ obj-$(CONFIG_VIDEO_MT9M114)	+= mt9m114.o
 obj-$(CONFIG_VIDEO_OV10823)	+= ov10823.o
 obj-$(CONFIG_VIDEO_CAMERA)	+= camera.o
 obj-$(CONFIG_VIDEO_CAMERA)	+= camera.o regmap_util.o
+obj-$(CONFIG_VIDEO_OV9760)	+= ov9760.o tps61310.o
+obj-$(CONFIG_VIDEO_DRV201)	+= drv201.o
 obj-$(CONFIG_VIDEO_ISC)		+= auto/
