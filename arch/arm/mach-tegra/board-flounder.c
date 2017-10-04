@@ -596,9 +596,9 @@ static void flounder_usb_init(void)
 	 * Set the maximum voltage that can be supplied
 	 * over USB vbus that the board supports if we use
 	 * a quick charge 2 wall charger.
-	 */
+	 *
 	tegra_udc_pdata.qc2_voltage = TEGRA_USB_QC2_9V;
-	tegra_udc_pdata.u_data.dev.qc2_current_limit_ma = 1200;
+	tegra_udc_pdata.u_data.dev.qc2_current_limit_ma = 1200;*/
 
 	/* charger needs to be set to 3A - h/w will do 2A */
 	tegra_udc_pdata.u_data.dev.dcp_current_limit_ma = 3000;
@@ -1045,6 +1045,12 @@ static const char * const flounder_dt_board_compat[] = {
 	NULL
 };
 
+static const char * const tn8_dt_board_compat[] = {
+	"nvidia,tn8",
+	NULL
+};
+
+
 DT_MACHINE_START(FLOUNDER, "flounder")
 	.atag_offset	= 0x100,
 	.smp		= smp_ops(tegra_smp_ops),
@@ -1055,5 +1061,18 @@ DT_MACHINE_START(FLOUNDER, "flounder")
 	.init_time	= clocksource_of_init,
 	.init_machine	= tegra_flounder_dt_init,
 	.dt_compat	= flounder_dt_board_compat,
+	.init_late      = tegra_init_late
+MACHINE_END
+
+DT_MACHINE_START(TN8, "tn8")
+	.atag_offset	= 0x100,
+	.smp		= smp_ops(tegra_smp_ops),
+	.map_io		= tegra_map_common_io,
+	.reserve	= tegra_flounder_reserve,
+	.init_early	= tegra_flounder_init_early,
+	.init_irq	= irqchip_init,
+	.init_time	= clocksource_of_init,
+	.init_machine	= tegra_flounder_dt_init,
+	.dt_compat	= tn8_dt_board_compat,
 	.init_late      = tegra_init_late
 MACHINE_END

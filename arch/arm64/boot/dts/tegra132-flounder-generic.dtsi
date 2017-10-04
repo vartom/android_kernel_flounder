@@ -21,7 +21,7 @@
 #include "panel-j-qxga-8-9.dtsi"
 
 / {
-	model = "flounder";
+	model = "tn8";
 	nvidia,dtsfilename = __FILE__;
 	nvidia,boardids = "1780:1100:2:B:7","1794:1000:0:A:6";
 	#address-cells = <2>;
@@ -37,7 +37,7 @@
 	firmware {
 		android {
 			compatible = "android,firmware";
-			hardware = "flounder";
+			hardware = "tn8";
 		};
 	};
 
