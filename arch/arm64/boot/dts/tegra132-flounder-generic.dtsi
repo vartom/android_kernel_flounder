@@ -47,7 +47,7 @@
 			status = "okay";
 			nvidia,dc-flags = <TEGRA_DC_FLAG_ENABLED>;
 			nvidia,emc-clk-rate = <204000000>;
-			nvidia,cmu-enable = <1>;
+			nvidia,cmu-enable = <0>;
 			nvidia,low-v-win = <0x2>;
 			nvidia,fb-bpp = <32>; /* bits per pixel */
 			nvidia,fb-flags = <TEGRA_FB_FLIP_ON_PROBE>;
@@ -138,21 +138,30 @@
 			interrupts = <TEGRA_GPIO(J, 0) 0x0>;
 
 			battery_charger: charger {
-				status = "disabled";
 				regulator-name = "batt_regulator";
-				regulator-max-microamp = <3000000>;
-				ti,watchdog-timeout = <40>;
-				ti,rtc-alarm-time = <3600>;
+				regulator-max-microamp = <2000000>;
+				ti,watchdog-timeout = <0>;
 				ti,auto-recharge-time = <1800>;
+				ti,input-voltage-limit-millivolt = <4440>;
+				ti,fast-charge-current-limit-milliamp = <2944>;
+				ti,pre-charge-current-limit-milliamp = <512>;
+				ti,charge-term-current-limit-milliamp = <128>;
+				ti,charge-voltage-limit-millivolt = <4352>;
 				ti,disbale-suspend-during-charging;
-				ti,charge-voltage-limit-millivolt = <4200>;
-				ti,charge-term-current-limit-milliamp = <260>;
-				ti,temp-range = <10 15 60>;
-				ti,charge-current-limit = <1024 2048 5200>;
-				ti,thermal-zone = "Battery";
-				ti,temp-polling-time-sec = <5>;
-				ti,ir-comp-voltage-millivolt = <1>;
-				ti,ir-comp-resister-ohm = <70>;
+				ti,charge-suspend-polling-time-sec = <3600>;
+				ti,safety-timer-reset-disable;
+				ti,temp-polling-time-sec = <30>;
+				thermal-overtemp-control-no-thermister;
+				thermal-temperature-hot-deciC = <551>;
+				thermal-temperature-cold-deciC = <(-1)>;
+				thermal-temperature-warm-deciC = <481>;
+				thermal-temperature-cool-deciC = <100>;
+				thermal-temperature-hysteresis-deciC = <30>;
+				thermal-warm-voltage-millivolt = <4096>;
+				thermal-cool-voltage-millivolt = <4352>;
+				thermal-disable-warm-current-half;
+				thermal-overtemp-output-current-milliamp = <1344>;
+				charge-full-by-monitor-full-threshold;
 				consumers {
 					c1 {
 						regulator-consumer-supply = "usb_bat_chg";
@@ -283,6 +292,24 @@
 		status = "okay";
 	};
 
+	ehci@7d000000 {
+		nvidia,port-otg;
+		nvidia,has-hostpc;
+		nvidia,turn-off-vbus-on-lp0;
+		nvidia,id-detection-type = <2>;
+		nvidia,hssync-start-delay = <0>;
+		nvidia,idle-wait-delay = <17>;
+		nvidia,elastic-limit = <16>;
+		nvidia,term-range-adj = <6>;
+		nvidia,xcvr-setup = <15>;
+		nvidia,xcvr-lsfslew = <0>;
+		nvidia,xcvr-lsrslew = <3>;
+		nvidia,xcvr-use-fuses;
+		nvidia,vbus-oc-map = <4>;
+		nvidia,xcvr-setup-offset = <3>;
+		status = "okay";
+	};
+
 	otg@7d000000 {
 		nvidia,enable-pmu-vbus-detection;
 		nvidia,id-detection-type = <1>;
@@ -298,7 +325,7 @@
 		power-supply,y-cable-extcon-dev = "tegra-otg";
 	};
 
-	ehci@7d004000 {
+	ehci@7d000000 {
 		nvidia,port-otg;
 		nvidia,has-hostpc;
 		nvidia,turn-off-vbus-on-lp0;
@@ -316,7 +343,6 @@
 		vddio_hsic-supply = <&ldo5_reg>;
 		status = "okay";
 	};
-
 
 	therm_est_sensor {
 		subdev {
