@@ -226,11 +226,11 @@ config VIDEO_IMX179
           This is a driver for the IMX179 camera sensor
           for use with the tegra isp.
 
-config VIDEO_IMX219
+config VIDEO_IMX219F
         tristate "IMX219 camera sensor support"
         depends on I2C && ARCH_TEGRA
         ---help---
-	  This is a driver for the IMX219
+	  This is a driver for the IMX219 flounder
 	  camera sensor for use with the tegra isp.
 	  The sensor has a maximum of 8MP
 	  resolution.
