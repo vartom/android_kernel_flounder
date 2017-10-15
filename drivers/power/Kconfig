@@ -326,7 +326,7 @@ config BATTERY_MAX17048
 	  to operate with a single lithium cell, and MAX17049 for two lithium
 	  cells.
 
-config GAUGE_MAX17050
+config BATTERY_MAX17050
 	tristate "Maxim MAX17050 Fuel Gauge"
 	depends on I2C
 	help
