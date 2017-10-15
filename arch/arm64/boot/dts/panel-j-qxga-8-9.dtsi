@@ -91,7 +91,7 @@
 					};
 				};
 				smartdimmer {
-					status = "okay";
+					status = "disabled";
 					nvidia,turn-off-brightness = <50>;
 					nvidia,turn-on-brightness = <75>;
 					nvidia,use-auto-pwm = <0>;
