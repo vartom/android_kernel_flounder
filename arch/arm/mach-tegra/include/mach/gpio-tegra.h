@@ -37,5 +37,6 @@ void tegra_gpio_init_configure(unsigned gpio, bool is_input, int value);
 int tegra_gpio_get_bank_int_nr(int gpio);
 int tegra_is_gpio(int);
 void tegra_gpio_disable(int gpio);
+extern int tegra_gpio_is_enabled(int gpio, int *is_gpio, int *is_input);
 
 #endif
