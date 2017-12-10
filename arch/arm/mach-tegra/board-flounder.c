@@ -69,6 +69,7 @@
 #include <media/tegra_dtv.h>
 #include <linux/pci-tegra.h>
 
+#include <linux/platform/tegra/tegra12_emc.h>
 #include <mach/irqs.h>
 #include <mach/io_dpd.h>
 #include <mach/i2s.h>
@@ -620,14 +621,14 @@ static void flounder_usb_init(void)
 #if !defined(CONFIG_ARM64)
 	platform_device_register(&tegra_udc_device);
 
-	if ((!(usb_port_owner_info & UTMI2_PORT_OWNER_XUSB))
+/*	if ((!(usb_port_owner_info & UTMI2_PORT_OWNER_XUSB))*/
 		/* tegra_ehci2_device will reserve for mdm9x25 modem */
-		&& (!is_mdm_modem()))
+/*		&& (!is_mdm_modem()))
 	{
 		tegra_ehci2_device.dev.platform_data =
 			&tegra_ehci2_utmi_pdata;
 		platform_device_register(&tegra_ehci2_device);
-	}
+	}*/
 	if (!(usb_port_owner_info & UTMI2_PORT_OWNER_XUSB)) {
 		tegra_ehci3_device.dev.platform_data = &tegra_ehci3_utmi_pdata;
 		platform_device_register(&tegra_ehci3_device);
@@ -979,7 +980,7 @@ static void __init tegra_flounder_late_init(void)
 	flounder_sdhci_init();
 	flounder_regulator_init();
 	flounder_suspend_init();
-	flounder_emc_init();
+	tegra12_emc_init();
 
 	isomgr_init();
 	flounder_headset_init();
