@@ -126,7 +126,7 @@ static void tegra132_tear_down_cpu(void)
  */
 static int tegra132_sleep_core_finish(unsigned long v2p)
 {
-	tegra132_enter_sleep(T132_SYSTEM_LP0);
+	tegra132_enter_sleep(T132_CORE_C7); /* HACK T132_SYSTEM_LP0 not used, T132_CORE_C7 is good */
 	return 0;
 }
 
