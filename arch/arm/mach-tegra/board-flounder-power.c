@@ -61,6 +61,7 @@
 static struct tegra_suspend_platform_data flounder_suspend_data = {
 	.cpu_timer      = 500,
 	.cpu_off_timer  = 300,
+	.cpu_suspend_freq = 408000,
 	.suspend_mode   = TEGRA_SUSPEND_LP0,
 	.core_timer     = 0x157e,
 	.core_off_timer = 2000,
