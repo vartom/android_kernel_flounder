@@ -211,46 +211,6 @@ static struct aud_sfio_data audio_sfio_pins[] = {
 	},
 };
 
-/*static struct resource flounder_bluedroid_pm_resources[] = {
-	[0] = {
-		.name   = "shutdown_gpio",
-		.start  = TEGRA_GPIO_PR1,
-		.end    = TEGRA_GPIO_PR1,
-		.flags  = IORESOURCE_IO,
-	},
-	[1] = {
-		.name = "host_wake",
-		.flags  = IORESOURCE_IRQ | IORESOURCE_IRQ_HIGHEDGE,
-	},
-	[2] = {
-		.name = "gpio_ext_wake",
-		.start  = TEGRA_GPIO_PEE1,
-		.end    = TEGRA_GPIO_PEE1,
-		.flags  = IORESOURCE_IO,
-	},
-	[3] = {
-		.name = "gpio_host_wake",
-		.start  = TEGRA_GPIO_PU6,
-		.end    = TEGRA_GPIO_PU6,
-		.flags  = IORESOURCE_IO,
-	},
-};
-
-static struct platform_device flounder_bluedroid_pm_device = {
-	.name = "bluedroid_pm",
-	.id             = 0,
-	.num_resources  = ARRAY_SIZE(flounder_bluedroid_pm_resources),
-	.resource       = flounder_bluedroid_pm_resources,
-};
-
-static noinline void __init flounder_setup_bluedroid_pm(void)
-{
-	flounder_bluedroid_pm_resources[1].start =
-		flounder_bluedroid_pm_resources[1].end =
-				gpio_to_irq(TEGRA_GPIO_PU6);
-	platform_device_register(&flounder_bluedroid_pm_device);
-}*/
-
 static struct tfa9895_platform_data tfa9895_data = {
 	.tfa9895_power_enable = TEGRA_GPIO_PX5,
 };
@@ -621,14 +581,14 @@ static void flounder_usb_init(void)
 #if !defined(CONFIG_ARM64)
 	platform_device_register(&tegra_udc_device);
 
-/*	if ((!(usb_port_owner_info & UTMI2_PORT_OWNER_XUSB))*/
+	if ((!(usb_port_owner_info & UTMI2_PORT_OWNER_XUSB))
 		/* tegra_ehci2_device will reserve for mdm9x25 modem */
-/*		&& (!is_mdm_modem()))
+		&& (!is_mdm_modem()))
 	{
 		tegra_ehci2_device.dev.platform_data =
 			&tegra_ehci2_utmi_pdata;
 		platform_device_register(&tegra_ehci2_device);
-	}*/
+	}
 	if (!(usb_port_owner_info & UTMI2_PORT_OWNER_XUSB)) {
 		tegra_ehci3_device.dev.platform_data = &tegra_ehci3_utmi_pdata;
 		platform_device_register(&tegra_ehci3_device);
@@ -665,36 +625,6 @@ static void flounder_xusb_init(void)
 #endif
 }
 #endif
-
-/*#ifndef CONFIG_USE_OF
-static struct platform_device *flounder_spi_devices[] __initdata = {
-	&tegra11_spi_device1,
-	&tegra11_spi_device4,
-};
-
-static struct tegra_spi_platform_data flounder_spi1_pdata = {
-	.dma_req_sel		= 15,
-	.spi_max_frequency	= 25000000,
-	.clock_always_on	= false,
-};
-
-static struct tegra_spi_platform_data flounder_spi4_pdata = {
-	.dma_req_sel		= 18,
-	.spi_max_frequency	= 25000000,
-	.clock_always_on	= false,
-};
-static void __init flounder_spi_init(void)
-{
-	tegra11_spi_device1.dev.platform_data = &flounder_spi1_pdata;
-	tegra11_spi_device4.dev.platform_data = &flounder_spi4_pdata;
-	platform_add_devices(flounder_spi_devices,
-			ARRAY_SIZE(flounder_spi_devices));
-}
-#else
-static void __init flounder_spi_init(void)
-{
-}
-#endif*/
 
 #ifdef CONFIG_USE_OF
 static struct of_dev_auxdata flounder_auxdata_lookup[] __initdata = {
@@ -941,10 +871,15 @@ static int __init flounder_headset_init(void)
 
 static void __init tegra_flounder_early_init(void)
 {
-	flounder_new_sysedp_init();
+//	flounder_new_sysedp_init(); in DT
 	tegra_clk_init_from_table(flounder_clk_init_table);
 	tegra_clk_verify_parents();
-	tegra_soc_device_init("flounder");
+	if (of_machine_is_compatible("nvidia,flounder"))
+		tegra_soc_device_init("flounder");
+	else if (of_machine_is_compatible("nvidia,tn8"))
+		tegra_soc_device_init("tn8");
+	else
+		tegra_soc_device_init("flounder");
 }
 
 static struct tegra_io_dpd pexbias_io = {
@@ -963,49 +898,67 @@ static struct tegra_io_dpd pexclk2_io = {
 	.io_dpd_bit		= 6,
 };
 
+static struct tegra_suspend_platform_data flounder_suspend_data = {
+	.cpu_timer      = 500,
+	.cpu_off_timer  = 300,
+	.cpu_suspend_freq = 408000,
+	.suspend_mode   = TEGRA_SUSPEND_LP0,
+	.core_timer     = 0x157e,
+	.core_off_timer = 2000,
+	.corereq_high   = true,
+	.sysclkreq_high = true,
+	.cpu_lp2_min_residency = 1000,
+	.min_residency_vmin_fmin = 1000,
+	.min_residency_ncpu_fast = 8000,
+	.min_residency_ncpu_slow = 5000,
+	.min_residency_mclk_stop = 5000,
+	.min_residency_crail = 20000,
+};
+
 static void __init tegra_flounder_late_init(void)
 {
 	flounder_usb_init();
-/*	if(is_mdm_modem())
-		flounder_mdm_9k_init();*/
+//	if(is_mdm_modem())
+//		flounder_mdm_9k_init();
 #ifdef CONFIG_TEGRA_XUSB_PLATFORM
 	flounder_xusb_init();
 #endif
 	flounder_i2c_init();
-/*	flounder_spi_init();*/
+//	flounder_spi_init(); in DT
 	flounder_audio_init();
 	platform_add_devices(flounder_devices, ARRAY_SIZE(flounder_devices));
-/*	platform_device_register(&flounder_audio_device_rt5677);*/
+
 	tegra_io_dpd_init();
 	flounder_sdhci_init();
-	flounder_regulator_init();
-	flounder_suspend_init();
+//	flounder_regulator_init(); in DT
+//	flounder_suspend_init(); Old
 	tegra12_emc_init();
+	tegra_init_suspend(&flounder_suspend_data);
 
 	isomgr_init();
 	flounder_headset_init();
 	flounder_panel();
-/*	flounder_kbc_init();*/
+//	flounder_kbc_init(); in DT
 
 	/* put PEX pads into DPD mode to save additional power */
 	tegra_io_dpd_enable(&pexbias_io);
 	tegra_io_dpd_enable(&pexclk1_io);
 	tegra_io_dpd_enable(&pexclk2_io);
 
-	flounder_sensors_init();
+//	flounder_sensors_init(); in DT
 
-	flounder_soctherm_init();
+//	flounder_soctherm_init(); in DT
 
-/*	flounder_setup_bluedroid_pm();*/
+//	flounder_setup_bluedroid_pm(); in DT
 
-	flounder_sysedp_dynamic_capping_init();
+//	flounder_sysedp_dynamic_capping_init(); in DT
 
 
 }
 
 static void __init tegra_flounder_init_early(void)
 {
-	flounder_rail_alignment_init();
+//	flounder_rail_alignment_init(); Old
 	tegra12x_init_early();
 }
 
@@ -1013,7 +966,7 @@ static void __init tegra_flounder_dt_init(void)
 {
 	tegra_flounder_early_init();
 #ifdef CONFIG_USE_OF
-	flounder_camera_auxdata(flounder_auxdata_lookup);
+//	flounder_camera_auxdata(flounder_auxdata_lookup);
 	of_platform_populate(NULL,
 		of_default_bus_match_table, flounder_auxdata_lookup,
 		&platform_bus);
