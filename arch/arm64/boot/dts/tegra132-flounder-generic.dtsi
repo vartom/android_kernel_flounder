@@ -8,6 +8,7 @@
 #include "tegra132-flounder-camera.dtsi"
 #include "tegra132-flounder-trusty.dtsi"
 #include "tegra132-flounder-sysedp.dtsi"
+#include "tegra132-flounder-thermal.dtsi"
 #include "tegra132-flounder-powermon.dtsi"
 #include "tegra132-flounder-emc.dtsi"
 #include "tegra132-tn8-dfll.dtsi"
@@ -17,18 +18,21 @@
 #include "tegra132-platforms/tegra132-flounder-keys.dtsi"
 #include "tegra132-flounder-power-tree.dtsi"
 #include "tegra124-platforms/tegra124-tn8-cpufreq.dtsi"
+#include "tegra132-platforms/tegra132-thermal-nct72.dtsi"
+#include "tegra132-platforms/tegra132-thermal-Tboard-Tdiode.dtsi"
 
 #include "panel-j-qxga-8-9.dtsi"
 
 / {
-	model = "tn8";
+	model = "NVIDIA Tegra124 TN8 FFD";
+	compatible = "nvidia,tn8", "nvidia,tegra132";
 	nvidia,dtsfilename = __FILE__;
 	nvidia,boardids = "1780:1100:2:B:7","1794:1000:0:A:6";
 	#address-cells = <2>;
 	#size-cells = <2>;
 
 	chosen {
-		bootargs = "tegraid=40.0.0.00.00 vmalloc=256M video=tegrafb console= earlyprintk vpr_resize tsec=32M@4064M otf_key=914e3cd033c06c6370b630bb6ec9dd4e";
+		bootargs = "tegraid=40.0.0.00.00 vmalloc=256M video=tegrafb console= earlyprintk vpr_resize tsec=32M@4064M vpr=186M@3910M otf_key=914e3cd033c06c6370b630bb6ec9dd4e";
 		linux,initrd-start = <0x85000000>;
 		linux,initrd-end = <0x851bc400>;
 	};
@@ -86,6 +90,14 @@
 	pmc@7000e400 {
 		status = "okay";
 		nvidia,invert-interrupt;
+		nvidia,suspend-mode = <0>;
+		nvidia,cpu-pwr-good-time = <500>;
+		nvidia,cpu-pwr-off-time = <300>;
+		nvidia,core-pwr-good-time = <3845 3845>;
+		nvidia,core-pwr-off-time = <2000>;
+		nvidia,core-power-req-active-high;
+		nvidia,sys-clock-req-active-high;
+		nvidia,cpu-suspend-freq = <408000>;
 	};
 
 	serial@70006000 {
@@ -180,6 +192,11 @@
 					};
 				};
 			};
+		};
+
+		cm32181@48 {
+			compatible = "capella,cm32181";
+			reg = <0x48>;
 		};
 
 		htc_mcu@72 {
@@ -363,11 +380,8 @@
 		status = "okay";
 	};
 
-	therm_est_sensor {
-		status = "disabled";
-	};
-
 	bluedroid_pm {
+		status = "okay";
 		compatible = "nvidia,tegra-bluedroid_pm";
 		id = <0>;
 		bluedroid_pm,shutdown-gpio = <&gpio TEGRA_GPIO(R, 1) 0>;
@@ -378,10 +392,12 @@
 	};
 
 	cpu_edp {
+		status = "okay";
 		nvidia,edp_limit = <16800>;
 	};
 
 	gpu_edp {
+		status = "okay";
 		nvidia,edp_limit = <16800>;
 	};
 };
