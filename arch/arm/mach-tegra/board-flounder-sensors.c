@@ -464,7 +464,7 @@ static struct nct1008_platform_data flounder_nct72_pdata = {
 			.trips = {
 				{
 					.cdev_type = "therm_est_activ",
-					.trip_temp = 40000,
+					.trip_temp = 50000,
 					.trip_type = THERMAL_TRIP_ACTIVE,
 					.hysteresis = 1000,
 					.upper = THERMAL_NO_LIMIT,

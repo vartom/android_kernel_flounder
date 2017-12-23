@@ -475,15 +475,15 @@ static struct soctherm_throttle battery_oc_throttle_t13x = {
 		},
 		[THROTTLE_DEV_GPU] = {
 			.enable = true,
-			.throttling_depth = "medium_throttling",
+			.throttling_depth = "low_throttling",
 		},
 	},
 };
 
 int __init flounder_soctherm_init(void)
 {
-	const int t13x_cpu_edp_temp_margin = 5000,
-		t13x_gpu_edp_temp_margin = 6000;
+	const int t13x_cpu_edp_temp_margin = 8000,
+		t13x_gpu_edp_temp_margin = 8000;
 	int cpu_edp_temp_margin, gpu_edp_temp_margin;
 	int cp_rev, ft_rev;
 	enum soctherm_therm_id therm_cpu = THERM_CPU;
