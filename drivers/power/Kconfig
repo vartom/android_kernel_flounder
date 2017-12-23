@@ -334,6 +334,14 @@ config BATTERY_MAX17050
 	  in handheld and portable equipment. The MAX17050 is configured
 	  to operate with a single lithium cell.
 
+config GAUGE_MAX17050
+	tristate "Maxim MAX17050 Fuel Gauge"
+	depends on I2C
+	help
+	  MAX17050 is fuel-gauge systems for lithium-ion (Li+) batteries
+	  in handheld and portable equipment. The MAX17050 is configured
+	  to operate with a single lithium cell.
+
 config FLOUNDER_BATTERY
 	tristate "Battery handling for flounder boards"
 	help
