@@ -14,7 +14,7 @@
  */
 
 #include "tegra132-soc-base.dtsi"
-#include "tegra124-platforms/tegra124-therm-est.dtsi"
+/*#include "tegra124-platforms/tegra124-therm-est.dtsi"*/
 #include "tegra124-platforms/tegra124-bthrot-cdev.dtsi"
 
 / {

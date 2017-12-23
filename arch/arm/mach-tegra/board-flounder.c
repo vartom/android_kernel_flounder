@@ -871,7 +871,7 @@ static int __init flounder_headset_init(void)
 
 static void __init tegra_flounder_early_init(void)
 {
-//	flounder_new_sysedp_init(); in DT
+	flounder_new_sysedp_init();
 	tegra_clk_init_from_table(flounder_clk_init_table);
 	tegra_clk_verify_parents();
 	if (of_machine_is_compatible("nvidia,flounder"))
@@ -898,23 +898,6 @@ static struct tegra_io_dpd pexclk2_io = {
 	.io_dpd_bit		= 6,
 };
 
-static struct tegra_suspend_platform_data flounder_suspend_data = {
-	.cpu_timer      = 500,
-	.cpu_off_timer  = 300,
-	.cpu_suspend_freq = 408000,
-	.suspend_mode   = TEGRA_SUSPEND_LP0,
-	.core_timer     = 0x157e,
-	.core_off_timer = 2000,
-	.corereq_high   = true,
-	.sysclkreq_high = true,
-	.cpu_lp2_min_residency = 1000,
-	.min_residency_vmin_fmin = 1000,
-	.min_residency_ncpu_fast = 8000,
-	.min_residency_ncpu_slow = 5000,
-	.min_residency_mclk_stop = 5000,
-	.min_residency_crail = 20000,
-};
-
 static void __init tegra_flounder_late_init(void)
 {
 	flounder_usb_init();
@@ -930,10 +913,9 @@ static void __init tegra_flounder_late_init(void)
 
 	tegra_io_dpd_init();
 	flounder_sdhci_init();
-//	flounder_regulator_init(); in DT
-//	flounder_suspend_init(); Old
+	flounder_regulator_init();
+	flounder_suspend_init();
 	tegra12_emc_init();
-	tegra_init_suspend(&flounder_suspend_data);
 
 	isomgr_init();
 	flounder_headset_init();
@@ -945,20 +927,20 @@ static void __init tegra_flounder_late_init(void)
 	tegra_io_dpd_enable(&pexclk1_io);
 	tegra_io_dpd_enable(&pexclk2_io);
 
-//	flounder_sensors_init(); in DT
+	flounder_sensors_init();
 
-//	flounder_soctherm_init(); in DT
+	flounder_soctherm_init();
 
 //	flounder_setup_bluedroid_pm(); in DT
 
-//	flounder_sysedp_dynamic_capping_init(); in DT
+	flounder_sysedp_dynamic_capping_init();
 
 
 }
 
 static void __init tegra_flounder_init_early(void)
 {
-//	flounder_rail_alignment_init(); Old
+	flounder_rail_alignment_init();/* Old*/
 	tegra12x_init_early();
 }
 
@@ -966,7 +948,7 @@ static void __init tegra_flounder_dt_init(void)
 {
 	tegra_flounder_early_init();
 #ifdef CONFIG_USE_OF
-//	flounder_camera_auxdata(flounder_auxdata_lookup);
+	flounder_camera_auxdata(flounder_auxdata_lookup);
 	of_platform_populate(NULL,
 		of_default_bus_match_table, flounder_auxdata_lookup,
 		&platform_bus);

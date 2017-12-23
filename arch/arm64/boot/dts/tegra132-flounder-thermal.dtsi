@@ -1,5 +1,18 @@
+#include <dt-bindings/thermal/thermal.h>
+
 / {
 	soctherm@0x700E2000 {
+		throttle@critical {
+			status = "okay";
+		};
+		throttle@heavy {
+			status = "okay";
+			throttle_dev = <&{/soctherm@0x700E2000/throttle_dev@cpu_medium}
+			&{/soctherm@0x700E2000/throttle_dev@gpu_medium}>;
+		};
+		throttle@light {
+			status = "disabled";
+		};
 		throttle@oc1 {
 			status = "disabled";
 		};
@@ -10,34 +23,36 @@
 			status = "disabled";
 		};
 		throttle@oc4 {
-			status = "disabled";
+			status = "okay";
 			device_type = "throttlectl";
 			oc-alarm-id = <3>;
-			priority = <50>;
+			priority = <10>;
 			mode = "brief";
 			intr;
 			active_low;
 			count_threshold = <15>;
 			filter = <5100000>;
-			throttle_dev = <&{/soctherm@0x700E2000/throttle_dev@cpu_low}
+			throttle_dev = <&{/soctherm@0x700E2000/throttle_dev@cpu_medium}
 			&{/soctherm@0x700E2000/throttle_dev@gpu_medium}>;
 		};
-		throttle_dev@cpu_low {
-			level = "low_throttling";
+		throttle_dev@cpu_high {
+			priority = <100>;
+			level = "high_throttling";
+		};
+		throttle_dev@cpu_medium {
+			level = "medium_throttling";
 		};
 		throttle_dev@gpu_high {
+			priority = <100>;
 			level = "high_throttling";
 		};
 		throttle_dev@gpu_medium {
 			level = "medium_throttling";
 		};
-		throttle_dev@gpu_low {
-			level = "low_throttling";
-		};
-
 	};
 
 	thermal-zones {
+
 		CPU-therm {
 			status 			= "okay";
 			polling-delay		= <0>;
@@ -194,19 +209,44 @@
 		};
 
 		Tboard_tegra {
-			status = "okay";
+			status 			= "disabled";
+			polling-delay = <15000>; /* milliseconds */
+			polling-delay-passive = <0>; /* milliseconds */
+			thermal-sensors = <&tegra_nct72 0>;
+
+			trips {
+				therm_est_trip: therm_est_trip {
+					temperature = <50000>;
+					type = "active";
+					hysteresis = <1000>;
+					writable;
+				};
+			};
+
+			cooling-maps {
+				map0 {
+					trip = <&therm_est_trip>;
+					cooling-device = <&dummy_cool_dev 1 1>;
+					contribution = <100>;
+					cdev-type = "therm_est_activ";
+				};
+			};
+
+			thermal-zone-params {
+				governor-name = "pid_thermal_gov";
+			};
 		};
 
 		Tdiode_tegra {
-			status = "okay";
+			status 			= "disabled";
+			polling-delay = <0>; /* milliseconds */
+			polling-delay-passive = <0>; /* milliseconds */
+			thermal-sensors = <&tegra_nct72 1>;
 		};
+	};
 
-		therm_est_sensor {
-			status = "disabled";
-		};
-
-		therm_est {
-			status = "disabled";
-		};
+	dummy_cool_dev: dummy-cool-dev {
+			compatible = "dummy-cooling-dev";
+			#cooling-cells = <2>; /* min followed by max */
 	};
 };

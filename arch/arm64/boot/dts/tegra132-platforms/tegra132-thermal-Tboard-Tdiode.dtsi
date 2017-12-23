@@ -21,7 +21,7 @@
 / {
 	thermal-zones {
 		Tboard_tegra {
-			status = "disabled";
+			status = "okay";
 			polling-delay = <0>;
 			polling-delay-passive = <0>;
 			thermal-sensors = <&tegra_nct72 0>;
@@ -54,7 +54,7 @@
 		};
 
 		Tdiode_tegra {
-			status = "disabled";
+			status = "okay";
 			polling-delay = <0>;
 			polling-delay-passive = <1000>;
 			thermal-sensors = <&tegra_nct72 1>;
