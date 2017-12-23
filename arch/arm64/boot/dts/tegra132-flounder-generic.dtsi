@@ -117,56 +117,38 @@
 		status = "okay";
 		clock-frequency = <400000>;
 
-		battery-gauge@36 {
+		max17050@36 {
 			compatible = "maxim,max17050";
 			reg = <0x36>;
+			battery-id-channel-name = "batt-id-channel";
+			param_adjust_map_by_id {
+				id0 {
+					id-number = <0>;
+					id-range = <0 524>;
+					temperature-normal-to-low-threshold = <(-50)>;
+					temperature-low-to-normal-threshold = <(-30)>;
+					temperature-normal-parameters = <0x964C 0x0068 0x0000>;
+					temperature-low-parameters = <0xAF59 0x4D84 0x2484>;
+				};
+				id1 {
+					id-number = <1>;
+					id-range = <525 1343>;
+					temperature-normal-to-low-threshold = <(-80)>;
+					temperature-low-to-normal-threshold = <(-50)>;
+					temperature-normal-parameters = <0x964C 0x1032 0x0000>;
+					temperature-low-parameters = <0xAF59 0x5F86 0x2790>;
+				};
+			};
 		};
 
-		battery-charger@6b {
+		bq2419x: bq2419x@6b {
 			compatible = "ti,bq2419x";
 			reg = <0x6b>;
 
 			interrupt-parent = <&gpio>;
 			interrupts = <TEGRA_GPIO(J, 0) 0x0>;
 
-			battery_charger: charger {
-				regulator-name = "batt_regulator";
-				regulator-max-microamp = <2000000>;
-				ti,watchdog-timeout = <0>;
-				ti,auto-recharge-time = <1800>;
-				ti,input-voltage-limit-millivolt = <4440>;
-				ti,fast-charge-current-limit-milliamp = <2944>;
-				ti,pre-charge-current-limit-milliamp = <512>;
-				ti,charge-term-current-limit-milliamp = <128>;
-				ti,charge-voltage-limit-millivolt = <4352>;
-				ti,disbale-suspend-during-charging;
-				ti,charge-suspend-polling-time-sec = <3600>;
-				ti,safety-timer-reset-disable;
-				ti,temp-polling-time-sec = <30>;
-				thermal-overtemp-control-no-thermister;
-				thermal-temperature-hot-deciC = <551>;
-				thermal-temperature-cold-deciC = <(-1)>;
-				thermal-temperature-warm-deciC = <481>;
-				thermal-temperature-cool-deciC = <100>;
-				thermal-temperature-hysteresis-deciC = <30>;
-				thermal-warm-voltage-millivolt = <4096>;
-				thermal-cool-voltage-millivolt = <4352>;
-				thermal-disable-warm-current-half;
-				thermal-overtemp-output-current-milliamp = <1344>;
-				charge-full-by-monitor-full-threshold;
-				consumers {
-					c1 {
-						regulator-consumer-supply = "usb_bat_chg";
-						regulator-consumer-device = "tegra-udc.0";
-					};
-					c2 {
-						regulator-consumer-supply = "usb_bat_chg";
-						regulator-consumer-device = "tegra-otg";
-					};
-				};
-			};
-
-			usb3_vbus: vbus {
+			vbus {
 				regulator-name = "vbus_regulator";
 				consumers {
 					c1 {
@@ -280,7 +262,7 @@
 		#extcon-cells = <1>;
 		avdd_usb-supply = <&ldousb_reg>;
 		avdd_pll_utmip-supply = <&palmas_smps8>;
-		usb_bat_chg-supply = <&battery_charger>;
+		usb_bat_chg-supply = <&bq2419x>;
 		status = "okay";
 	};
 
@@ -308,7 +290,7 @@
 		extcon-cables = <&palmas_extcon 0 &palmas_extcon 1>;
 		extcon-cable-names = "vbus", "id";
 		#extcon-cells = <1>;
-		usb_bat_chg-supply = <&battery_charger>;
+		usb_bat_chg-supply = <&bq2419x>;
 		usb_vbus-supply = <&usb0_vbus>;
 		status = "okay";
 	};
@@ -382,5 +364,51 @@
 	gpu_edp {
 		status = "okay";
 		nvidia,edp_limit = <16800>;
+	};
+
+	htc_battery_max17050 {
+		compatible = "htc,max17050_battery";
+	};
+
+	htc_battery_bq2419x {
+		compatible = "htc,bq2419x_battery";
+		regulator-name = "batt_regulator";
+		regulator-max-microamp = <2000000>;
+		auto-recharge-time = <30>;
+		input-voltage-limit-millivolt = <4440>;
+		fast-charge-current-limit-milliamp = <2944>;
+		pre-charge-current-limit-milliamp = <512>;
+		charge-voltage-limit-millivolt = <4352>;
+		charge-suspend-polling-time-sec = <3600>;
+		temp-polling-time-sec = <30>;
+		thermal-overtemp-control-no-thermister;
+		thermal-temperature-hot-deciC = <551>;
+		thermal-temperature-cold-deciC = <(-1)>;
+		thermal-temperature-warm-deciC = <481>;
+		thermal-temperature-cool-deciC = <100>;
+		thermal-temperature-hysteresis-deciC = <30>;
+		thermal-warm-voltage-millivolt = <4096>;
+		thermal-cool-voltage-millivolt = <4352>;
+		thermal-disable-warm-current-half;
+		thermal-overtemp-output-current-milliamp = <1344>;
+		unknown-battery-id-minimum = <1343>;
+		battery-id-channel-name = "batt-id-channel";
+		input-voltage-min-high-battery-millivolt = <4440>;
+		input-voltage-min-low-battery-millivolt = <4200>;
+		input-voltage-switch-millivolt = <4150>;
+		gauge-power-supply-name = "battery";
+		vbus-channel-name = "charger-vbus";
+		vbus-channel-max-voltage-mv = <6875>;
+		vbus-channel-max-adc = <4096>;
+		consumers {
+			c1 {
+				regulator-consumer-supply = "usb_bat_chg";
+				regulator-consumer-device = "tegra-udc.0";
+			};
+			c2 {
+				regulator-consumer-supply = "usb_bat_chg";
+				regulator-consumer-device = "tegra-otg";
+			};
+		};
 	};
 };
