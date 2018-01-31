@@ -40,7 +40,7 @@ static struct regulator *dvdd_lcd_1v8;
 static struct regulator *vpp_lcd;
 static struct regulator *vmm_lcd;
 static struct device *dc_dev;
-static u16 en_panel_rst;*
+static u16 en_panel_rst;*/
 
 enum panel_gpios {
 	IOVDD_1V8 = 0,
@@ -51,6 +51,7 @@ enum panel_gpios {
 };
 
 static bool gpio_requested;
+static bool gpio_init;
 //static struct platform_device *disp_device;
 
 static int iovdd_1v8, avdd_4v, dcdc_en, lcm_rst;
@@ -78,40 +79,24 @@ static int dsi_j_qxga_8_9_gpio_get(void)
 	gpio_requested = true;
 
 	return 0;
-}*/
+}
 
 static int dsi_j_qxga_8_9_postpoweron(struct device *dev)
 {
-/*	int i, err;
-	struct device_node *np;
-
-	np = of_find_node_by_name(NULL, "panel_jdi_qxga_8_9");
-	if (np == NULL) {
-		pr_info("can't find device node\n");
-	} else {
-		for (i=0; i<NUM_PANEL_GPIOS; i++) {
-			panel_init_gpios[i].gpio =
-				of_get_gpio_flags(np, i, NULL);
-			pr_info("gpio pin = %d\n", panel_init_gpios[i].gpio);
-		}
-	}
-
-	iovdd_1v8 = panel_init_gpios[IOVDD_1V8].gpio;
-	avdd_4v = panel_init_gpios[AVDD_4V].gpio;
-	dcdc_en = panel_init_gpios[DCDC_EN].gpio;
-	lcm_rst = panel_init_gpios[LCM_RST].gpio;
+	int err;
 
 	err = dsi_j_qxga_8_9_gpio_get();
 	if (err) {
 		pr_err("failed to get panel gpios\n");
 		return err;
-	}*/
-	pr_info("panel dsi_j_qxga_8_9_postpoweron\n");
-	gpio_set_value(TEGRA_GPIO_PR0, 1);
+	}
+
+/*	pr_info("panel dsi_j_qxga_8_9_postpoweron\n");*/
+	gpio_set_value(avdd_4v, 1);
 	usleep_range(1 * 1000, 1 * 1000 + 500);
-	gpio_set_value(TEGRA_GPIO_PI4, 1);
+	gpio_set_value(dcdc_en, 1);
 	usleep_range(15 * 1000, 15 * 1000 + 500);
-	gpio_set_value(TEGRA_GPIO_PH5, 1);
+	gpio_set_value(lcm_rst, 1);
 	usleep_range(15 * 1000, 15 * 1000 + 500);
 
 	return 0;
@@ -119,38 +104,61 @@ static int dsi_j_qxga_8_9_postpoweron(struct device *dev)
 
 static int dsi_j_qxga_8_9_enable(struct device *dev)
 {
-/*	int err;
+	int i, err;
+	struct device_node *np;
+
+	if (!gpio_init) {
+		np = of_find_node_by_name(NULL, "panel_jdi_qxga_8_9");
+		if (np == NULL) {
+			pr_info("can't find device node\n");
+		} else {
+			for (i=0; i<NUM_PANEL_GPIOS; i++) {
+				panel_init_gpios[i].gpio =
+					of_get_gpio_flags(np, i, NULL);
+				pr_info("gpio pin = %d\n", panel_init_gpios[i].gpio);
+			}
+		}
+
+		iovdd_1v8 = panel_init_gpios[IOVDD_1V8].gpio;
+		avdd_4v = panel_init_gpios[AVDD_4V].gpio;
+		dcdc_en = panel_init_gpios[DCDC_EN].gpio;
+		lcm_rst = panel_init_gpios[LCM_RST].gpio;
+
+		gpio_init = true;
+	}
 
 	err = dsi_j_qxga_8_9_gpio_get();
 	if (err) {
 		pr_err("failed to get panel gpios\n");
 		return err;
-	}*/
-	pr_info("panel dsi_j_qxga_8_9_enable\n");
-	gpio_set_value(TEGRA_GPIO_PQ2, 1);
+	}
+
+/*	pr_info("panel dsi_j_qxga_8_9_enable\n");*/
+	gpio_set_value(iovdd_1v8, 1);
 	usleep_range(15 * 1000, 15 * 1000 + 500);
 	return 0;
 }
 
 static int dsi_j_qxga_8_9_disable(struct device *dev)
 {
-/*	int err;
+	int err;
 
 	err = dsi_j_qxga_8_9_gpio_get();
 	if (err) {
 		pr_err("failed to get panel gpios\n");
 		return err;
-	}*/
-	pr_info("panel dsi_j_qxga_8_9_disable\n");
-	gpio_set_value(TEGRA_GPIO_PH5, 0);
+	}
+
+/*	pr_info("panel dsi_j_qxga_8_9_disable\n");*/
+	gpio_set_value(lcm_rst, 0);
 	msleep(1);
-	gpio_set_value(TEGRA_GPIO_PI4, 0);
+	gpio_set_value(dcdc_en, 0);
 	msleep(15);
-	gpio_set_value(TEGRA_GPIO_PR0, 0);
-	gpio_set_value(TEGRA_GPIO_PQ2, 0);
+	gpio_set_value(avdd_4v, 0);
+	gpio_set_value(iovdd_1v8, 0);
 	msleep(10);
 
-	pr_info("panel dsi_j_qxga_8_9_disable 2\n");
+/*	pr_info("panel dsi_j_qxga_8_9_disable 2\n");*/
 	return 0;
 }
 
