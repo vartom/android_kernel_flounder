@@ -683,6 +683,12 @@ static struct of_dev_auxdata flounder_auxdata_lookup[] __initdata = {
 #endif
 	OF_DEV_AUXDATA("nvidia,tegra-audio-rt5677", 0x0, "tegra-snd-rt5677",
 		NULL),
+	OF_DEV_AUXDATA("nvidia,tegra124-sdhci", 0x700b0600, "sdhci-tegra.3", 
+			NULL),
+	OF_DEV_AUXDATA("nvidia,tegra124-sdhci", 0x700b0400, "sdhci-tegra.2", 
+			NULL),
+	OF_DEV_AUXDATA("nvidia,tegra124-sdhci", 0x700b0000, "sdhci-tegra.0", 
+			NULL),
 	{}
 };
 #endif
@@ -912,7 +918,7 @@ static void __init tegra_flounder_late_init(void)
 	platform_add_devices(flounder_devices, ARRAY_SIZE(flounder_devices));
 
 	tegra_io_dpd_init();
-	flounder_sdhci_init();
+/*	flounder_sdhci_init();*/ in DT
 	flounder_regulator_init();
 	flounder_suspend_init();
 	tegra12_emc_init();

@@ -65,4 +65,14 @@
 		vddio_hsic-supply = <&ldo5_reg>;
 		avddio_usb-supply = <&palmas_smps10_out2>;
 	};
+
+	sdhci@700b0600 {
+		vddio_sd_slot-supply = <&palmas_smps9>;
+		vddio_sdmmc-supply = <&palmas_smps8>;
+	};
+
+	sdhci@700b0000 {
+		vddio_sdmmc-supply = <&palmas_smps8>;
+	};
+
 };
