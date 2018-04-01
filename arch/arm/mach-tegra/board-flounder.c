@@ -918,7 +918,7 @@ static void __init tegra_flounder_late_init(void)
 	platform_add_devices(flounder_devices, ARRAY_SIZE(flounder_devices));
 
 	tegra_io_dpd_init();
-/*	flounder_sdhci_init();*/ in DT
+/*	flounder_sdhci_init();*/ //in DT
 	flounder_regulator_init();
 	flounder_suspend_init();
 	tegra12_emc_init();
