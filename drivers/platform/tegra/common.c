@@ -1440,10 +1440,10 @@ static int tegra_get_board_info_properties(struct board_info *bi,
 	board_info = of_find_node_by_path(board_info_path);
 	memset(bi, 0, sizeof(*bi));
 
-	if (board_info) {
+	if (!board_info) {
 		err = of_property_read_u32(board_info, "id", &prop_val);
 		if (err < 0) {
-			pr_err("failed to read %s/id\n", board_info_path);
+			pr_info("failed to read %s/id\n", board_info_path);
 			goto out;
 		}
 		bi->board_id = prop_val;
@@ -1492,7 +1492,9 @@ void tegra_get_board_info(struct board_info *bi)
 
 	if (!parsed) {
 		parsed = 1;
-		ret = tegra_get_board_info_properties(bi, "proc-board");
+		ret = tegra_get_board_info_properties(bi, "board_info");
+		if (ret)
+			ret = tegra_get_board_info_properties(bi, "proc-board");
 		if (!ret) {
 			memcpy(&main_board_info, bi, sizeof(struct board_info));
 			system_serial_high = (bi->board_id << 16) | bi->sku;
@@ -1515,6 +1517,42 @@ void tegra_get_board_info(struct board_info *bi)
 	memcpy(bi, &main_board_info, sizeof(struct board_info));
 }
 EXPORT_SYMBOL(tegra_get_board_info);
+
+static int __init tegra_main_board_info(char *info)
+{
+	char *p = info;
+	main_board_info.board_id = memparse(p, &p);
+	main_board_info.sku = memparse(p+1, &p);
+	main_board_info.fab = memparse(p+1, &p);
+	main_board_info.major_revision = memparse(p+1, &p);
+	main_board_info.minor_revision = memparse(p+1, &p);
+	return 1;
+}
+__setup("board_info=", tegra_main_board_info);
+
+static int __init tegra_pmu_board_info(char *info)
+{
+	char *p = info;
+	pmu_board_info.board_id = memparse(p, &p);
+	pmu_board_info.sku = memparse(p+1, &p);
+	pmu_board_info.fab = memparse(p+1, &p);
+	pmu_board_info.major_revision = memparse(p+1, &p);
+	pmu_board_info.minor_revision = memparse(p+1, &p);
+	return 0;
+}
+early_param("pmuboard", tegra_pmu_board_info);
+
+static int __init tegra_display_board_info(char *info)
+{
+	char *p = info;
+	display_board_info.board_id = memparse(p, &p);
+	display_board_info.sku = memparse(p+1, &p);
+	display_board_info.fab = memparse(p+1, &p);
+	display_board_info.major_revision = memparse(p+1, &p);
+	display_board_info.minor_revision = memparse(p+1, &p);
+	return 1;
+}
+__setup("displayboard=", tegra_display_board_info);
 
 void tegra_get_pmu_board_info(struct board_info *bi)
 {
