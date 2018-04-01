@@ -829,6 +829,12 @@ static struct of_dev_auxdata ardbeg_auxdata_lookup[] __initdata = {
 	OF_DEV_AUXDATA("nvidia,icera-i500", 0, "tegra_usb_modem_power", NULL),
 	OF_DEV_AUXDATA("nvidia,ptm", 0x7081c000, "ptm", NULL),
 	OF_DEV_AUXDATA("nvidia,tegra30-hda", 0x70030000, "tegra30-hda", NULL),
+	OF_DEV_AUXDATA("nvidia,tegra124-sdhci", 0x700b0600, "sdhci-tegra.3", 
+			NULL),
+	OF_DEV_AUXDATA("nvidia,tegra124-sdhci", 0x700b0400, "sdhci-tegra.2", 
+			NULL),
+	OF_DEV_AUXDATA("nvidia,tegra124-sdhci", 0x700b0000, "sdhci-tegra.0", 
+			NULL),
 	{}
 };
 #endif
@@ -1011,6 +1017,8 @@ static int __init ardbeg_touch_init(void)
 {
 	tegra_get_board_info(&board_info);
 
+	if (board_info.board_id == BOARD_P1761)
+		return 0;
 	if (tegra_get_touch_vendor_id() == MAXIM_TOUCH) {
 		pr_info("%s init maxim touch\n", __func__);
 #if defined(CONFIG_TOUCHSCREEN_MAXIM_STI) || \
@@ -1185,6 +1193,18 @@ static struct tegra_io_dpd pexclk2_io = {
 	.io_dpd_bit		= 6,
 };
 
+static void flounder_panel(void)
+{
+	struct tegra_panel *panel;
+
+	panel = &dsi_j_qxga_8_9;
+
+	if (panel) {
+		if (panel->register_bl_dev)
+			panel->register_bl_dev();
+	}
+};
+
 static void __init tegra_ardbeg_late_init(void)
 {
 	struct board_info board_info;
@@ -1253,6 +1273,7 @@ static void __init tegra_ardbeg_late_init(void)
 		ardbeg_emc_init();
 
 	isomgr_init();
+	flounder_panel();
 
 	if (!of_machine_is_compatible("nvidia,green-arrow" ))
 		ardbeg_touch_init();

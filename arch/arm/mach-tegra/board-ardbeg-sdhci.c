@@ -451,6 +451,10 @@ int __init ardbeg_sdhci_init(void)
 	u32 speedo;
 	struct board_info board_info;
 
+	tegra_get_board_info(&board_info);
+	if (board_info.board_id == BOARD_P1761)
+		return 0;
+
 	nominal_core_mv =
 		tegra_dvfs_get_core_nominal_millivolts();
 	if (nominal_core_mv) {

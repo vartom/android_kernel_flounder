@@ -122,6 +122,10 @@ dtb-$(CONFIG_MACH_T132_FLOUNDER) += tegra132-flounder-xaxb.dtb
 dtb-$(CONFIG_MACH_T132_FLOUNDER) += tegra132-flounder-xc.dtb
 dtb-$(CONFIG_MACH_T132_FLOUNDER) += tegra132-flounder-xdxepvt.dtb
 dtb-$(CONFIG_MACH_T132_FLOUNDER) += tegra132-flounder_lte-xaxbxcxdpvt.dtb
+dtb-$(CONFIG_MACH_T132REF) += tegra132-flounder-xaxb.dtb
+dtb-$(CONFIG_MACH_T132REF) += tegra132-flounder-xc.dtb
+dtb-$(CONFIG_MACH_T132REF) += tegra132-flounder-xdxepvt.dtb
+dtb-$(CONFIG_MACH_T132REF) += tegra132-flounder_lte-xaxbxcxdpvt.dtb
 
 targets += $(dtb-y)
 
