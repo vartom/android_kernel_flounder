@@ -1489,6 +1489,7 @@ struct rt5677_priv {
 	int vad_sleep;
 	unsigned int vad_clock_en;
 	int stream;
+	bool mbist_test;
 	bool mbist_test_passed;
 
 	u8 *model_buf;
