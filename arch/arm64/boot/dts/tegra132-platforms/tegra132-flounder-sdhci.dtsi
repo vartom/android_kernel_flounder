@@ -62,10 +62,11 @@
 		id = <0>;
  		tap-delay = <0>;
  		trim-delay = <2>;
- 		uhs-mask = <8>;
+ 		uhs-mask = <0x8>;
+		bus-width = <4>;
 		calib-3v3-offsets = <0x7676>;
 		calib-1v8-offsets = <0x7676>;
-		max-clk-limit = <200000000>;
+		max-clk-limit = <204000000>;
 		ddr-clk-limit = <41000000>;
 		mmc-ocr-mask = <0>;
 		default-drv-type = <1>;
