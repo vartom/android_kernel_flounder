@@ -62,6 +62,8 @@ enum tegra_speaker_edp_states {
 struct tegra_asoc_platform_data {
 	const char *codec_name;
 	const char *codec_dai_name;
+	const char *codec_mclk_name;
+	int gpio_codec_mclk_id;
 	int num_links;
 	int gpio_spkr_en;
 	int gpio_spkr_ldo_en;
