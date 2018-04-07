@@ -28,6 +28,7 @@
 #include <linux/sysfs.h>
 #include <linux/clk.h>
 #include "rt5677-spi.h"
+#include <linux/of.h>
 
 #define SPI_BURST_LEN		240
 #define SPI_HEADER		5
@@ -233,11 +234,20 @@ static const struct dev_pm_ops rt5677_pm_ops = {
 };
 #endif /*CONFIG_PM */
 
+#ifdef CONFIG_OF
+static const struct of_device_id rt5677_spi_of_match[] = {
+	{ .compatible = "realtek,rt5677-spi", },
+	{ }
+};
+MODULE_DEVICE_TABLE(of, rt5677_spi_of_match);
+#endif
+
 static struct spi_driver rt5677_spi_driver = {
 	.driver = {
 			.name = "rt5677_spidev",
 			.bus = &spi_bus_type,
 			.owner = THIS_MODULE,
+			.of_match_table = of_match_ptr(rt5677_spi_of_match),
 #if defined(CONFIG_PM)
 			.pm = &rt5677_pm_ops,
 #endif
