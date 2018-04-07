@@ -106,10 +106,10 @@
 #include "tegra-board-id.h"
 #include "iomap.h"
 #include "tegra-of-dev-auxdata.h"
-
+/*
 #include "../../../sound/soc/codecs/rt5506.h"
 #include "../../../sound/soc/codecs/rt5677.h"
-#include "../../../sound/soc/codecs/tfa9895.h"
+#include "../../../sound/soc/codecs/tfa9895.h"*/
 
 /*static unsigned int flounder_hw_rev;
 static unsigned int flounder_eng_id;
@@ -210,7 +210,7 @@ static struct aud_sfio_data audio_sfio_pins[] = {
 		.id   = TEGRA_GPIO_PY3,
 	},
 };
-
+/*
 static struct tfa9895_platform_data tfa9895_data = {
 	.tfa9895_power_enable = TEGRA_GPIO_PX5,
 };
@@ -228,7 +228,7 @@ static struct i2c_board_info __initdata tfa9895_board_info = {
 };
 static struct i2c_board_info __initdata tfa9895l_board_info = {
 	I2C_BOARD_INFO("tfa9895l", 0x35),
-};
+};*/
 
 static struct bcm2079x_platform_data bcm2079x_pdata = {
 	.irq_gpio = TEGRA_GPIO_PR7,
@@ -284,15 +284,15 @@ static __initdata struct tegra_clk_init_table flounder_clk_init_table[] = {
 
 static void flounder_i2c_init(void)
 {
-	i2c_register_board_info(1, &rt5677_board_info, 1);
+/*	i2c_register_board_info(1, &rt5677_board_info, 1);
 	i2c_register_board_info(1, &tfa9895_board_info, 1);
-	i2c_register_board_info(1, &tfa9895l_board_info, 1);
+	i2c_register_board_info(1, &tfa9895l_board_info, 1);*/
 
 	bcm2079x_board_info.irq = gpio_to_irq(TEGRA_GPIO_PR7),
 	i2c_register_board_info(0, &bcm2079x_board_info, 1);
 }
 
-static struct tegra_asoc_platform_data flounder_audio_pdata_rt5677 = {
+/*static struct tegra_asoc_platform_data flounder_audio_pdata_rt5677 = {
 	.gpio_hp_det = -1,
 	.gpio_ldo1_en = TEGRA_GPIO_PK0,
 	.gpio_ldo2_en = TEGRA_GPIO_PQ3,
@@ -324,8 +324,9 @@ static struct tegra_asoc_platform_data flounder_audio_pdata_rt5677 = {
 		.is_i2s_master = 1,
 		.i2s_mode = TEGRA_DAIFMT_DSP_A,
 	}
-};
-static struct tegra_spi_device_controller_data dev_cdata_rt5677 = {
+};*/
+
+/*static struct tegra_spi_device_controller_data dev_cdata_rt5677 = {
 	.rx_clk_tap_delay = 0,
 	.tx_clk_tap_delay = 16,
 };
@@ -338,16 +339,16 @@ struct spi_board_info rt5677_flounder_spi_board[1] = {
 	 .mode = SPI_MODE_0,
 	 .controller_data = &dev_cdata_rt5677,
 	 },
-};
+};*/
 
 static void flounder_audio_init(void)
 {
 	int i;
 
-	flounder_audio_pdata_rt5677.codec_name = "rt5677.1-002d";
-	flounder_audio_pdata_rt5677.codec_dai_name = "rt5677-aif1";
-	spi_register_board_info(&rt5677_flounder_spi_board[0],
-	ARRAY_SIZE(rt5677_flounder_spi_board));
+//	flounder_audio_pdata_rt5677.codec_name = "rt5677.1-002d";
+//	flounder_audio_pdata_rt5677.codec_dai_name = "rt5677-aif1";
+//	spi_register_board_info(&rt5677_flounder_spi_board[0],
+//	ARRAY_SIZE(rt5677_flounder_spi_board));
 	for (i = 0; i < ARRAY_SIZE(audio_sfio_pins); i++)
 		if (tegra_is_gpio(audio_sfio_pins[i].id)) {
 			gpio_request(audio_sfio_pins[i].id, audio_sfio_pins[i].name);
@@ -357,13 +358,13 @@ static void flounder_audio_init(void)
 		}
 };
 
-static struct platform_device flounder_audio_device_rt5677 = {
+/*static struct platform_device flounder_audio_device_rt5677 = {
 	.name = "tegra-snd-rt5677",
 	.id = 0,
 	.dev = {
 		.platform_data = &flounder_audio_pdata_rt5677,
 	},
-};
+};*/
 
 static struct timed_gpio flounder_vib_timed_gpios[] = {
 	{
@@ -413,7 +414,7 @@ static struct platform_device *flounder_devices[] __initdata = {
 	&tegra_i2s_device2,
 	&tegra_i2s_device3,
 	&tegra_i2s_device4,
-	&flounder_audio_device_rt5677,
+//	&flounder_audio_device_rt5677,
 	&tegra_spdif_device,
 	&spdif_dit_device,
 	&bluetooth_dit_device,
@@ -681,7 +682,7 @@ static struct of_dev_auxdata flounder_auxdata_lookup[] __initdata = {
 #ifdef CONFIG_TEGRA_CEC_SUPPORT
 	OF_DEV_AUXDATA("nvidia,tegra124-cec", 0x70015000, "tegra_cec", NULL),
 #endif
-	OF_DEV_AUXDATA("nvidia,tegra-audio-rt5677", 0x0, "tegra-snd-rt5677",
+	OF_DEV_AUXDATA("nvidia,tegra-audio-rt5677", 0x0, "tegra-snd-rt5677.0",
 		NULL),
 	OF_DEV_AUXDATA("nvidia,tegra124-sdhci", 0x700b0600, "sdhci-tegra.3", 
 			NULL),
@@ -918,7 +919,7 @@ static void __init tegra_flounder_late_init(void)
 	platform_add_devices(flounder_devices, ARRAY_SIZE(flounder_devices));
 
 	tegra_io_dpd_init();
-/*	flounder_sdhci_init();*/ in DT
+	flounder_sdhci_init(); // in DT
 	flounder_regulator_init();
 	flounder_suspend_init();
 	tegra12_emc_init();
