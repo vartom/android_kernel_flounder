@@ -66,7 +66,7 @@
 			status = "okay";
 			panel-j-qxga-8-9 {
 				status = "okay";
-				nvidia,panel-rst-gpio = <&gpio TEGRA_GPIO(H, 5) 0>;
+				nvidia,panel-rst-gpio = <&gpio TEGRA_GPIO(H, 5) GPIO_ACTIVE_LOW>;
 			};
 		};
 		tsec {
@@ -170,14 +170,14 @@
 			reg = <0x72>;
 			interrupt-parent = <&gpio>;
 			interrupts = <140 0x0>;
-			mcu,intr-gpio  = <&gpio 140 0>;
+			mcu,intr-gpio  = <&gpio 140 GPIO_ACTIVE_LOW>;
 			mcu,gs_chip_layout = <1>;
 			mcu,acceleration_axes = <7>;
 			mcu,magnetic_axes = <7>;
 			mcu,gyro_axes = <7>;
-			mcu,Cpu_wake_mcu-gpio = <&gpio 129 0>;
-			mcu,Reset-gpio = <&gpio 138 0>;
-			mcu,Chip_mode-gpio = <&gpio 164 0>;
+			mcu,Cpu_wake_mcu-gpio = <&gpio 129 GPIO_ACTIVE_LOW>;
+			mcu,Reset-gpio = <&gpio 138 GPIO_ACTIVE_LOW>;
+			mcu,Chip_mode-gpio = <&gpio 164 GPIO_ACTIVE_LOW>;
 		};
 	};
 
@@ -186,9 +186,10 @@
 		clock-frequency = <400000>;
 
 		richtek_rt5506_amp@52 {
+			status = "okay";
 			compatible = "richtek,rt5506-amp";
 			reg = <0x52>;
-			richtek,enable-gpio = <&gpio 185 0>;
+			richtek,enable-gpio = <&gpio 185 GPIO_ACTIVE_LOW>;
 		};
 	};
 
@@ -216,6 +217,12 @@
 	spi@7000d400 {
 		status = "okay";
 		spi-max-frequency = <25000000>;
+
+		codec@0 {	
+			compatible = "realtek,rt5677-spi";	
+			reg = <0>;	
+			spi-max-frequency = <24000000>;	
+		};
 	};
 
 	spi@7000d800 {
@@ -350,9 +357,9 @@
 		status = "okay";
 		compatible = "nvidia,tegra-bluedroid_pm";
 		id = <0>;
-		bluedroid_pm,shutdown-gpio = <&gpio TEGRA_GPIO(R, 1) 0>;
-		bluedroid_pm,host-wake-gpio = <&gpio TEGRA_GPIO(U, 6) 0>;
-		bluedroid_pm,ext-wake-gpio = <&gpio TEGRA_GPIO(EE, 1) 0>;
+		bluedroid_pm,shutdown-gpio = <&gpio TEGRA_GPIO(R, 1) GPIO_ACTIVE_LOW>;
+		bluedroid_pm,host-wake-gpio = <&gpio TEGRA_GPIO(U, 6) GPIO_ACTIVE_LOW>;
+		bluedroid_pm,ext-wake-gpio = <&gpio TEGRA_GPIO(EE, 1) GPIO_ACTIVE_LOW>;
 		interrupt-parent = <&gpio>;
 		interrupts = <166 0x01>;
 	};
