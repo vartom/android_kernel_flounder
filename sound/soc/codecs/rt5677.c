@@ -22,6 +22,7 @@
 #include <linux/of_gpio.h>
 #include <linux/elf.h>
 #include <linux/firmware.h>
+#include <linux/gpio.h>
 #include <linux/vmalloc.h>
 #include <sound/core.h>
 #include <sound/pcm.h>
@@ -31,6 +32,7 @@
 #include <sound/initval.h>
 #include <sound/tlv.h>
 #include <linux/htc_headset_mgr.h>
+#include <linux/of_gpio.h>
 
 #define RTK_IOCTL
 #define RT5677_DMIC_CLK_MAX 2400000
@@ -906,7 +908,7 @@ static unsigned int rt5677_set_vad(
 		pr_info("rt5677_set_vad on, mic_state = %d\n", rt5677_global->mic_state);
 		set_rt5677_power_extern(true);
 
-		gpio_direction_output(rt5677->vad_clock_en, 1);
+		gpio_direction_output(rt5677->pdata.vad_clock_en, 1);
 		activity = true;
 		regcache_cache_only(rt5677->regmap, false);
 		regcache_cache_bypass(rt5677->regmap, true);
@@ -965,7 +967,7 @@ static unsigned int rt5677_set_vad(
 			RT5677_BIAS_CUR4, 0x0f00, 0x0000);
 		regcache_cache_bypass(rt5677->regmap, false);
 		regcache_cache_only(rt5677->regmap, true);
-		gpio_direction_output(rt5677->vad_clock_en, 0);
+		gpio_direction_output(rt5677->pdata.vad_clock_en, 0);
 		set_rt5677_power_extern(false);
 	}
 
@@ -5010,14 +5012,24 @@ static const struct i2c_device_id rt5677_i2c_id[] = {
 };
 MODULE_DEVICE_TABLE(i2c, rt5677_i2c_id);
 
+static int rt5677_parse_dt(struct rt5677_priv *rt5677, struct device_node *np)
+{
+	rt5677->pdata.vad_clock_en = of_get_named_gpio(np,"realtek,vad-clock-en", 0);
+	if (rt5677->pdata.vad_clock_en < 0)
+		pr_err("Failed to get CODEC GPIO\n");
+
+	return 0;
+}
+
 static int rt5677_i2c_probe(struct i2c_client *i2c,
 		    const struct i2c_device_id *id)
 {
+	struct rt5677_platform_data *pdata = dev_get_platdata(&i2c->dev);
 	struct rt5677_priv *rt5677;
 	int ret;
 
-	rt5677 = kzalloc(sizeof(struct rt5677_priv), GFP_KERNEL);
-	if (NULL == rt5677)
+	rt5677 = devm_kzalloc(&i2c->dev, sizeof(struct rt5677_priv), GFP_KERNEL);
+	if (rt5677 == NULL)
 		return -ENOMEM;
 
 	rt5677->vad_sleep = true;
@@ -5028,12 +5040,19 @@ static int rt5677_i2c_probe(struct i2c_client *i2c,
 		return -ENOMEM;
 	}
 
+	
 	i2c_set_clientdata(i2c, rt5677);
+
+
+	if (pdata)
+		rt5677->pdata = *pdata;
+	else
+		rt5677_parse_dt(rt5677, i2c->dev.of_node);
 
 	rt5677->regmap = devm_regmap_init_i2c(i2c, &rt5677_regmap);
 	if (IS_ERR(rt5677->regmap)) {
 		ret = PTR_ERR(rt5677->regmap);
-		dev_err(&i2c->dev, "Failed to allocate register map: %d\n",
+		dev_info(&i2c->dev, "Failed to allocate register map: %d\n",
 			ret);
 		return ret;
 	}
@@ -5043,32 +5062,26 @@ static int rt5677_i2c_probe(struct i2c_client *i2c,
 	if (ret < 0)
 		kfree(rt5677);
 
-	if (i2c->dev.platform_data)	{
+	if (gpio_is_valid(rt5677->pdata.vad_clock_en)) {
+		dev_info(&i2c->dev, "vad_clock_en: %d\n",
+		rt5677->pdata.vad_clock_en);
 
-		rt5677->vad_clock_en =
-		((struct rt5677_priv *)i2c->dev.platform_data)->vad_clock_en;
-
-		if (gpio_is_valid(rt5677->vad_clock_en)) {
-			dev_dbg(&i2c->dev, "vad_clock_en: %d\n",
-			rt5677->vad_clock_en);
-
-			ret = gpio_request(rt5677->vad_clock_en, "vad_clock_en");
-			if (ret) {
-				dev_err(&i2c->dev, "cannot get vad_clock_en gpio\n");
-			} else {
-				ret = gpio_direction_output(rt5677->vad_clock_en, 0);
-				if (ret) {
-					dev_err(&i2c->dev,
-					"vad_clock_en=0 fail,%d\n", ret);
-
-					gpio_free(rt5677->vad_clock_en);
-				} else
-					dev_dbg(&i2c->dev, "vad_clock_en=0\n");
-			}
+		ret = gpio_request(rt5677->pdata.vad_clock_en, "vad_clock_en");
+		if (ret) {
+			dev_info(&i2c->dev, "cannot get vad_clock_en gpio\n");
 		} else {
-			dev_dbg(&i2c->dev, "vad_clock_en is invalid: %d\n",
-			rt5677->vad_clock_en);
+			ret = gpio_direction_output(rt5677->pdata.vad_clock_en, 0);
+			if (ret) {
+				dev_info(&i2c->dev,
+				"vad_clock_en=0 fail,%d\n", ret);
+
+				gpio_free(rt5677->pdata.vad_clock_en);
+			} else
+				dev_info(&i2c->dev, "vad_clock_en=0\n");
 		}
+	} else {
+		dev_info(&i2c->dev, "vad_clock_en is invalid: %d\n",
+		rt5677->pdata.vad_clock_en);
 	}
 
 	return ret;
@@ -5094,10 +5107,16 @@ void rt5677_i2c_shutdown(struct i2c_client *client)
 		rt5677_set_bias_level(codec, SND_SOC_BIAS_OFF);
 }
 
+static struct of_device_id rt5677_match_table[] = {
+	{ .compatible = "realtek,rt5677",},
+	{ },
+};
+
 struct i2c_driver rt5677_i2c_driver = {
 	.driver = {
 		.name = "rt5677",
 		.owner = THIS_MODULE,
+		.of_match_table = rt5677_match_table,
 	},
 	.probe = rt5677_i2c_probe,
 	.remove   = rt5677_i2c_remove,

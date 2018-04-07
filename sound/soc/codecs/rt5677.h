@@ -1461,11 +1461,13 @@ struct rt5677_pll_code {
 	int k_code;
 };
 
+struct rt5677_platform_data {
+	int vad_clock_en;
+};
+
 struct rt5677_priv {
 	struct snd_soc_codec *codec;
-	/*
 	struct rt5677_platform_data pdata;
-	*/
 	struct regmap *regmap;
 	struct mutex index_lock;
 	/* protects vad activities, including model_len and model_buf */
