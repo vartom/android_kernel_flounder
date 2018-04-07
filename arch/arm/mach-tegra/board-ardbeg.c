@@ -385,12 +385,14 @@ static struct platform_device *ardbeg_devices[] __initdata = {
 #if defined(CONFIG_CRYPTO_DEV_TEGRA_SE) && !defined(CONFIG_USE_OF)
 	&tegra12_se_device,
 #endif
+	&tegra_pcm_device,
 	&tegra_ahub_device,
 	&tegra_dam_device0,
 	&tegra_dam_device1,
 	&tegra_dam_device2,
 	&tegra_i2s_device0,
 	&tegra_i2s_device1,
+	&tegra_i2s_device2,
 	&tegra_i2s_device3,
 	&tegra_i2s_device4,
 	&tegra_spdif_device,
@@ -825,6 +827,8 @@ static struct of_dev_auxdata ardbeg_auxdata_lookup[] __initdata = {
 	OF_DEV_AUXDATA("nvidia,tegra124-cec", 0x70015000, "tegra_cec", NULL),
 #endif
 	OF_DEV_AUXDATA("nvidia,tegra-audio-rt5639", 0x0, "tegra-snd-rt5639",
+		NULL),
+	OF_DEV_AUXDATA("nvidia,tegra-audio-rt5677", 0x0, "tegra-snd-rt5677.0",
 		NULL),
 	OF_DEV_AUXDATA("nvidia,icera-i500", 0, "tegra_usb_modem_power", NULL),
 	OF_DEV_AUXDATA("nvidia,ptm", 0x7081c000, "ptm", NULL),
