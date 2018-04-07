@@ -494,6 +494,9 @@ int __init flounder_sdhci_init(void)
 	int boot_vcore_mv;
 	u32 speedo;
 
+	flounder_wifi_init();
+	return 0;
+
 	nominal_core_mv =
 		tegra_dvfs_get_core_nominal_millivolts();
 	if (nominal_core_mv) {
@@ -524,7 +527,7 @@ int __init flounder_sdhci_init(void)
 
 	platform_device_register(&tegra_sdhci_device3);
 	platform_device_register(&tegra_sdhci_device0);
-	flounder_wifi_init();
+
 
 	return 0;
 }
