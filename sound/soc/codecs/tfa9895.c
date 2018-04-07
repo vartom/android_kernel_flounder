@@ -373,6 +373,40 @@ static struct miscdevice tfa9895_device = {
 	.fops = &tfa9895_fops,
 };
 
+static void tfa9895_parse_pfdata(struct device *dev,
+struct tfa9895_platform_data *ppdata)
+{
+	struct device_node *dt = dev->of_node;
+	enum of_gpio_flags flags;
+
+	pdata->tfa9895_power_enable = -EINVAL;
+
+
+	if (dt) {
+		pr_info("%s: dt is used\n", __func__);
+
+		pdata->tfa9895_power_enable =
+		of_get_named_gpio_flags(dt,
+		"tfa9895,enable-power-gpio", 0, &flags);
+	} else {
+		pr_info("%s: dt is NOT used\n", __func__);
+		if (dev->platform_data) {
+
+			pdata->tfa9895_power_enable =
+			((struct tfa9895_platform_data *)
+			dev->platform_data)->tfa9895_power_enable;
+		}
+	}
+
+	if (gpio_is_valid(pdata->tfa9895_power_enable)) {
+		pr_info("%s: tfa9895_power_enable %d\n",
+		__func__, pdata->tfa9895_power_enable);
+	} else {
+		pr_info("%s: tfa9895_power_enable %d is invalid\n",
+		__func__, pdata->tfa9895_power_enable);
+	}
+}
+
 int tfa9895_probe(struct i2c_client *client, const struct i2c_device_id *id)
 {
 	int i;
@@ -380,13 +414,17 @@ int tfa9895_probe(struct i2c_client *client, const struct i2c_device_id *id)
 
 	int ret = 0;
 	char temp[6] = {0x4, 0x88};
-	pdata = client->dev.platform_data;
 
 	if (pdata == NULL) {
-		ret = -ENOMEM;
-		pr_err("%s: platform data is NULL\n", __func__);
-		goto err_alloc_data_failed;
+		pdata = kzalloc(sizeof(*pdata), GFP_KERNEL);
+		if (pdata == NULL) {
+			ret = -ENOMEM;
+			pr_err("%s: platform data is NULL\n", __func__);
+			goto err_alloc_data_failed;
+		}
 	}
+
+	tfa9895_parse_pfdata(&client->dev, pdata);
 
 	if (gpio_is_valid(pdata->tfa9895_power_enable)) {
 		ret = gpio_request(pdata->tfa9895_power_enable, "tfa9895-power-enable");
@@ -467,7 +505,6 @@ static int tfa9895_remove(struct i2c_client *client)
 static void tfa9895_shutdown(struct i2c_client *client)
 {
 	int ret = 0;
-	pdata = client->dev.platform_data;
 
 	if (pdata == NULL) {
 		ret = -ENOMEM;
