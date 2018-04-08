@@ -151,7 +151,7 @@ int flounder_get_eng_id(void)
 {
 	return flounder_eng_id;
 }*/
-
+/*
 struct aud_sfio_data {
 	const char *name;
 	int id;
@@ -209,7 +209,7 @@ static struct aud_sfio_data audio_sfio_pins[] = {
 		.name = "SPI_CS",
 		.id   = TEGRA_GPIO_PY3,
 	},
-};
+};*/
 /*
 static struct tfa9895_platform_data tfa9895_data = {
 	.tfa9895_power_enable = TEGRA_GPIO_PX5,
@@ -341,7 +341,7 @@ struct spi_board_info rt5677_flounder_spi_board[1] = {
 	 },
 };*/
 
-static void flounder_audio_init(void)
+/*static void flounder_audio_init(void)
 {
 	int i;
 
@@ -356,7 +356,7 @@ static void flounder_audio_init(void)
 			pr_info("%s: gpio_free for gpio[%d] %s\n",
 				__func__, audio_sfio_pins[i].id, audio_sfio_pins[i].name);
 		}
-};
+};*/
 
 /*static struct platform_device flounder_audio_device_rt5677 = {
 	.name = "tegra-snd-rt5677",
@@ -915,7 +915,7 @@ static void __init tegra_flounder_late_init(void)
 #endif
 	flounder_i2c_init();
 //	flounder_spi_init(); in DT
-	flounder_audio_init();
+//	flounder_audio_init();
 	platform_add_devices(flounder_devices, ARRAY_SIZE(flounder_devices));
 
 	tegra_io_dpd_init();
