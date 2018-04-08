@@ -33,6 +33,7 @@
 #include <sound/tlv.h>
 #include <linux/htc_headset_mgr.h>
 #include <linux/of_gpio.h>
+#include "../../arch/arm/mach-tegra/gpio-names.h"
 
 #define RTK_IOCTL
 #define RT5677_DMIC_CLK_MAX 2400000
@@ -5087,6 +5088,35 @@ static int rt5677_i2c_probe(struct i2c_client *i2c,
 		dev_info(&i2c->dev, "vad_clock_en is invalid: %d\n",
 		rt5677->pdata.vad_clock_en);
 	}
+
+	gpio_request(TEGRA_GPIO_PA2, "I2S1_LRCK");
+	gpio_free(TEGRA_GPIO_PA2);
+	gpio_request(TEGRA_GPIO_PA3, "I2S1_SCLK");
+	gpio_free(TEGRA_GPIO_PA3);
+	gpio_request(TEGRA_GPIO_PA4, "I2S1_SDATA_IN");
+	gpio_free(TEGRA_GPIO_PA4);
+	gpio_request(TEGRA_GPIO_PA5, "I2S1_SDATA_OUT");
+	gpio_free(TEGRA_GPIO_PA5);
+	gpio_request(TEGRA_GPIO_PP0, "I2S2_LRCK");
+	gpio_free(TEGRA_GPIO_PP0);
+	gpio_request(TEGRA_GPIO_PP1, "I2S2_SDATA_IN");
+	gpio_free(TEGRA_GPIO_PP1);
+	gpio_request(TEGRA_GPIO_PP2, "I2S2_SDATA_OUT");
+	gpio_free(TEGRA_GPIO_PP2);
+	gpio_request(TEGRA_GPIO_PP3, "I2S2_SCLK");
+	gpio_free(TEGRA_GPIO_PP3);
+	gpio_request(TEGRA_GPIO_PW4, "extperiph1_clk");
+	gpio_free(TEGRA_GPIO_PW4);
+	gpio_request(TEGRA_GPIO_PY0, "SPI_MOSI");
+	gpio_free(TEGRA_GPIO_PY0);
+	gpio_request(TEGRA_GPIO_PY1, "SPI_MISO");
+	gpio_free(TEGRA_GPIO_PY1);
+	gpio_request(TEGRA_GPIO_PY2, "SPI_SCLK");
+	gpio_free(TEGRA_GPIO_PY2);
+	gpio_request(TEGRA_GPIO_PY3, "SPI_CS");
+	gpio_free(TEGRA_GPIO_PY3);
+	gpio_request(TEGRA_GPIO_PN1, "I2S0_SDATA_IN");
+	gpio_free(TEGRA_GPIO_PN1);
 
 	return ret;
 }
