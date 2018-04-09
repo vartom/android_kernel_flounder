@@ -379,6 +379,7 @@ struct tegra_dsi_out {
 	bool		no_pkt_seq_eot; /* 1st generation panel may not
 					 * support eot. Don't set it for
 					 * most panels. */
+	bool		no_pkt_seq_hbp;
 	bool		te_polarity_low;
 	bool		power_saving_suspend;
 	bool		suspend_stop_stream_late;
