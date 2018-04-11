@@ -179,6 +179,16 @@
 			mcu,Reset-gpio = <&gpio 138 GPIO_ACTIVE_LOW>;
 			mcu,Chip_mode-gpio = <&gpio 164 GPIO_ACTIVE_LOW>;
 		};
+
+		broadcom_bcm2079x_nfc@0x77 {
+			compatible = "broadcom,bcm2079x_nfc";
+			reg = <0x77>;
+			broadcom,irq-gpio = <&gpio 143 GPIO_ACTIVE_LOW>;
+			broadcom,en-gpio = <&gpio 9 GPIO_ACTIVE_LOW>;
+			broadcom,wake-gpio = <&gpio 145 GPIO_ACTIVE_LOW>;
+			interrupt-parent = <&gpio>;
+			interrupts = <143 0x0>;
+		};
 	};
 
 	i2c@7000c400 {
