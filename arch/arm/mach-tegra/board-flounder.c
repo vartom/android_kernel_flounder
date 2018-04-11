@@ -228,7 +228,7 @@ static struct i2c_board_info __initdata tfa9895_board_info = {
 };
 static struct i2c_board_info __initdata tfa9895l_board_info = {
 	I2C_BOARD_INFO("tfa9895l", 0x35),
-};*/
+};
 
 static struct bcm2079x_platform_data bcm2079x_pdata = {
 	.irq_gpio = TEGRA_GPIO_PR7,
@@ -239,7 +239,7 @@ static struct bcm2079x_platform_data bcm2079x_pdata = {
 static struct i2c_board_info __initdata bcm2079x_board_info = {
 	I2C_BOARD_INFO("bcm2079x-i2c", 0x77),
 	.platform_data = &bcm2079x_pdata,
-};
+};*/
 
 static __initdata struct tegra_clk_init_table flounder_clk_init_table[] = {
 	/* name		parent		rate		enabled */
@@ -282,15 +282,15 @@ static __initdata struct tegra_clk_init_table flounder_clk_init_table[] = {
 	{ NULL,		NULL,		0,		0},
 };
 
-static void flounder_i2c_init(void)
+/*static void flounder_i2c_init(void)
 {
-/*	i2c_register_board_info(1, &rt5677_board_info, 1);
+	i2c_register_board_info(1, &rt5677_board_info, 1);
 	i2c_register_board_info(1, &tfa9895_board_info, 1);
-	i2c_register_board_info(1, &tfa9895l_board_info, 1);*/
+	i2c_register_board_info(1, &tfa9895l_board_info, 1);
 
 	bcm2079x_board_info.irq = gpio_to_irq(TEGRA_GPIO_PR7),
 	i2c_register_board_info(0, &bcm2079x_board_info, 1);
-}
+}*/
 
 /*static struct tegra_asoc_platform_data flounder_audio_pdata_rt5677 = {
 	.gpio_hp_det = -1,
