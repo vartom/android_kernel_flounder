@@ -386,7 +386,7 @@ static struct platform_device flounder_vib_device = {
 		.platform_data = &flounder_vib_pdata,
 	},
 };
-
+/*
 static void flounder_panel(void)
 {
 	struct tegra_panel *panel;
@@ -397,7 +397,7 @@ static void flounder_panel(void)
 		if (panel->register_bl_dev)
 			panel->register_bl_dev();
 	}
-};
+};*/
 
 static struct platform_device *flounder_devices[] __initdata = {
 	&tegra_rtc_device,
@@ -913,20 +913,20 @@ static void __init tegra_flounder_late_init(void)
 #ifdef CONFIG_TEGRA_XUSB_PLATFORM
 	flounder_xusb_init();
 #endif
-	flounder_i2c_init();
+//	flounder_i2c_init();
 //	flounder_spi_init(); in DT
 //	flounder_audio_init();
 	platform_add_devices(flounder_devices, ARRAY_SIZE(flounder_devices));
 
 	tegra_io_dpd_init();
-	flounder_sdhci_init(); // in DT
+//	flounder_sdhci_init(); // in DT
 	flounder_regulator_init();
 	flounder_suspend_init();
 	tegra12_emc_init();
 
 	isomgr_init();
 	flounder_headset_init();
-	flounder_panel();
+//	flounder_panel();
 //	flounder_kbc_init(); in DT
 
 	/* put PEX pads into DPD mode to save additional power */
