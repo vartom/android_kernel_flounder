@@ -249,6 +249,7 @@ static int __init dsi_j_qxga_8_9_register_bl_dev(void)
 	}
 	return err;
 }
+late_initcall(dsi_j_qxga_8_9_register_bl_dev);
 
 struct tegra_panel_ops dsi_j_qxga_8_9_ops = {
 	.enable = dsi_j_qxga_8_9_enable,
