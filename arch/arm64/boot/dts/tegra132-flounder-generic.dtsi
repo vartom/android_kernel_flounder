@@ -15,6 +15,7 @@
 #include "tegra132-platforms/tegra132-flounder-pinmux.dtsi"
 #include "tegra132-platforms/tegra132-flounder-keys.dtsi"
 #include "tegra132-platforms/tegra132-flounder-sdhci.dtsi"
+#include "tegra132-platforms/tegra132-flounder-wireless.dtsi"
 #include "tegra132-flounder-power-tree.dtsi"
 #include "tegra124-platforms/tegra124-tn8-cpufreq.dtsi"
 
@@ -381,17 +382,6 @@
 		usb_vbus-supply = <&usb2_vbus>;
 		vddio_hsic-supply = <&ldo5_reg>;
 		status = "okay";
-	};
-
-	bluedroid_pm {
-		status = "okay";
-		compatible = "nvidia,tegra-bluedroid_pm";
-		id = <0>;
-		bluedroid_pm,shutdown-gpio = <&gpio TEGRA_GPIO(R, 1) GPIO_ACTIVE_LOW>;
-		bluedroid_pm,host-wake-gpio = <&gpio TEGRA_GPIO(U, 6) GPIO_ACTIVE_LOW>;
-		bluedroid_pm,ext-wake-gpio = <&gpio TEGRA_GPIO(EE, 1) GPIO_ACTIVE_LOW>;
-		interrupt-parent = <&gpio>;
-		interrupts = <166 0x01>;
 	};
 
 	sound {

@@ -37,5 +37,9 @@
 			richtek,enable-power-gpio = <&gpio 162 0>;
 		};
 	};
+
+	bcmdhd_wlan {
+		nv_path = "/system/etc/wifi/bcmdhd.cal";
+	};
 };
 
