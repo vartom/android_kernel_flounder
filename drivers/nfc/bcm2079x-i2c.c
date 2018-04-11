@@ -37,6 +37,7 @@
 #include <linux/poll.h>
 #include <linux/version.h>
 #include <linux/nfc/bcm2079x.h>
+#include <linux/of_gpio.h>
 
 #define TRUE		1
 #define FALSE		0
@@ -57,6 +58,7 @@
 
 struct bcm2079x_dev {
 	wait_queue_head_t read_wq;
+	struct bcm2079x_platform_data pdata;
 	struct mutex read_mutex;
 	struct i2c_client *client;
 	struct miscdevice bcm2079x_device;
@@ -124,7 +126,7 @@ static void set_client_addr(struct bcm2079x_dev *bcm2079x_dev, int addr)
     else
 		client->flags &= ~I2C_CLIENT_TEN;
 
-	dev_info(&client->dev,
+	dev_printk(KERN_INFO, &client->dev,
 		"set_client_addr changed to (0x%04X) flag = %04x\n",
 		client->addr, client->flags);
 }
@@ -151,15 +153,15 @@ static void change_client_addr(struct bcm2079x_dev *bcm2079x_dev, int addr)
 	for (i = 1; i < sizeof(addr_data) - 1; ++i)
 		ret += addr_data[i];
 	addr_data[sizeof(addr_data) - 1] = (ret & 0xFF);
-	dev_info(&client->dev,
+	dev_printk(KERN_INFO, &client->dev,
 		 "change_client_addr from (0x%04X) flag = "\
-		 "%04x, addr_data[%d] = %02x\n",
+		 "%04x, addr_data[%zu] = %02x\n",
 		 client->addr, client->flags, sizeof(addr_data) - 1,
 		 addr_data[sizeof(addr_data) - 1]);
 
 	mutex_lock(&bcm2079x_dev->read_mutex);
 	if (bcm2079x_dev && (bcm2079x_dev->shutdown_complete == true)) {
-		dev_info(&client->dev, "%s: discarding as " \
+		dev_printk(KERN_INFO, &client->dev, "%s: discarding as " \
 		"NFC in shutdown state\n", __func__);
 		mutex_unlock(&bcm2079x_dev->read_mutex);
 		return;
@@ -169,7 +171,7 @@ static void change_client_addr(struct bcm2079x_dev *bcm2079x_dev, int addr)
 	mutex_unlock(&bcm2079x_dev->read_mutex);
 
 	client->addr = addr_data[5];
-	dev_info(&client->dev,
+	dev_printk(KERN_INFO, &client->dev,
 		 "change_client_addr to (0x%04X) flag = %04x, ret = %d\n",
 		 client->addr, client->flags, ret);
 }
@@ -223,7 +225,7 @@ static ssize_t bcm2079x_dev_read(struct file *filp, char __user *buf,
 
 	/*Check for shutdown condition*/
 	if (bcm2079x_dev && (bcm2079x_dev->shutdown_complete == true)) {
-		dev_info(&bcm2079x_dev->client->dev, "%s: discarding read " \
+		dev_printk(KERN_INFO, &bcm2079x_dev->client->dev, "%s: discarding read " \
 		"as NFC in shutdown state\n", __func__);
 		mutex_unlock(&bcm2079x_dev->read_mutex);
 		return -ENODEV;
@@ -305,7 +307,7 @@ static ssize_t bcm2079x_dev_write(struct file *filp, const char __user *buf,
 
 	/*Check for shutdown condition*/
 	if (bcm2079x_dev && (bcm2079x_dev->shutdown_complete == true)) {
-		dev_info(&bcm2079x_dev->client->dev, "%s: discarding write " \
+		dev_printk(KERN_INFO, &bcm2079x_dev->client->dev, "%s: discarding write " \
 			"as NFC in shutdown state\n", __func__);
 		mutex_unlock(&bcm2079x_dev->read_mutex);
 		return -ENODEV;
@@ -335,7 +337,7 @@ static int bcm2079x_dev_open(struct inode *inode, struct file *filp)
 	filp->private_data = bcm2079x_dev;
 	bcm2079x_init_stat(bcm2079x_dev);
 	bcm2079x_enable_irq(bcm2079x_dev);
-	dev_info(&bcm2079x_dev->client->dev,
+	dev_printk(KERN_INFO, &bcm2079x_dev->client->dev,
 		 "device node major=%d, minor=%d\n",
 		 imajor(inode), iminor(inode));
 
@@ -353,26 +355,26 @@ static long bcm2079x_dev_unlocked_ioctl(struct file *filp,
 	case BCMNFC_READ_MULTI_PACKETS:
 		break;
 	case BCMNFC_CHANGE_ADDR:
-		dev_info(&bcm2079x_dev->client->dev,
+		dev_printk(KERN_INFO, &bcm2079x_dev->client->dev,
 			 "%s, BCMNFC_CHANGE_ADDR (%x, %lx):\n", __func__, cmd,
 			 arg);
 		change_client_addr(bcm2079x_dev, arg);
 		break;
 	case BCMNFC_POWER_CTL:
-		dev_info(&bcm2079x_dev->client->dev,
+		dev_printk(KERN_INFO, &bcm2079x_dev->client->dev,
 			 "%s, BCMNFC_POWER_CTL (%x, %lx):\n",
 			 __func__, cmd, arg);
 		if (arg == 1) {
 			set_client_addr(bcm2079x_dev,
 			  bcm2079x_dev->original_address);
 		}
-		gpio_set_value(bcm2079x_dev->en_gpio, arg);
+		gpio_set_value(bcm2079x_dev->pdata.en_gpio, arg);
 		break;
 	case BCMNFC_WAKE_CTL:
-		dev_info(&bcm2079x_dev->client->dev,
+		dev_printk(KERN_INFO, &bcm2079x_dev->client->dev,
 			 "%s, BCMNFC_WAKE_CTL (%x, %lx):\n",
 			 __func__, cmd, arg);
-		gpio_set_value(bcm2079x_dev->wake_gpio, arg);
+		gpio_set_value(bcm2079x_dev->pdata.wake_gpio, arg);
 		break;
 	default:
 		dev_err(&bcm2079x_dev->client->dev,
@@ -395,68 +397,120 @@ static const struct file_operations bcm2079x_dev_fops = {
 	.compat_ioctl = bcm2079x_dev_unlocked_ioctl // Just primitives in/out
 };
 
+static int bcm2079x_dev_parse_dt(struct bcm2079x_dev *bcm2079x_dev, struct device_node *np)
+{
+	bcm2079x_dev->pdata.irq_gpio = of_get_named_gpio(np,"broadcom,irq-gpio", 0);
+	if (bcm2079x_dev->pdata.irq_gpio < 0)
+		pr_err("Failed to get irq_gpio\n");
+
+	bcm2079x_dev->pdata.en_gpio = of_get_named_gpio(np,"broadcom,en-gpio", 0);
+	if (bcm2079x_dev->pdata.en_gpio < 0)
+		pr_err("Failed to get en_gpio\n");
+
+	bcm2079x_dev->pdata.wake_gpio = of_get_named_gpio(np,"broadcom,wake-gpio", 0);
+	if (bcm2079x_dev->pdata.wake_gpio < 0)
+		pr_err("Failed to get wake-gpio\n");
+
+	return 0;
+}
+
 static int bcm2079x_probe(struct i2c_client *client,
 			   const struct i2c_device_id *id)
 {
-	int ret;
-	struct bcm2079x_platform_data *platform_data;
+	struct bcm2079x_platform_data *pdata = dev_get_platdata(&client->dev);
 	struct bcm2079x_dev *bcm2079x_dev;
+	int ret;
 
-	platform_data = client->dev.platform_data;
-
-	dev_info(&client->dev, "%s, pro bcm2079x driver flags = %x\n",
+	dev_printk(KERN_INFO, &client->dev, "%s, pro bcm2079x driver flags = %x\n",
 			 __func__, client->flags);
-	if (platform_data == NULL) {
-		dev_err(&client->dev, "nfc probe fail\n");
-		return -ENODEV;
-	}
 
 	if (!i2c_check_functionality(client->adapter, I2C_FUNC_I2C)) {
 		dev_err(&client->dev, "need I2C_FUNC_I2C\n");
 		return -ENODEV;
 	}
 
-	ret = gpio_request(platform_data->irq_gpio, "I2C_REQ");
-	if (ret)
-        return -ENODEV;
-	ret = gpio_request(platform_data->en_gpio, "REG_PU");
-	if (ret)
-		goto err_en;
-	ret = gpio_request(platform_data->wake_gpio, "NFC_WAKE");
-	if (ret)
-        goto err_firm;
-
 	bcm2079x_dev = kzalloc(sizeof(*bcm2079x_dev), GFP_KERNEL);
 	if (bcm2079x_dev == NULL) {
 		dev_err(&client->dev, \
 			"failed to allocate memory for module data\n");
 		ret = -ENOMEM;
-		goto err_exit;
 	}
 
-	bcm2079x_dev->wake_gpio = platform_data->wake_gpio;
-	bcm2079x_dev->irq_gpio = platform_data->irq_gpio;
-	bcm2079x_dev->en_gpio = platform_data->en_gpio;
+	if (pdata)
+		bcm2079x_dev->pdata = *pdata;
+	else
+		bcm2079x_dev_parse_dt(bcm2079x_dev, client->dev.of_node);
+
 	bcm2079x_dev->client = client;
 
-	ret = gpio_direction_input(bcm2079x_dev->irq_gpio);
-	if (ret < 0) {
-		pr_err("%s : not able to set I2C_REQ as input\n", __func__);
-		goto err_en;
-	}
-	ret = gpio_direction_output(bcm2079x_dev->en_gpio, 0);
-	if (ret < 0) {
-		pr_err("%s : not able to set REG_PU as output\n", __func__);
-		goto err_firm;
-	}
-    ret = gpio_direction_output(bcm2079x_dev->wake_gpio, 0);
-    if (ret < 0) {
-        pr_err("%s : not able to set NFC_WAKE as output\n", __func__);
-        goto err_exit;
-    }
+	if (gpio_is_valid(bcm2079x_dev->pdata.irq_gpio)) {
+		dev_info(&client->dev, "irq_gpio: %d\n",
+		bcm2079x_dev->pdata.irq_gpio);
 
-	gpio_set_value(platform_data->en_gpio, 0);
-	gpio_set_value(platform_data->wake_gpio, 0);
+		ret = gpio_request(bcm2079x_dev->pdata.irq_gpio, "I2C_REQ");
+		if (ret) {
+			dev_err(&client->dev, "cannot get irq_gpio gpio\n");
+		} else {
+			ret = gpio_direction_input(bcm2079x_dev->pdata.irq_gpio);
+			if (ret) {
+				dev_err(&client->dev,
+				"not able to set i2c_REQ as input,%d\n", ret);
+
+				gpio_free(bcm2079x_dev->pdata.irq_gpio);
+			} else
+				dev_dbg(&client->dev, "irq_gpio=0\n");
+		}
+	} else {
+		dev_err(&client->dev, "irq_gpio is invalid: %d\n",
+		bcm2079x_dev->pdata.irq_gpio);
+	}
+
+	if (gpio_is_valid(bcm2079x_dev->pdata.en_gpio)) {
+		dev_info(&client->dev, "en_gpio: %d\n",
+		bcm2079x_dev->pdata.en_gpio);
+
+		ret = gpio_request(bcm2079x_dev->pdata.en_gpio, "REG_PU");
+		if (ret) {
+			dev_err(&client->dev, "cannot get en_gpio gpio\n");
+		} else {
+			ret = gpio_direction_output(bcm2079x_dev->pdata.en_gpio, 0);
+			if (ret) {
+				dev_err(&client->dev,
+				"not able to set REG_PU as output,%d\n", ret);
+
+				gpio_free(bcm2079x_dev->pdata.en_gpio);
+			} else
+				dev_dbg(&client->dev, "en_gpio=0\n");
+		}
+	} else {
+		dev_err(&client->dev, "en_gpio is invalid: %d\n",
+		bcm2079x_dev->pdata.en_gpio);
+	}
+
+	if (gpio_is_valid(bcm2079x_dev->pdata.wake_gpio)) {
+		dev_info(&client->dev, "wake_gpio: %d\n",
+		bcm2079x_dev->pdata.wake_gpio);
+
+		ret = gpio_request(bcm2079x_dev->pdata.wake_gpio, "NFC_WAKE");
+		if (ret) {
+			dev_err(&client->dev, "cannot get wake_gpio gpio\n");
+		} else {
+			ret = gpio_direction_output(bcm2079x_dev->pdata.wake_gpio, 0);
+			if (ret) {
+				dev_err(&client->dev,
+				"not able to set NFC_WAKE as output,%d\n", ret);
+
+				gpio_free(bcm2079x_dev->pdata.wake_gpio);
+			} else
+				dev_dbg(&client->dev, "wake_gpio=0\n");
+		}
+	} else {
+		dev_err(&client->dev, "wake_gpio is invalid: %d\n",
+		bcm2079x_dev->pdata.wake_gpio);
+	}
+
+	gpio_set_value(bcm2079x_dev->pdata.en_gpio, 0);
+	gpio_set_value(bcm2079x_dev->pdata.wake_gpio, 0);
 
 	/* init mutex and queues */
 	init_waitqueue_head(&bcm2079x_dev->read_wq);
@@ -472,7 +526,7 @@ static int bcm2079x_probe(struct i2c_client *client,
 		dev_err(&client->dev, "misc_register failed\n");
 		goto err_misc_register;
 	}
-	dev_info(&client->dev,
+	dev_printk(KERN_INFO, &client->dev,
 		 "%s, saving address 0x%02x\n",
 		 __func__, client->addr);
 	bcm2079x_dev->original_address = client->addr;
@@ -480,7 +534,7 @@ static int bcm2079x_probe(struct i2c_client *client,
 	/* request irq.  the irq is set whenever the chip has data available
 	 * for reading.  it is cleared when all data has been read.
 	 */
-	dev_info(&client->dev, "requesting IRQ %d with IRQF_NO_SUSPEND\n",
+	dev_printk(KERN_INFO, &client->dev, "requesting IRQ %d with IRQF_NO_SUSPEND\n",
 		client->irq);
 	bcm2079x_dev->irq_enabled = true;
 	ret = request_irq(client->irq, bcm2079x_dev_irq_handler,
@@ -492,7 +546,7 @@ static int bcm2079x_probe(struct i2c_client *client,
 	}
 	bcm2079x_disable_irq(bcm2079x_dev);
 	i2c_set_clientdata(client, bcm2079x_dev);
-	dev_info(&client->dev,
+	dev_printk(KERN_INFO, &client->dev,
 		 "%s, probing bcm2079x driver exited successfully\n",
 		 __func__);
 	return 0;
@@ -502,12 +556,6 @@ err_request_irq_failed:
 err_misc_register:
 	mutex_destroy(&bcm2079x_dev->read_mutex);
 	kfree(bcm2079x_dev);
-err_exit:
-	gpio_free(platform_data->wake_gpio);
-err_firm:
-	gpio_free(platform_data->en_gpio);
-err_en:
-	gpio_free(platform_data->irq_gpio);
 	return ret;
 }
 
@@ -519,9 +567,9 @@ static int bcm2079x_remove(struct i2c_client *client)
 	free_irq(client->irq, bcm2079x_dev);
 	misc_deregister(&bcm2079x_dev->bcm2079x_device);
 	mutex_destroy(&bcm2079x_dev->read_mutex);
-	gpio_free(bcm2079x_dev->irq_gpio);
-	gpio_free(bcm2079x_dev->en_gpio);
-	gpio_free(bcm2079x_dev->wake_gpio);
+	gpio_free(bcm2079x_dev->pdata.irq_gpio);
+	gpio_free(bcm2079x_dev->pdata.en_gpio);
+	gpio_free(bcm2079x_dev->pdata.wake_gpio);
 	kfree(bcm2079x_dev);
 
 	return 0;
@@ -537,13 +585,18 @@ static void bcm2079x_shutdown(struct i2c_client *client)
 	bcm2079x_data->shutdown_complete = true;
 	mutex_unlock(&bcm2079x_data->read_mutex);
 
-	dev_info(&bcm2079x_data->client->dev,
+	dev_printk(KERN_INFO, &bcm2079x_data->client->dev,
 	"%s: NFC shutting down\n", __func__);
 }
 
 static const struct i2c_device_id bcm2079x_id[] = {
 	{"bcm2079x-i2c", 0},
 	{}
+};
+
+static struct of_device_id bcm2079x_match_table[] = {
+	{ .compatible = "broadcom,bcm2079x_nfc",},
+	{ },
 };
 
 static struct i2c_driver bcm2079x_driver = {
@@ -554,6 +607,7 @@ static struct i2c_driver bcm2079x_driver = {
 	.driver = {
 		.owner = THIS_MODULE,
 		.name = "bcm2079x-i2c",
+		.of_match_table = bcm2079x_match_table,
 	},
 };
 
