@@ -25,6 +25,8 @@
 #include <linux/rtc.h>
 #include <linux/slab.h>
 #include <linux/hrtimer.h>
+#include <linux/of.h>
+#include "../../arch/arm/mach-tegra/gpio-names.h"
 
 #include <linux/mfd/pm8xxx/core.h>
 #ifdef HTC_HEADSET_CONFIG_MSM_RPC
@@ -38,6 +40,8 @@
 #endif
 
 #define DRIVER_NAME "HS_PMIC"
+#define	EARPHONE_DET TEGRA_GPIO_PW3
+#define AUD_REMO_PRES TEGRA_GPIO_PS2
 
 #ifdef HTC_HEADSET_CONFIG_PMIC_TPS80032_ADC
 #include <linux/iio/consumer.h>
@@ -364,6 +368,17 @@ static irqreturn_t button_irq_handler(int irq, void *dev_id)
 }
 
 #ifdef CONFIG_HEADSET_DEBUG_UART
+#define	AUD_DEBUG_EN TEGRA_GPIO_PK5
+static int headset_get_debug(void)
+{
+	int ret = 0;
+	ret = gpio_get_value(AUD_DEBUG_EN);
+	pr_info("[HS_PMIC] (%s) AUD_DEBUG_EN=%d\n", __func__, ret);
+	return ret;
+}
+#endif
+
+#ifdef CONFIG_HEADSET_DEBUG_UART
 static irqreturn_t debug_irq_handler(int irq, void *data)
 {
 	unsigned int irq_mask = IRQF_TRIGGER_HIGH | IRQF_TRIGGER_LOW;
@@ -429,7 +444,7 @@ static void irq_init_work_func(struct work_struct *work)
 	}
 
 #ifdef CONFIG_HEADSET_DEBUG_UART
-	if (hi->pdata.debug_gpio) {
+	if (hi->pdata.debug_gpio > 0) {
 		HS_LOG("Enable debug IRQ");
 		hi->debug_irq_type = IRQF_TRIGGER_HIGH;
 		set_irq_type(hi->pdata.debug_irq, hi->debug_irq_type);
@@ -595,66 +610,73 @@ err_create_pmic_device_file:
 	HS_ERR("Failed to register pmic attribute file");
 	return ret;
 }
+
 static int htc_headset_pmic_probe(struct platform_device *pdev)
 {
 	int ret = 0;
-	struct htc_headset_pmic_platform_data *pdata = pdev->dev.platform_data;
+//	struct htc_headset_pmic_platform_data *pdata = pdev->dev.platform_data;
 #ifdef HTC_HEADSET_CONFIG_MSM_RPC
 	uint32_t vers = 0;
 #endif
+	uint32_t adc_remote[8] = {
+		0, 117, 118, 230, 231, 414, 415, 829,
+	};
 
 	HS_LOG("++++++++++++++++++++");
 	hi = kzalloc(sizeof(struct htc_35mm_pmic_info), GFP_KERNEL);
 	if (!hi)
 		return -ENOMEM;
 
-	hi->pdata.driver_flag = pdata->driver_flag;
-	hi->pdata.hpin_gpio = pdata->hpin_gpio;
-	hi->pdata.hpin_irq = pdata->hpin_irq;
-	hi->pdata.key_gpio = pdata->key_gpio;
-	hi->pdata.key_irq = pdata->key_irq;
-	hi->pdata.key_enable_gpio = pdata->key_enable_gpio;
-	hi->pdata.adc_mpp = pdata->adc_mpp;
-	hi->pdata.adc_amux = pdata->adc_amux;
-	hi->pdata.hs_controller = pdata->hs_controller;
-	hi->pdata.hs_switch = pdata->hs_switch;
-	hi->pdata.adc_mic = pdata->adc_mic;
-#ifdef CONFIG_HEADSET_DEBUG_UART
-	hi->pdata.debug_gpio = pdata->debug_gpio;
-	hi->pdata.debug_irq = pdata->debug_irq;
-	hi->pdata.headset_get_debug = pdata->headset_get_debug;
+	hi->pdata.driver_flag = DRIVER_HS_PMIC_ADC;
+	hi->pdata.hpin_gpio = EARPHONE_DET;
+	hi->pdata.hpin_irq = false;
+	hi->pdata.key_gpio = AUD_REMO_PRES;
+	hi->pdata.key_irq = false;
+	hi->pdata.key_enable_gpio = false;
+#ifdef HTC_HEADSET_CONFIG_PMIC_8XXX_ADC
+	hi->pdata.adc_mpp = 0;
+	hi->pdata.adc_amux = 0;
 #endif
-
+#ifdef HTC_HEADSET_CONFIG_MSM_RPC
+	hi->pdata.hs_controller = 0;
+	hi->pdata.hs_switch = 0;
+#endif
+	hi->pdata.adc_mic = HS_DEF_MIC_ADC_16_BIT_MIN;
+#ifdef CONFIG_HEADSET_DEBUG_UART
+	hi->pdata.debug_gpio = AUD_DEBUG_EN;
+	hi->pdata.debug_irq = false;
+	hi->pdata.headset_get_debug = headset_get_debug;
+#endif
 	hi->htc_accessory_class = hs_get_attribute_class();
 	hpin_count_global = 0;
-
-
+	hi->pdata.iio_channel_name = "hs-channel";
 
 	register_attributes();
 	INIT_DELAYED_WORK(&detect_pmic_work.hpin_work, detect_pmic_work_func);
 	hrtimer_init(&hi->timer, CLOCK_MONOTONIC, HRTIMER_MODE_REL);
 	hi->timer.function = hs_hpin_irq_enable_func;
 
-	if (!hi->pdata.adc_mic)
+/*	if (!hi->pdata.adc_mic)
 		hi->pdata.adc_mic = HS_DEF_MIC_ADC_16_BIT_MIN;
 
 	if (pdata->adc_mic_bias[0] && pdata->adc_mic_bias[1]) {
 		memcpy(hi->pdata.adc_mic_bias, pdata->adc_mic_bias,
 		       sizeof(hi->pdata.adc_mic_bias));
 		hi->pdata.adc_mic = hi->pdata.adc_mic_bias[0];
-	} else {
-		hi->pdata.adc_mic_bias[0] = hi->pdata.adc_mic;
-		hi->pdata.adc_mic_bias[1] = HS_DEF_MIC_ADC_16_BIT_MAX;
+	} else {*/
+	hi->pdata.adc_mic_bias[0] = HS_DEF_MIC_ADC_16_BIT_MIN;
+	hi->pdata.adc_mic_bias[1] = HS_DEF_MIC_ADC_16_BIT_MAX;
+//	}
+
+	if (adc_remote[8]) {
+		memcpy(hi->pdata.adc_remote, adc_remote,
+		       sizeof(hi->pdata.adc_remote));
 	}
 
-	if (pdata->adc_remote[5])
-		memcpy(hi->pdata.adc_remote, pdata->adc_remote,
-		       sizeof(hi->pdata.adc_remote));
-
-	if (pdata->adc_metrico[0] && pdata->adc_metrico[1])
+/*	if (pdata->adc_metrico[0] && pdata->adc_metrico[1])
 		memcpy(hi->pdata.adc_metrico, pdata->adc_metrico,
 		       sizeof(hi->pdata.adc_metrico));
-
+*/
 	hi->hpin_irq_type = IRQF_TRIGGER_LOW;
 	hi->hpin_debounce = HS_JIFFIES_ZERO;
 	hi->key_irq_type = IRQF_TRIGGER_LOW;
@@ -699,7 +721,7 @@ static int htc_headset_pmic_probe(struct platform_device *pdev)
 		disable_irq(hi->pdata.key_irq);
 	}
 #ifdef CONFIG_HEADSET_DEBUG_UART
-	if (hi->pdata.debug_gpio) {
+	if (hi->pdata.debug_gpio > 0) {
 		ret = hs_pmic_request_irq(hi->pdata.debug_gpio,
 				&hi->pdata.debug_irq, debug_irq_handler,
 				hi->debug_irq_type, "HS_PMIC_DEBUG", 1);
@@ -712,13 +734,14 @@ static int htc_headset_pmic_probe(struct platform_device *pdev)
 #endif
 
 #ifdef HTC_HEADSET_CONFIG_PMIC_TPS80032_ADC
-	adc_channel = iio_channel_get(&pdev->dev, pdata->iio_channel_name);
-	if (IS_ERR(hi->channel)) {
+	adc_channel = iio_channel_get(NULL, hi->pdata.iio_channel_name);
+	if (IS_ERR(adc_channel)) {
 		dev_err(&pdev->dev, "%s: Failed to get channel %s, %ld\n",
-			__func__, pdata->iio_channel_name,
-			PTR_ERR(hi->channel));
+			__func__, hi->pdata.iio_channel_name,
+			PTR_ERR(adc_channel));
 	}
-	HS_LOG("%s: iio_channel_get(%s)\n", __func__, pdata->iio_channel_name);
+
+	HS_LOG("%s: iio_channel_get(%s)\n", __func__, hi->pdata.iio_channel_name);
 #endif
 
 
@@ -784,7 +807,7 @@ err_request_button_irq:
 
 err_request_detect_irq:
 #ifdef CONFIG_HEADSET_DEBUG_UART
-	if (hi->pdata.debug_gpio) {
+	if (hi->pdata.debug_gpio > 0) {
 		free_irq(hi->pdata.debug_irq, 0);
 		gpio_free(hi->pdata.debug_gpio);
 	}
@@ -818,7 +841,7 @@ static int htc_headset_pmic_remove(struct platform_device *pdev)
 	}
 
 #ifdef CONFIG_HEADSET_DEBUG_UART
-	if (hi->pdata.debug_gpio) {
+	if (hi->pdata.debug_gpio > 0) {
 		free_irq(hi->pdata.debug_irq, 0);
 		gpio_free(hi->pdata.debug_gpio);
 	}
@@ -833,12 +856,19 @@ static int htc_headset_pmic_remove(struct platform_device *pdev)
 	return 0;
 }
 
+static struct of_device_id htc_headset_pmic_match_table[] = {
+	{ .compatible = "htc,headset_pmic",},
+	{ },
+};
+MODULE_DEVICE_TABLE(of, htc_headset_pmic_match_table);
+
 static struct platform_driver htc_headset_pmic_driver = {
 	.probe	= htc_headset_pmic_probe,
 	.remove	= htc_headset_pmic_remove,
 	.driver	= {
 		.name	= "HTC_HEADSET_PMIC",
 		.owner	= THIS_MODULE,
+		.of_match_table = htc_headset_pmic_match_table,
 	},
 };
 
