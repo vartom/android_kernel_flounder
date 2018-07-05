@@ -147,7 +147,6 @@ struct tegra_otg_cables {
 	struct extcon_specific_cable_nb extcon_obj;
 };
 
-static u64 tegra_ehci_dmamask = DMA_BIT_MASK(64);
 static struct tegra_otg *tegra_clone;
 static struct notifier_block otg_vbus_nb;
 static struct notifier_block otg_id_nb;
@@ -937,8 +936,6 @@ static struct tegra_usb_otg_data *tegra_otg_dt_parse_pdata(
 	if (!np)
 		return NULL;
 
-#if (defined(CONFIG_ARCH_TEGRA_21x_SOC) || defined(CONFIG_ARCH_TEGRA_12x_SOC))\
-	&& !defined(CONFIG_ARCH_TEGRA_13x_SOC)
 	/* get EHCI device/pdata handle */
 	if (!tegra->ehci_node) {
 		tegra->ehci_node = of_parse_phandle(np, "nvidia,hc-device", 0);
@@ -947,7 +944,7 @@ static struct tegra_usb_otg_data *tegra_otg_dt_parse_pdata(
 			return NULL;
 		}
 	}
-#endif
+
 	pdata = devm_kzalloc(&pdev->dev, sizeof(struct tegra_usb_otg_data),
 			GFP_KERNEL);
 	if (!pdata) {
@@ -978,63 +975,8 @@ static struct tegra_usb_otg_data *tegra_otg_dt_parse_pdata(
 	return pdata;
 }
 
-static struct resource tegra_usb_resources[] = {
-	[0] = {
-		.start  = TEGRA_USB_BASE,
-		.end    = TEGRA_USB_BASE + TEGRA_USB_SIZE - 1,
-		.flags  = IORESOURCE_MEM,
-	},
-	[1] = {
-		.start  = INT_USB,
-		.end    = INT_USB,
-		.flags  = IORESOURCE_IRQ,
-	},
-};
-
-static struct platform_device tegra_ehci_device = {
-	.name   = "tegra-ehci",
-	.id     = 0,
-	.dev    = {
-		.dma_mask       = &tegra_ehci_dmamask,
-		.coherent_dma_mask = DMA_BIT_MASK(64),
-	},
-	.resource = tegra_usb_resources,
-	.num_resources = ARRAY_SIZE(tegra_usb_resources),
-};
-
-static struct tegra_usb_platform_data tegra_ehci_utmi_pdata = {
-	.port_otg = true,
-	.has_hostpc = true,
-	.unaligned_dma_buf_supported = false,
-	.phy_intf = TEGRA_USB_PHY_INTF_UTMI,
-	.op_mode = TEGRA_USB_OPMODE_HOST,
-	.u_data.host = {
-		.hot_plug = false,
-		.remote_wakeup_supported = true,
-		.power_off_on_suspend = true,
-	},
-	.u_cfg.utmi = {
-		.hssync_start_delay = 0,
-		.elastic_limit = 16,
-		.idle_wait_delay = 17,
-		.term_range_adj = 6,
-		.xcvr_setup = 15,
-		.xcvr_lsfslew = 0,
-		.xcvr_lsrslew = 3,
-		.xcvr_setup_offset = 0,
-		.xcvr_use_fuses = 1,
-		.vbus_oc_map = 0x4,
-		.xcvr_hsslew_lsb = 2,
-	},
-};
-
-static struct tegra_otg_soc_data tegra_soc_data = {
-	.ehci_device = &tegra_ehci_device,
-	.ehci_pdata = &tegra_ehci_utmi_pdata,
-};
-
 static struct of_device_id tegra_otg_of_match[] = {
-	{.compatible = "nvidia,tegra132-otg", .data = &tegra_soc_data, },
+	{.compatible = "nvidia,tegra132-otg" },
 	{.compatible = "nvidia,tegra124-otg" },
 };
 MODULE_DEVICE_TABLE(of, tegra_otg_of_match);
