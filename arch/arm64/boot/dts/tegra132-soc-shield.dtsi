@@ -36,6 +36,7 @@
 		spi4 = &spi4;
 		spi5 = &spi5;
 		udc0 = &udc;
+		ehci0 = &ehci1;
 		ehci1 = &ehci2;
 		ehci2 = &ehci3;
 	};
@@ -433,6 +434,10 @@
 	};
 
 	sata@70020000 {
+		status = "disabled";
+	};
+
+	ehci@7d000000 {
 		status = "disabled";
 	};
 
