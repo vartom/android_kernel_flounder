@@ -1476,7 +1476,7 @@ static int tegra_rt5677_resume_pre(struct snd_soc_card *card)
 		if (!machine->clock_enabled &&
 				machine->bias_level != SND_SOC_BIAS_OFF) {
 			mclk_enable(machine, 1);
-			tegra_asoc_utils_clk_enable(&machine->util_data);
+		//	tegra_asoc_utils_clk_enable(&machine->util_data);
 			__set_rt5677_power(machine, true, true);
 		}
 		mutex_unlock(&machine->rt5677_lock);
@@ -1837,11 +1837,11 @@ static int tegra_rt5677_driver_probe(struct platform_device *pdev)
 
 	INIT_DELAYED_WORK(&machine->power_work, trgra_do_power_work);
 
-	/*V_IO_1V8*/
+	/*V_IO_1V8*
 	if (gpio_is_valid(pdata->gpio_ldo1_en)) {
 		dev_dbg(&pdev->dev, "gpio_ldo1_en %d is valid\n",
 			pdata->gpio_ldo1_en);
-		ret = gpio_request(pdata->gpio_ldo1_en, "rt5677");
+		ret = gpio_request(pdata->gpio_ldo1_en, "rt5677-ldo1-enable");
 		if (ret) {
 			dev_err(&pdev->dev, "Fail gpio_request gpio_ldo1_en, %d\n",
 				ret);
@@ -1859,7 +1859,7 @@ static int tegra_rt5677_driver_probe(struct platform_device *pdev)
 	} else {
 		dev_err(&pdev->dev, "gpio_ldo1_en %d is invalid\n",
 			pdata->gpio_ldo1_en);
-	}
+	}*/
 
 	usleep_range(1000, 2000);
 
