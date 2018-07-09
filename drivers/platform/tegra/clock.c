@@ -1237,6 +1237,9 @@ static void __init tegra_clk_verify_rates(void)
 			c->parent->ops->shared_bus_update;
 		rate = clk_get_rate(c);
 
+		if (strcmp(c->name, "disalp"))
+			rate = clk_get_max_rate(c);
+
 		/* Over-clock warning (skip virtual shared bus user clocks) */
 		if (!bus_user && (rate > clk_get_max_rate(c)))
 			WARN(1, "tegra: %s boot rate %lu exceeds max rate %lu\n",
