@@ -423,6 +423,7 @@ static struct platform_device *flounder_devices[] __initdata = {
 	&flounder_vib_device,
 };
 
+#ifdef CONFIG_TEGRA_XUSB_PLATFORM
 static struct tegra_usb_platform_data tegra_udc_pdata = {
 	.port_otg = true,
 	.has_hostpc = true,
@@ -596,6 +597,7 @@ static void flounder_usb_init(void)
 	}
 #endif
 }
+#endif
 
 static struct tegra_xusb_platform_data xusb_pdata = {
 	.portmap = TEGRA_XUSB_SS_P0 | TEGRA_XUSB_USB2_P0 | TEGRA_XUSB_SS_P1 |
@@ -633,13 +635,15 @@ static struct of_dev_auxdata flounder_auxdata_lookup[] __initdata = {
 	OF_DEV_AUXDATA("nvidia,tegra132-dtv", 0x7000c300, "dtv", NULL),
 	OF_DEV_AUXDATA("nvidia,tegra124-dtv", 0x7000c300, "dtv", NULL),
 #if defined(CONFIG_ARM64)
-	OF_DEV_AUXDATA("nvidia,tegra132-udc", 0x7d000000, "tegra-udc.0",
-			&tegra_udc_pdata.u_data.dev),
-	OF_DEV_AUXDATA("nvidia,tegra132-otg", 0x7d000000, "tegra-otg",
-			&tegra_otg_pdata),
-	OF_DEV_AUXDATA("nvidia,tegra132-ehci", 0x7d004000, "tegra-ehci.1",
+	OF_DEV_AUXDATA("nvidia,tegra132-udc", TEGRA_USB_BASE, "tegra-udc.0",
 			NULL),
-	OF_DEV_AUXDATA("nvidia,tegra132-ehci", 0x7d008000, "tegra-ehci.2",
+	OF_DEV_AUXDATA("nvidia,tegra132-otg", TEGRA_USB_BASE, "tegra-otg",
+			NULL),
+	OF_DEV_AUXDATA("nvidia,tegra132-ehci", TEGRA_USB_BASE, "tegra-ehci.0",
+			NULL),
+	OF_DEV_AUXDATA("nvidia,tegra132-ehci", TEGRA_USB_BASE, "tegra-ehci.1",
+			NULL),
+	OF_DEV_AUXDATA("nvidia,tegra132-ehci", TEGRA_USB_BASE, "tegra-ehci.2",
 			NULL),
 #endif
 	OF_DEV_AUXDATA("nvidia,tegra124-udc", TEGRA_USB_BASE, "tegra-udc.0",
@@ -682,19 +686,20 @@ static struct of_dev_auxdata flounder_auxdata_lookup[] __initdata = {
 #ifdef CONFIG_TEGRA_CEC_SUPPORT
 	OF_DEV_AUXDATA("nvidia,tegra124-cec", 0x70015000, "tegra_cec", NULL),
 #endif
+	OF_DEV_AUXDATA("nvidia,ptm", 0x7081c000, "ptm", NULL),
 	OF_DEV_AUXDATA("nvidia,tegra-audio-rt5677", 0x0, "tegra-snd-rt5677.0",
 		NULL),
-	OF_DEV_AUXDATA("nvidia,tegra124-sdhci", 0x700b0600, "sdhci-tegra.3", 
+	OF_DEV_AUXDATA("nvidia,tegra124-sdhci", TEGRA_SDMMC4_BASE, "sdhci-tegra.3", 
 			NULL),
-	OF_DEV_AUXDATA("nvidia,tegra124-sdhci", 0x700b0400, "sdhci-tegra.2", 
+	OF_DEV_AUXDATA("nvidia,tegra124-sdhci", TEGRA_SDMMC3_BASE, "sdhci-tegra.2", 
 			NULL),
-	OF_DEV_AUXDATA("nvidia,tegra124-sdhci", 0x700b0000, "sdhci-tegra.0", 
+	OF_DEV_AUXDATA("nvidia,tegra124-sdhci", TEGRA_SDMMC1_BASE, "sdhci-tegra.0", 
 			NULL),
 	{}
 };
 #endif
 
-
+#ifdef CONFIG_TEGRA_XUSB_PLATFORM
 #define	EARPHONE_DET TEGRA_GPIO_PW3
 #define	HSMIC_2V85_EN TEGRA_GPIO_PS3
 #define AUD_REMO_PRES TEGRA_GPIO_PS2
@@ -875,10 +880,11 @@ static int __init flounder_headset_init(void)
 	platform_device_register(&htc_headset_mgr);
 	return 0;
 }
+#endif
 
 static void __init tegra_flounder_early_init(void)
 {
-	flounder_new_sysedp_init();
+//	flounder_new_sysedp_init(); // in DT
 	tegra_clk_init_from_table(flounder_clk_init_table);
 	tegra_clk_verify_parents();
 	if (of_machine_is_compatible("nvidia,flounder"))
@@ -905,12 +911,29 @@ static struct tegra_io_dpd pexclk2_io = {
 	.io_dpd_bit		= 6,
 };
 
+static struct tegra_suspend_platform_data flounder_suspend_data = {	
+	.cpu_timer      = 500,	
+	.cpu_off_timer  = 300,	
+	.cpu_suspend_freq = 408000,	
+	.suspend_mode   = TEGRA_SUSPEND_LP0,	
+	.core_timer     = 0x157e,	
+	.core_off_timer = 2000,	
+	.corereq_high   = true,	
+	.sysclkreq_high = true,	
+	.cpu_lp2_min_residency = 1000,	
+	.min_residency_vmin_fmin = 1000,	
+	.min_residency_ncpu_fast = 8000,	
+	.min_residency_ncpu_slow = 5000,	
+	.min_residency_mclk_stop = 5000,	
+	.min_residency_crail = 20000,	
+};
+
 static void __init tegra_flounder_late_init(void)
 {
-	flounder_usb_init();
+#ifdef CONFIG_TEGRA_XUSB_PLATFORM
+	flounder_usb_init(); // in dt
 //	if(is_mdm_modem())
 //		flounder_mdm_9k_init();
-#ifdef CONFIG_TEGRA_XUSB_PLATFORM
 	flounder_xusb_init();
 #endif
 //	flounder_i2c_init();
@@ -920,12 +943,15 @@ static void __init tegra_flounder_late_init(void)
 
 	tegra_io_dpd_init();
 //	flounder_sdhci_init(); // in DT
-	flounder_regulator_init();
-	flounder_suspend_init();
+//	flounder_regulator_init();
+//	flounder_suspend_init();
 	tegra12_emc_init();
+	tegra_init_suspend(&flounder_suspend_data);
 
 	isomgr_init();
+#ifdef CONFIG_TEGRA_XUSB_PLATFORM
 	flounder_headset_init();
+#endif
 //	flounder_panel();
 //	flounder_kbc_init(); in DT
 
@@ -934,28 +960,29 @@ static void __init tegra_flounder_late_init(void)
 	tegra_io_dpd_enable(&pexclk1_io);
 	tegra_io_dpd_enable(&pexclk2_io);
 
-	flounder_sensors_init();
+//	flounder_sensors_init();
 
-	flounder_soctherm_init();
+//	flounder_soctherm_init();
 
 //	flounder_setup_bluedroid_pm(); in DT
 
-	flounder_sysedp_dynamic_capping_init();
+//	flounder_sysedp_dynamic_capping_init();
 
 
 }
 
 static void __init tegra_flounder_init_early(void)
 {
-	flounder_rail_alignment_init();/* Old*/
+//	flounder_rail_alignment_init();/* Old*/
 	tegra12x_init_early();
 }
 
 static void __init tegra_flounder_dt_init(void)
 {
+//	regulator_has_full_constraints();
 	tegra_flounder_early_init();
 #ifdef CONFIG_USE_OF
-	flounder_camera_auxdata(flounder_auxdata_lookup);
+//	flounder_camera_auxdata(flounder_auxdata_lookup);
 	of_platform_populate(NULL,
 		of_default_bus_match_table, flounder_auxdata_lookup,
 		&platform_bus);
