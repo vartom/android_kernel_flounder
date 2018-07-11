@@ -5,8 +5,8 @@
 #define TEGRA132_PACKAGE_IS_DSC
 
 #include "tegra132-soc-shield.dtsi"
-#include "tegra132-flounder-camera.dtsi"
-#include "tegra132-flounder-trusty.dtsi"
+/*#include "tegra132-flounder-camera.dtsi"
+#include "tegra132-flounder-trusty.dtsi"*/
 #include "tegra132-flounder-powermon.dtsi"
 #include "tegra132-flounder-emc.dtsi"
 #include "tegra132-tn8-dfll.dtsi"
@@ -18,14 +18,21 @@
 #include "tegra132-platforms/tegra132-flounder-wireless.dtsi"
 #include "tegra132-flounder-power-tree.dtsi"
 #include "tegra124-platforms/tegra124-tn8-cpufreq.dtsi"
+#include "tegra132-platforms/tegra132-therm-est.dtsi"
+#include "tegra132-flounder-sysedp.dtsi"
+#include "tegra132-flounder-sysedp_therm.dtsi"
+#include "tegra132-flounder-thermal.dtsi"
+#include "tegra132-platforms/tegra132-thermal-nct72.dtsi"
+#include "tegra132-platforms/tegra132-thermal-Tboard-Tdiode.dtsi"
 
 #include "panel-j-qxga-8-9.dtsi"
 
 / {
 	model = "NVIDIA Tegra124 TN8 FFD";
-	compatible = "nvidia,tn8", "nvidia,tegra132";
+	compatible = "nvidia,flounder", "nvidia,tegra132";
 
-	nvidia,boardids = "1780:1100:2:B:7","1794:1000:0:A:6";
+//	nvidia,boardids = "1780:1100:2:B:7","1794:1000:0:A:6";
+	nvidia,boardids = "1761:1270:3";
 	#address-cells = <2>;
 	#size-cells = <2>;
 
@@ -39,7 +46,7 @@
 	firmware {
 		android {
 			compatible = "android,firmware";
-			hardware = "tn8";
+			hardware = "flounder";
 		};
 	};
 
@@ -71,11 +78,9 @@
 			};
 		};
 		tsec {
-			carveout {
-				carveout_addr = <0xfe000000>;
-				carveout_size = <0x2000000>;
-			};
+			status = "okay";
 		};
+
 		hdmi {
 			status = "disabled";
 		};
@@ -88,6 +93,14 @@
 	pmc@7000e400 {
 		status = "okay";
 		nvidia,invert-interrupt;
+		nvidia,suspend-mode = <0>;
+		nvidia,cpu-suspend-freq = <408000>;
+		nvidia,cpu-pwr-good-time = <500>;
+		nvidia,cpu-pwr-off-time = <300>;
+		nvidia,core-pwr-good-time = <3845 3845>;
+		nvidia,core-pwr-off-time = <2000>;
+		nvidia,core-power-req-active-high;
+		nvidia,sys-clock-req-active-high;
 	};
 
 	serial@70006000 {
@@ -119,38 +132,39 @@
 		status = "okay";
 		clock-frequency = <400000>;
 
-		max17050@36 {
-			compatible = "maxim,max17050";
-			reg = <0x36>;
-			battery-id-channel-name = "batt-id-channel";
-			param_adjust_map_by_id {
-				id0 {
-					id-number = <0>;
-					id-range = <0 524>;
-					temperature-normal-to-low-threshold = <(-50)>;
-					temperature-low-to-normal-threshold = <(-30)>;
-					temperature-normal-parameters = <0x964C 0x0068 0x0000>;
-					temperature-low-parameters = <0xAF59 0x4D84 0x2484>;
-				};
-				id1 {
-					id-number = <1>;
-					id-range = <525 1343>;
-					temperature-normal-to-low-threshold = <(-80)>;
-					temperature-low-to-normal-threshold = <(-50)>;
-					temperature-normal-parameters = <0x964C 0x1032 0x0000>;
-					temperature-low-parameters = <0xAF59 0x5F86 0x2790>;
-				};
-			};
-		};
-
-		bq2419x: bq2419x@6b {
+		battery-charger@6b {
 			compatible = "ti,bq2419x";
 			reg = <0x6b>;
 
 			interrupt-parent = <&gpio>;
 			interrupts = <TEGRA_GPIO(J, 0) 0x0>;
 
-			vbus {
+			battery_charger: charger {
+				status = "okay";
+				regulator-name = "batt_regulator";
+				regulator-max-microamp = <3000000>;
+				ti,disbale-suspend-during-charging;
+				ti,input-voltage-limit-millivolt = <4440>;
+				ti,charge-voltage-limit-millivolt = <4352>;
+				ti,charge-term-current-limit-milliamp = <128>;
+				ti,ir-comp-voltage-millivolt = <1>;
+				ti,ir-comp-resister-ohm = <1>;
+				ti,pre-charge-current-limit-milliamp = <512>;
+				ti,fast-charge-current-limit-milliamp = <2944>;
+				ti,thermal-regulation-threshold-degc = <120>;
+				consumers {
+					c1 {
+						regulator-consumer-supply = "usb_bat_chg";
+						regulator-consumer-device = "tegra-udc.0";
+					};
+					c2 {
+						regulator-consumer-supply = "usb_bat_chg";
+						regulator-consumer-device = "tegra-otg";
+					};
+				};
+			};
+
+			usb0_vbus_reg: vbus {
 				regulator-name = "vbus_regulator";
 				consumers {
 					c1 {
@@ -163,10 +177,18 @@
 						regulator-consumer-device = "tegra-otg";
 					};
 				};
+
 			};
 		};
 
+		battery-gauge@36 {
+			status = "okay";
+			compatible = "maxim,max17050";
+			reg = <0x36>;
+		};
+
 		htc_mcu@72 {
+			status = "okay";
 			compatible = "htc_mcu";
 			reg = <0x72>;
 			interrupt-parent = <&gpio>;
@@ -182,6 +204,7 @@
 		};
 
 		broadcom_bcm2079x_nfc@0x77 {
+			status = "okay";
 			compatible = "broadcom,bcm2079x_nfc";
 			reg = <0x77>;
 			broadcom,irq-gpio = <&gpio 143 GPIO_ACTIVE_LOW>;
@@ -189,6 +212,12 @@
 			broadcom,wake-gpio = <&gpio 145 GPIO_ACTIVE_LOW>;
 			interrupt-parent = <&gpio>;
 			interrupts = <143 0x0>;
+		};
+
+		cm32181@48 {
+			status = "okay";
+			compatible = "capella,cm32181";
+			reg = <0x48>;
 		};
 	};
 
@@ -249,7 +278,8 @@
 		status = "okay";
 		spi-max-frequency = <25000000>;
 
-		codec@0 {	
+		codec@0 {
+			status = "okay";	
 			compatible = "realtek,rt5677-spi";	
 			reg = <0>;	
 			spi-max-frequency = <24000000>;	
@@ -285,31 +315,28 @@
 		nvidia,ss_portmap = <0x0>; /* SSP0 on USB2P0 */
 		nvidia,lane_owner = <4>; /* USB3P0 */
 		nvidia,ulpicap = <0>; /* No ulpi support. can we remove */
-		status = "okay";
+		status = "disabled";
 	};
 
 	udc@7d000000 {
 		nvidia,port-otg;
 		nvidia,charging-supported;
+		nvidia,turn-off-vbus-in-lp0;
+		nvidia,id-detection-type = <0x1>;
+		nvidia,dcp-current-limit-ua = <2200000>;
 		nvidia,enable-pmu-vbus-detection;
-		nvidia,id-detection-type = <1>;
-		nvidia,qc2-input-voltage = <1>;
-		nvidia,qc2-current-limit-ma = <1200>;
-		nvidia,dcp-current-limit-ma = <1800>;
-		extcon-cables = <&palmas_extcon 0 &palmas_extcon 1>;
-		extcon-cable-names = "vbus", "id";
+		nvidia,enable-aca-rid-detection;
+		extcon-cables = <&extcon_cable_xlate 0 &extcon_cable_xlate 2 &extcon_cable_xlate 5>;
+		extcon-cable-names = "vbus", "aca-rb", "aca-rc";
 		#extcon-cells = <1>;
-		avdd_usb-supply = <&ldousb_reg>;
-		avdd_pll_utmip-supply = <&palmas_smps8>;
-		usb_bat_chg-supply = <&bq2419x>;
 		status = "okay";
 	};
 
 	ehci@7d000000 {
 		nvidia,port-otg;
 		nvidia,has-hostpc;
+		nvidia,is-intf-utmi;
 		nvidia,turn-off-vbus-on-lp0;
-		nvidia,id-detection-type = <1>;
 		nvidia,hssync-start-delay = <0>;
 		nvidia,idle-wait-delay = <17>;
 		nvidia,elastic-limit = <16>;
@@ -319,72 +346,104 @@
 		nvidia,xcvr-lsrslew = <3>;
 		nvidia,xcvr-use-fuses;
 		nvidia,vbus-oc-map = <4>;
-		nvidia,xcvr-setup-offset = <3>;
-		status = "okay";
+		nvidia,xcvr-setup-offset = <0>;
+		status = "disabled";
 	};
 
 	otg@7d000000 {
+		nvidia,turn-off-vbus-in-lp0;
 		nvidia,enable-pmu-vbus-detection;
-		nvidia,id-detection-type = <1>;
-		extcon-cables = <&palmas_extcon 0 &palmas_extcon 1>;
-		extcon-cable-names = "vbus", "id";
+		nvidia,id-detection-type = <0x1>;
+		nvidia,enable-y-cable-detection;
+		nvidia,enable-aca-rid-detection;
+		extcon-cables = <&extcon_cable_xlate 0 &extcon_cable_xlate 1 &extcon_cable_xlate 2 &extcon_cable_xlate 3 &extcon_cable_xlate 4 &extcon_cable_xlate 5>;
+		extcon-cable-names = "vbus", "id", "aca-ra", "y-cable", "aca-rb", "aca-rc";
 		#extcon-cells = <1>;
-		usb_bat_chg-supply = <&bq2419x>;
-		usb_vbus-supply = <&usb0_vbus>;
 		status = "okay";
 	};
 
 	psy_extcon {
 		compatible = "power-supply-extcon";
 		power-supply,extcon-dev = "tegra-udc";
-		power-supply,y-cable-extcon-dev = "tegra-otg";
 		extcon-cables = <&udc 1 &udc 2 &udc 3
 				&udc 4 &udc 5 &udc 6
 				&udc 7 &udc 8 &udc 9
-				&udc 10 &otg 0>;
+				&udc 10 &udc 11 &udc 12 &udc 13 &otg 0 &otg 1>;
 		extcon-cable-names = "usb-charger", "ta-charger", "maxim-charger",
 				"qc2-charger", "downstream-charger","fast-charger",
 				"slow-charger", "apple-500ma", "apple-1a",
-				"apple-2a", "y-cable";
+				"apple-2a", "ACA NV-Charger", "ACA RID-B", "ACA RID-C", "Y-Cable", "ACA RID-A";
+				status = "okay";
 	};
 
-	ehci@7d000000 {
-		nvidia,port-otg;
-		nvidia,has-hostpc;
-		nvidia,turn-off-vbus-on-lp0;
-		nvidia,is-intf-utmi;
-		avdd_usb-supply = <&ldousb_reg>;
-		usb_vbus-supply = <&usb0_vbus>;
-		avdd_pll_utmip-supply = <&palmas_smps8>;
-		vddio_hsic-supply = <&ldo5_reg>;
-		status = "okay";
+	extcon {
+		compatible = "simple-bus";
+		device_type = "external-connection";
+		#address-cells = <1>;
+		#size-cells = <0>;
 	};
+
+	extcon {
+		id_extcon: extcon@1 {
+			compatible = "extcon-gpio-states";
+			reg = <0x1>;
+			extcon-gpio,name = "ID";
+			extcon-gpio,cable-states = <0x0 0x1
+						0x1 0x0>;
+			gpios = <&gpio 178 0>;
+			extcon-gpio,out-cable-names = "USB-HOST";
+			#extcon-cells = <1>;
+		};
+
+ 		extcon_cable_xlate: extcon@0 {
+ 			compatible = "extcon-cable-xlate";
+ 			reg = <0x0>;
+ 			extcon-name = "cable-xlate";
+ 			output-cable-names = "USB", "USB-Host", "ACA-A", "Y-Cable", "ACA-B", "ACA-C", "ACA-NV";
+ 			extcon-cables = <&palmas_extcon 0 &id_extcon 0 &palmas_extcon 2 &palmas_extcon 3 &palmas_extcon 4>;
+ 			extcon-cable-names = "vbus", "id", "aca-ra", "aca-rb", "aca-rc";
+ 			cable-new-states = <0x0     0x0     0x3F    0x0 0x0
+ 					0x0     0x1     0x3F    0x1   0x0
+ 					0x2     0x1     0x3F    0x0   0x0
+ 					0x0     0x2     0x3F    0x2   0x0
+ 					0x0     0x3     0x3F    0x8   0x0
+ 					0x2     0x3     0x3F    0x2   0x0
+ 					0x3     0x1     0x3F    0x0   0x0
+ 					0x3     0x2     0x3F    0x2   0x0
+					0x0     0x4     0x3F    0x4   0x0
+                                        0x0     0x8     0x3F    0x10  0x0
+                                        0x0     0x10    0x3F    0x20  0x0>;
+ 			#extcon-cells = <1>;
+ 			status = "okay";
+ 		};
+ 	};
 
 	ehci@7d004000 {
-		nvidia,port-otg;
 		nvidia,has-hostpc;
 		nvidia,turn-off-vbus-on-lp0;
 		nvidia,is-intf-utmi;
-		avdd_usb-supply = <&ldousb_reg>;
-		avdd_pll_utmip-supply = <&palmas_smps8>;
-		usb_vbus-supply = <&usb2_vbus>;
-		vddio_hsic-supply = <&ldo5_reg>;
-		status = "okay";
+		status = "disabled";
 	};
 
 	ehci@7d008000 {
-		nvidia,port-otg;
 		nvidia,has-hostpc;
 		nvidia,turn-off-vbus-on-lp0;
 		nvidia,is-intf-utmi;
-		avdd_usb-supply = <&ldousb_reg>;
-		avdd_pll_utmip-supply = <&palmas_smps8>;
-		usb_vbus-supply = <&usb2_vbus>;
-		vddio_hsic-supply = <&ldo5_reg>;
+		status = "disabled";
+	};
+
+	HTC_HEADSET_MGR {
 		status = "okay";
+		compatible = "htc,headset_mgr";
+	};
+	
+	HTC_HEADSET_PMIC {
+		status = "okay";
+		compatible = "htc,headset_pmic";
 	};
 
 	sound {
+		status = "okay";
 		compatible = "nvidia,tegra-audio-rt5677";
 		nvidia,codec_name = "rt5677.1-002d";
 		nvidia,codec_dai_name = "rt5677-aif1";
@@ -394,10 +453,9 @@
 		nvidia,gpio-irq1 = <&gpio 148 GPIO_ACTIVE_LOW>;
 		nvidia,gpio-wakeup = <&gpio 112 GPIO_ACTIVE_LOW>;
 		nvidia,gpio-int-mic-en = <&gpio 171 GPIO_ACTIVE_LOW>;
-		nvidia,gpio-ext-mic-en = <&gpio 147 GPIO_ACTIVE_LOW>;
+	//	nvidia,gpio-ext-mic-en = <&gpio 147 GPIO_ACTIVE_LOW>;
 		nvidia,gpio_codec_mclk_id = <&gpio 180 GPIO_ACTIVE_LOW>;
 		nvidia,codec_mclk_name = "extperiph1_clk";
-		v_ldo2-supply = <&ldo2_reg>;
 		nvidia,i2s-param-hifi = <1 1 2 16 2 48000 1536000>;
 		nvidia,i2s-param-speaker = <2 1 2 16 2 48000 1536000>;
 		nvidia,i2s-param-bt = <3 1 0 16 2 48000 512000>;
@@ -414,49 +472,8 @@
 		nvidia,edp_limit = <16800>;
 	};
 
-	htc_battery_max17050 {
-		compatible = "htc,max17050_battery";
-	};
-
-	htc_battery_bq2419x {
-		compatible = "htc,bq2419x_battery";
-		regulator-name = "batt_regulator";
-		regulator-max-microamp = <2000000>;
-		auto-recharge-time = <30>;
-		input-voltage-limit-millivolt = <4440>;
-		fast-charge-current-limit-milliamp = <2944>;
-		pre-charge-current-limit-milliamp = <512>;
-		charge-voltage-limit-millivolt = <4352>;
-		charge-suspend-polling-time-sec = <3600>;
-		temp-polling-time-sec = <30>;
-		thermal-overtemp-control-no-thermister;
-		thermal-temperature-hot-deciC = <551>;
-		thermal-temperature-cold-deciC = <(-1)>;
-		thermal-temperature-warm-deciC = <481>;
-		thermal-temperature-cool-deciC = <100>;
-		thermal-temperature-hysteresis-deciC = <30>;
-		thermal-warm-voltage-millivolt = <4096>;
-		thermal-cool-voltage-millivolt = <4352>;
-		thermal-disable-warm-current-half;
-		thermal-overtemp-output-current-milliamp = <1344>;
-		unknown-battery-id-minimum = <1343>;
-		battery-id-channel-name = "batt-id-channel";
-		input-voltage-min-high-battery-millivolt = <4440>;
-		input-voltage-min-low-battery-millivolt = <4200>;
-		input-voltage-switch-millivolt = <4150>;
-		gauge-power-supply-name = "battery";
-		vbus-channel-name = "charger-vbus";
-		vbus-channel-max-voltage-mv = <6875>;
-		vbus-channel-max-adc = <4096>;
-		consumers {
-			c1 {
-				regulator-consumer-supply = "usb_bat_chg";
-				regulator-consumer-device = "tegra-udc.0";
-			};
-			c2 {
-				regulator-consumer-supply = "usb_bat_chg";
-				regulator-consumer-device = "tegra-otg";
-			};
-		};
+	watchdog@60005100 {
+		nvidia,enable-on-init;
+		nvidia,heartbeat-init = <120>;
 	};
 };
