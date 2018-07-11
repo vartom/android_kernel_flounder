@@ -7,13 +7,6 @@
 	nvidia,dtsfilename = __FILE__;
 	hw-revision = "xc";
 
-	panel_jdi_qxga_8_9 {
-		gpios = <&gpio TEGRA_GPIO(Q, 2) 0>,
-			<&gpio TEGRA_GPIO(R, 0) 0>,
-			<&gpio TEGRA_GPIO(EE, 5) 0>,
-			<&gpio TEGRA_GPIO(H, 5) 0>;
-	};
-
 	bcmdhd_wlan {
 		nv_path = "/system/etc/wifi/bcmdhd.cal";
 	};
