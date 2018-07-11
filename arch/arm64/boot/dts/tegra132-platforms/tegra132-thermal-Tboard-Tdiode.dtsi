@@ -23,11 +23,17 @@
 		Tboard_tegra {
 			status = "okay";
 			polling-delay = <0>;
-			polling-delay-passive = <0>;
+			polling-delay-passive = <1000>;
 			thermal-sensors = <&tegra_nct72 0>;
 
 			thermal-zone-params {
 				governor-name = "pid_thermal_gov";
+				max_err_temp = <9000>;
+				max_err_gain = <1000>;
+				gain_p = <1000>;
+				gain_d = <0>;
+				up_compensation = <20>;
+				down_compensation = <20>;
 			};
 
 			tboard_dram_cool_dev: dram-cool-dev {
@@ -61,6 +67,12 @@
 
 			thermal-zone-params {
 				governor-name = "pid_thermal_gov";
+				max_err_temp = <9000>;
+				max_err_gain = <1000>;
+				gain_p = <1000>;
+				gain_d = <0>;
+				up_compensation = <20>;
+				down_compensation = <20>;
 			};
 
 			tdiode_shutdown_warn_cool_dev: shutdown-warn-cool-dev {
