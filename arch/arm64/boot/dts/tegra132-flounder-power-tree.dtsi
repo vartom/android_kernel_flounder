@@ -19,7 +19,7 @@
  */
 
 #include "tegra132-flounder-pmic.dtsi"
-#include "tegra132-flounder-fixed.dtsi"
+#include "tegra132-flounder-fixed-common.dtsi"
 
 / {
 	host1x {
@@ -29,7 +29,7 @@
 			avdd_lcd-supply = <&avdd_lcd>;
 			dvdd_lcd-supply = <&palmas_smps8>;
 			vdd_lcd_bl_en-supply = <&en_lcd_bl>;
-			vdd_lcd_bl-supply = <&ldo5_reg>;
+			vdd_lcd_bl-supply = <&vdd_lcd>;
 		};
 		/* tegradc.1 */
 		dc@54240000 {
@@ -43,6 +43,31 @@
 	/* Populate fuse supply */
 	efuse@7000f800 {
 		vpp_fuse-supply = <&vpp_fuse>;
+	};
+
+	i2c@7000c000 {
+		broadcom_bcm2079x_nfc@0x77 {
+			vdd-supply = <&palmas_smps8>;
+		};
+
+		onsemi,nct72@4c {
+			vdd-supply = <&ldoln_reg>;
+		};
+	};
+
+	i2c@7000c400 {
+		richtek_rt5506_amp@52 {
+		ldoen-supply = <&ldoen>;
+		};
+	};
+
+	sound {
+		v_ldo2-supply = <&ldo2_reg>;
+	};
+
+	bluedroid_pm {
+		avdd-supply = <&vdd_ac_bat_reg>;
+		dvdd-supply = <&palmas_smps8>;
 	};
 
 	power-detect {
@@ -59,11 +84,42 @@
 	};
 
 	xusb@70090000 {
-		usb_vbus0-supply = <&usb0_vbus>;
+		usb_vbus0-supply = <&usb0_vbus_reg>;
 		hvdd_usb-supply = <&ldousb_reg>;
 		avdd_pll_utmip-supply = <&palmas_smps8>;
 		vddio_hsic-supply = <&ldo5_reg>;
 		avddio_usb-supply = <&palmas_smps10_out2>;
+	};
+
+	udc@7d000000 {
+		avdd_usb-supply = <&ldousb_reg>;
+		avdd_pll_utmip-supply = <&palmas_smps8>;
+		usb_bat_chg-supply = <&battery_charger>;
+	};
+
+	otg@7d000000 {
+		usb_bat_chg-supply = <&battery_charger>;
+		usb_vbus-supply = <&usb0_vbus_reg>;
+	};
+
+	ehci@7d000000 {
+		avdd_usb-supply = <&ldousb_reg>;
+		avdd_pll_utmip-supply = <&palmas_smps8>;
+		usb_vbus-supply = <&usb0_vbus_reg>;
+	};
+
+	ehci@7d004000 {
+		avdd_usb-supply = <&ldousb_reg>;
+		avdd_pll_utmip-supply = <&palmas_smps8>;
+		usb_vbus-supply = <&usb0_vbus_reg>;
+		vddio_hsic-supply = <&ldo5_reg>;
+	};
+
+	ehci@7d008000 {
+		avdd_usb-supply = <&ldousb_reg>;
+		avdd_pll_utmip-supply = <&palmas_smps8>;
+		usb_vbus-supply = <&usb0_vbus_reg>;
+		vddio_hsic-supply = <&ldo5_reg>;
 	};
 
 	sdhci@700b0600 {
