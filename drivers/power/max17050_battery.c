@@ -27,7 +27,7 @@
 #include <linux/pm.h>
 #include <linux/jiffies.h>
 
-#define MAX17050_DELAY		(60*HZ)
+#define MAX17050_DELAY		(20*HZ)
 #define MAX17050_BATTERY_FULL	(100)
 #define MAX17050_BATTERY_LOW	(15)
 
@@ -461,7 +461,7 @@ static void max17050_work(struct work_struct *work)
 		power_supply_changed(&chip->battery);
 	}
 
-	schedule_delayed_work(&chip->work, MAX17050_DELAY);
+	schedule_delayed_work(&chip->work, msecs_to_jiffies(20000));
 }
 
 static enum power_supply_property max17050_battery_props[] = {
@@ -616,6 +616,14 @@ static int max17050_suspend(struct device *dev)
 
 	cancel_delayed_work_sync(&chip->work);
 
+	dev_info(&chip->client->dev,
+		"At suspend level=%d,vol=%d,temp=%d,current=%d,status=%d\n",
+		chip->soc,
+		chip->vcell,
+		chip->batt_temp,
+		chip->batt_curr,
+		chip->status);
+
 	return 0;
 }
 
@@ -623,7 +631,15 @@ static int max17050_resume(struct device *dev)
 {
 	struct max17050_chip *chip = dev_get_drvdata(dev);
 
-	schedule_delayed_work(&chip->work, MAX17050_DELAY);
+	schedule_delayed_work(&chip->work, msecs_to_jiffies(HZ));
+
+	dev_info(&chip->client->dev,
+		"At resume level=%d,vol=%d,temp=%d,current=%d,status=%d\n",
+		chip->soc,
+		chip->vcell,
+		chip->batt_temp,
+		chip->batt_curr,
+		chip->status);
 
 	return 0;
 }
