@@ -1409,24 +1409,24 @@ void mclk_enable(struct tegra_rt5677 *machine, bool on)
 	struct tegra_asoc_platform_data *pdata = machine->pdata;
 	int ret;
 	if (on && !machine->clock_enabled) {
-		gpio_free(pdata->codec_mclk.id);
+		gpio_free(pdata->gpio_codec_mclk_id);
 		pr_debug("%s: gpio_free for gpio[%d] %s\n",
-				__func__, pdata->codec_mclk.id, pdata->codec_mclk.name);
+				__func__, pdata->gpio_codec_mclk_id, pdata->codec_mclk_name);
 		machine->clock_enabled = 1;
 		tegra_asoc_utils_clk_enable(&machine->util_data);
 	} else if (!on && machine->clock_enabled){
 		machine->clock_enabled = 0;
 		tegra_asoc_utils_clk_disable(&machine->util_data);
-		ret = gpio_request(pdata->codec_mclk.id,
-					 pdata->codec_mclk.name);
+		ret = gpio_request(pdata->gpio_codec_mclk_id,
+					 pdata->codec_mclk_name);
 		if (ret) {
-			pr_err("Fail gpio_request codec_mclk, %d\n",
+			pr_err("Fail gpio_request gpio_codec_mclk_id, %d\n",
 				ret);
 			return;
 		}
-		gpio_direction_output(pdata->codec_mclk.id, 0);
+		gpio_direction_output(pdata->gpio_codec_mclk_id, 0);
 		pr_debug("%s: gpio_request for gpio[%d] %s, return %d\n",
-				__func__, pdata->codec_mclk.id, pdata->codec_mclk.name, ret);
+				__func__, pdata->gpio_codec_mclk_id, pdata->codec_mclk_name, ret);
 	}
 }
 
@@ -1476,7 +1476,7 @@ static int tegra_rt5677_resume_pre(struct snd_soc_card *card)
 		if (!machine->clock_enabled &&
 				machine->bias_level != SND_SOC_BIAS_OFF) {
 			mclk_enable(machine, 1);
-			tegra_asoc_utils_clk_enable(&machine->util_data);
+		//	tegra_asoc_utils_clk_enable(&machine->util_data);
 			__set_rt5677_power(machine, true, true);
 		}
 		mutex_unlock(&machine->rt5677_lock);
@@ -1568,7 +1568,7 @@ void __set_rt5677_power(struct tegra_rt5677 *machine, bool enable, bool hp_depop
 		/*V_IO_1V8*/
 		if (gpio_is_valid(pdata->gpio_ldo1_en)) {
 			pr_debug("gpio_ldo1_en %d is valid\n", pdata->gpio_ldo1_en);
-			ret = gpio_request(pdata->gpio_ldo1_en, "rt5677-ldo-enable");
+			ret = gpio_request(pdata->gpio_ldo1_en, "rt5677-ldo1-enable");
 			if (ret) {
 				pr_err("Fail gpio_request gpio_ldo1_en, %d\n", ret);
 			} else {
@@ -1719,7 +1719,7 @@ static int tegra_rt5677_driver_probe(struct platform_device *pdev)
 	struct tegra_rt5677 *machine;
 	struct tegra_asoc_platform_data *pdata = NULL;
 	int ret = 0;
-	int codec_id;
+	int codec_id, i;
 	int rt5677_irq = 0;
 	u32 val32[7];
 
@@ -1744,30 +1744,72 @@ static int tegra_rt5677_driver_probe(struct platform_device *pdev)
 					&pdata->codec_dai_name);
 
 		pdata->gpio_ldo1_en = of_get_named_gpio(np,
-						"nvidia,ldo-gpios", 0);
+						"nvidia,ldo1-gpios", 0);
 		if (pdata->gpio_ldo1_en < 0)
-			dev_warn(&pdev->dev, "Failed to get LDO_EN GPIO\n");
+			dev_warn(&pdev->dev, "Failed to get LDO1_EN GPIO\n");
 
-		pdata->gpio_hp_det = of_get_named_gpio(np,
-						"nvidia,hp-det-gpios", 0);
-		if (pdata->gpio_hp_det < 0)
-			dev_warn(&pdev->dev, "Failed to get HP Det GPIO\n");
+		pdata->gpio_reset = of_get_named_gpio(np,
+						"nvidia,gpio-reset", 0);
+		if (pdata->gpio_reset < 0)
+			dev_warn(&pdev->dev, "Failed to get gpio-reset GPIO\n");
+
+		pdata->gpio_irq1 = of_get_named_gpio(np,
+						"nvidia,gpio-irq1", 0);
+		if (pdata->gpio_irq1 < 0)
+			dev_warn(&pdev->dev, "Failed to get gpio-irq1 GPIO\n");
+
+		pdata->gpio_int_mic_en = of_get_named_gpio(np,
+						"nvidia,gpio-int-mic-en", 0);
+		if (pdata->gpio_int_mic_en < 0)
+			dev_warn(&pdev->dev, "Failed to get gpio_int_mic_en GPIO\n");
+
+		pdata->gpio_ext_mic_en = of_get_named_gpio(np,
+						"nvidia,gpio-ext-mic-en", 0);
+		if (pdata->gpio_ext_mic_en < 0)
+			dev_warn(&pdev->dev, "Failed to get gpio_ext_mic_en GPIO\n");
+
+		pdata->gpio_codec_mclk_id = of_get_named_gpio(np,
+						"nvidia,gpio_codec_mclk_id", 0);
+		if (pdata->gpio_codec_mclk_id < 0)
+			dev_warn(&pdev->dev, "Failed to get gpio_codec_mclk_id GPIO\n");
+
+		of_property_read_string(np, "nvidia,codec_mclk_name",
+					&pdata->codec_mclk_name);
 
 		pdata->gpio_codec1 = pdata->gpio_codec2 = pdata->gpio_codec3 =
-		pdata->gpio_spkr_en = pdata->gpio_hp_mute =
-		pdata->gpio_int_mic_en = pdata->gpio_ext_mic_en = -1;
+		pdata->gpio_spkr_en = pdata->gpio_hp_mute = pdata->gpio_hp_det = -1;
+/*		pdata->gpio_int_mic_en = pdata->gpio_ext_mic_en = -1;*/ // test test stok -1
 
 		of_property_read_u32_array(np, "nvidia,i2s-param-hifi", val32,
 							   ARRAY_SIZE(val32));
 		pdata->i2s_param[HIFI_CODEC].audio_port_id = (int)val32[0];
 		pdata->i2s_param[HIFI_CODEC].is_i2s_master = (int)val32[1];
 		pdata->i2s_param[HIFI_CODEC].i2s_mode = (int)val32[2];
+		pdata->i2s_param[HIFI_CODEC].sample_size = (int)val32[3];
+		pdata->i2s_param[HIFI_CODEC].channels = (int)val32[4];
+		pdata->i2s_param[HIFI_CODEC].rate = (int)val32[5];
+		pdata->i2s_param[HIFI_CODEC].bit_clk = (int)val32[6];
+
+		of_property_read_u32_array(np, "nvidia,i2s-param-speaker", val32,
+							   ARRAY_SIZE(val32));
+		pdata->i2s_param[SPEAKER].audio_port_id = (int)val32[0];
+		pdata->i2s_param[SPEAKER].is_i2s_master = (int)val32[1];
+		pdata->i2s_param[SPEAKER].i2s_mode = (int)val32[2];
+		pdata->i2s_param[SPEAKER].sample_size = (int)val32[3];
+		pdata->i2s_param[SPEAKER].channels = (int)val32[4];
+		pdata->i2s_param[SPEAKER].rate = (int)val32[5];
+		pdata->i2s_param[SPEAKER].bit_clk = (int)val32[6];
 
 		of_property_read_u32_array(np, "nvidia,i2s-param-bt", val32,
 							   ARRAY_SIZE(val32));
 		pdata->i2s_param[BT_SCO].audio_port_id = (int)val32[0];
 		pdata->i2s_param[BT_SCO].is_i2s_master = (int)val32[1];
 		pdata->i2s_param[BT_SCO].i2s_mode = (int)val32[2];
+		pdata->i2s_param[BT_SCO].sample_size = (int)val32[3];
+		pdata->i2s_param[BT_SCO].channels = (int)val32[4];
+		pdata->i2s_param[BT_SCO].rate = (int)val32[5];
+		pdata->i2s_param[BT_SCO].bit_clk = (int)val32[6];
+
 	}
 
 	if (!pdata) {
@@ -1776,14 +1818,14 @@ static int tegra_rt5677_driver_probe(struct platform_device *pdev)
 	}
 
 	if (pdata->codec_name)
-		card->dai_link->codec_name = pdata->codec_name;
+		card->dai_link[DAI_LINK_HIFI].codec_name = pdata->codec_name;
 
 	if (pdata->codec_dai_name)
-		card->dai_link->codec_dai_name = pdata->codec_dai_name;
+		card->dai_link[DAI_LINK_HIFI].codec_dai_name = pdata->codec_dai_name;
 
 	machine = kzalloc(sizeof(struct tegra_rt5677), GFP_KERNEL);
 	if (!machine) {
-		dev_err(&pdev->dev, "Can't allocate tegra_rt5677 struct\n");
+		dev_info(&pdev->dev, "Can't allocate tegra_rt5677 struct\n");
 		if (np)
 			kfree(pdata);
 		return -ENOMEM;
@@ -1795,11 +1837,11 @@ static int tegra_rt5677_driver_probe(struct platform_device *pdev)
 
 	INIT_DELAYED_WORK(&machine->power_work, trgra_do_power_work);
 
-	/*V_IO_1V8*/
+	/*V_IO_1V8*
 	if (gpio_is_valid(pdata->gpio_ldo1_en)) {
 		dev_dbg(&pdev->dev, "gpio_ldo1_en %d is valid\n",
 			pdata->gpio_ldo1_en);
-		ret = gpio_request(pdata->gpio_ldo1_en, "rt5677-ldo-enable");
+		ret = gpio_request(pdata->gpio_ldo1_en, "rt5677-ldo1-enable");
 		if (ret) {
 			dev_err(&pdev->dev, "Fail gpio_request gpio_ldo1_en, %d\n",
 				ret);
@@ -1817,13 +1859,15 @@ static int tegra_rt5677_driver_probe(struct platform_device *pdev)
 	} else {
 		dev_err(&pdev->dev, "gpio_ldo1_en %d is invalid\n",
 			pdata->gpio_ldo1_en);
-	}
+	}*/
 
 	usleep_range(1000, 2000);
 
 	INIT_WORK(&machine->hotword_work, tegra_do_hotword_work);
 
 	rt5677_reg = regulator_get(&pdev->dev, "v_ldo2");
+	if (IS_ERR(rt5677_reg))
+		rt5677_reg = 0;
 
 	if (gpio_is_valid(pdata->gpio_int_mic_en)) {
 		ret = gpio_request(pdata->gpio_int_mic_en, "int-mic-enable");
@@ -1852,6 +1896,7 @@ static int tegra_rt5677_driver_probe(struct platform_device *pdev)
 	ret = tegra_asoc_utils_init(&machine->util_data, &pdev->dev, card);
 	if (ret)
 		goto err_free_machine;
+
 	usleep_range(500, 1500);
 
 	set_rt5677_power_locked(machine, true, false);
@@ -1903,6 +1948,23 @@ static int tegra_rt5677_driver_probe(struct platform_device *pdev)
 	snd_soc_card_set_drvdata(card, machine);
 
 #ifndef CONFIG_ARCH_TEGRA_2x_SOC
+	for (i = 0; i < NUM_I2S_DEVICES; i++) {
+		machine->codec_info[i].i2s_id =
+			pdata->i2s_param[i].audio_port_id;
+		machine->codec_info[i].bitsize =
+			pdata->i2s_param[i].sample_size;
+		machine->codec_info[i].is_i2smaster =
+			pdata->i2s_param[i].is_i2s_master;
+		machine->codec_info[i].rate =
+			pdata->i2s_param[i].rate;
+		machine->codec_info[i].channels =
+			pdata->i2s_param[i].channels;
+		machine->codec_info[i].i2s_mode =
+			pdata->i2s_param[i].i2s_mode;
+		machine->codec_info[i].bit_clk =
+			pdata->i2s_param[i].bit_clk;
+	}
+
 	codec_id = pdata->i2s_param[HIFI_CODEC].audio_port_id;
 	tegra_rt5677_dai[DAI_LINK_HIFI].cpu_dai_name =
 	tegra_rt5677_i2s_dai_name[codec_id];
