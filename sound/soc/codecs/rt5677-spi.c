@@ -28,6 +28,7 @@
 #include <linux/sysfs.h>
 #include <linux/clk.h>
 #include "rt5677-spi.h"
+#include <linux/of.h>
 
 #define SPI_BURST_LEN		240
 #define SPI_HEADER		5
@@ -219,31 +220,11 @@ static int rt5677_spi_remove(struct spi_device *spi)
 #ifdef CONFIG_PM
 static int rt5677_suspend(struct device *dev)
 {
-	struct spi_device *spi = to_spi_device(dev);
-	struct rt5677_spi_platform_data *pdata;
-	pr_debug("%s\n", __func__);
-	if (spi == NULL) {
-		pr_debug("spi_device didn't exist");
-		return 0;
-	}
-	pdata = spi->dev.platform_data;
-	if (pdata && (pdata->spi_suspend))
-		pdata->spi_suspend(1);
 	return 0;
 }
 
 static int rt5677_resume(struct device *dev)
 {
-	struct spi_device *spi = to_spi_device(dev);
-	struct rt5677_spi_platform_data *pdata;
-	pr_debug("%s\n", __func__);
-	if (spi == NULL) {
-		pr_debug("spi_device didn't exist");
-		return 0;
-	}
-	pdata = spi->dev.platform_data;
-	if (pdata && (pdata->spi_suspend))
-		pdata->spi_suspend(0);
 	return 0;
 }
 
@@ -253,11 +234,20 @@ static const struct dev_pm_ops rt5677_pm_ops = {
 };
 #endif /*CONFIG_PM */
 
+#ifdef CONFIG_OF
+static const struct of_device_id rt5677_spi_of_match[] = {
+	{ .compatible = "realtek,rt5677-spi", },
+	{ }
+};
+MODULE_DEVICE_TABLE(of, rt5677_spi_of_match);
+#endif
+
 static struct spi_driver rt5677_spi_driver = {
 	.driver = {
 			.name = "rt5677_spidev",
 			.bus = &spi_bus_type,
 			.owner = THIS_MODULE,
+			.of_match_table = of_match_ptr(rt5677_spi_of_match),
 #if defined(CONFIG_PM)
 			.pm = &rt5677_pm_ops,
 #endif
