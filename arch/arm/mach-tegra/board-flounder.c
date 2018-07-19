@@ -979,7 +979,8 @@ static void __init tegra_flounder_init_early(void)
 
 static void __init tegra_flounder_dt_init(void)
 {
-//	regulator_has_full_constraints();
+	pr_info("[HS_BOARD] regulator_has_full_constraints ");
+	regulator_has_full_constraints();
 	tegra_flounder_early_init();
 #ifdef CONFIG_USE_OF
 //	flounder_camera_auxdata(flounder_auxdata_lookup);
