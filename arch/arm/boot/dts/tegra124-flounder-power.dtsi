@@ -87,8 +87,8 @@ palmas: tps65913 {
 
 			ch4 {
 				ti,adc-channel-number = <4>;
-				ti,adc-consumer-device = "HTC_HEADSET_PMIC";
-				ti,adc-consumer-channel ="hs_channel";
+				ti,adc-consumer-device = "HTC_HEADSET_PMIC.11";
+				ti,adc-consumer-channel ="hs-channel";
 			};
 
 			ch10 {
@@ -402,7 +402,7 @@ palmas: tps65913 {
 				};
 			};
 
-			ldo2 {
+		ldo2_reg: ldo2 {
 				regulator-name = "vdd-aud";
 				regulator-min-microvolt = <1200000>;
 				regulator-max-microvolt = <1200000>;

@@ -134,11 +134,51 @@
 		status = "okay";
 		clock-frequency = <400000>;
 
+		nxp_tfa9895_amp@35 {
+			status = "okay";
+			compatible = "nxp,tfa9895-amp";
+			reg = <0x35>;
+			tfa9895,enable-power-gpio = <&gpio 189 GPIO_ACTIVE_LOW>;
+		};
+
+		nxp_tfa9895l_amp@34 {
+			status = "okay";
+			compatible = "nxp,tfa9895l-amp";
+			reg = <0x34>;
+		};
+		realtek_rt5677@2d {
+			status = "okay";
+			compatible = "realtek,rt5677";
+			reg = <0x2d>;
+			realtek,vad-clock-en = <&gpio 187 GPIO_ACTIVE_LOW>;
+		};
+
 		richtek_rt5506_amp@52 {
 			compatible = "richtek,rt5506-amp";
 			reg = <0x52>;
 			richtek,enable-gpio = <&gpio 185 0>;
 		};
+	};
+
+	sound {
+		status = "okay";
+		compatible = "nvidia,tegra-audio-rt5677";
+		nvidia,codec_name = "rt5677.1-002d";
+		nvidia,codec_dai_name = "rt5677-aif1";
+		nvidia,ldo1-gpios = <&gpio 80 GPIO_ACTIVE_LOW>;
+		nvidia,ldo2-gpios = <&gpio 131 GPIO_ACTIVE_LOW>;
+		nvidia,gpio-reset = <&gpio 188 GPIO_ACTIVE_LOW>;
+		nvidia,gpio-irq1 = <&gpio 148 GPIO_ACTIVE_LOW>;
+		nvidia,gpio-wakeup = <&gpio 112 GPIO_ACTIVE_LOW>;
+		nvidia,gpio-int-mic-en = <&gpio 171 GPIO_ACTIVE_LOW>;
+	//	nvidia,gpio-ext-mic-en = <&gpio 147 GPIO_ACTIVE_LOW>;
+		nvidia,gpio_codec_mclk_id = <&gpio 180 GPIO_ACTIVE_LOW>;
+		nvidia,codec_mclk_name = "extperiph1_clk";
+		v_ldo2-supply = <&ldo2_reg>;
+		nvidia,i2s-param-hifi = <1 1 2 16 2 48000 1536000>;
+		nvidia,i2s-param-speaker = <2 1 2 16 2 48000 1536000>;
+		nvidia,i2s-param-bt = <3 1 0 16 2 48000 512000>;
+					
 	};
 
 	i2c@7000c500 {
@@ -167,6 +207,13 @@
 	spi@7000d400 {
 		status = "okay";
 		spi-max-frequency = <25000000>;
+
+		codec@0 {
+			status = "okay";	
+			compatible = "realtek,rt5677-spi";	
+			reg = <0>;	
+			spi-max-frequency = <24000000>;	
+		};
 	};
 
 	spi@7000d800 {
@@ -423,6 +470,16 @@
 				regulator-consumer-device = "tegra-otg";
 			};
 		};
+	};
+
+	HTC_HEADSET_MGR {
+		status = "okay";
+		compatible = "htc,headset_mgr";
+	};
+	
+	HTC_HEADSET_PMIC {
+		status = "okay";
+		compatible = "htc,headset_pmic";
 	};
 
 	vdd_hv_3v: fixedregulator@0 {
