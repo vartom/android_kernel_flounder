@@ -19,7 +19,7 @@
 
 / {
 	i2c@7000d000 {
-		palmas: tps65913 {
+		palmas: tps65913@58 {
 			compatible = "ti,palmas";
 			reg = <0x58>;
 			interrupts = <0 86 0>;
@@ -304,6 +304,12 @@
 						regulator-name = "avdd-usb";
 						regulator-min-microvolt = <3300000>;
 						regulator-max-microvolt = <3300000>;
+						regulator-always-on;
+						regulator-boot-on;
+					};
+
+					regen1 {
+						regulator-name = "regen1";
 						regulator-always-on;
 						regulator-boot-on;
 					};
