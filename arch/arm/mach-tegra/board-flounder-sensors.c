@@ -450,8 +450,8 @@ static struct thermal_zone_params cpu_tzp = {
 	.governor_params = &cpu_pid_params,
 };
 
-static struct thermal_zone_params therm_est_activ_tzp = {
-	.governor_name = "step_wise"
+static struct thermal_zone_params board_tzp = {
+	.governor_name = "pid_thermal_gov"
 };
 
 static struct throttle_table cpu_throttle_table[] = {
@@ -750,9 +750,9 @@ static struct thermal_zone_params skin_tzp = {
 	.governor_params = &skin_pid_params,
 };
 
-static struct thermal_zone_params skin_step_wise_tzp = {
+/*static struct thermal_zone_params skin_step_wise_tzp = {
 	.governor_name = "step_wise",
-};
+};*/
 
 static struct therm_est_data skin_data = {
 	.num_trips = ARRAY_SIZE(skin_trips),
@@ -761,37 +761,98 @@ static struct therm_est_data skin_data = {
 	.passive_delay = 15000,
 	.tc1 = 10,
 	.tc2 = 1,
-	.tzp = &skin_step_wise_tzp,
+	.tzp = &skin_tzp,
+	.use_activator = 1,
 };
 
 static struct throttle_table skin_throttle_table[] = {
 	/* CPU_THROT_LOW cannot be used by other than CPU */
 	/*      CPU,    GPU,  C2BUS,  C3BUS,   SCLK,    EMC   */
-       { { 2000000, 804000, 480000, 756000, NO_CAP, NO_CAP } },
-       { { 1900000, 756000, 480000, 648000, NO_CAP, NO_CAP } },
-       { { 1800000, 708000, 444000, 648000, NO_CAP, NO_CAP } },
-       { { 1700000, 648000, 444000, 600000, NO_CAP, NO_CAP } },
-       { { 1600000, 648000, 444000, 600000, NO_CAP, NO_CAP } },
-       { { 1500000, 612000, 444000, 600000, NO_CAP, NO_CAP } },
-       { { 1450000, 612000, 444000, 600000, NO_CAP, NO_CAP } },
-       { { 1400000, 540000, 444000, 600000, NO_CAP, NO_CAP } },
-       { { 1350000, 540000, 444000, 600000, NO_CAP, NO_CAP } },
-       { { 1300000, 540000, 444000, 600000, NO_CAP, NO_CAP } },
-       { { 1250000, 540000, 444000, 600000, NO_CAP, NO_CAP } },
-       { { 1200000, 540000, 444000, 600000, NO_CAP, NO_CAP } },
-       { { 1150000, 468000, 444000, 600000, 240000, NO_CAP } },
-       { { 1100000, 468000, 444000, 600000, 240000, NO_CAP } },
-       { { 1050000, 468000, 396000, 600000, 240000, NO_CAP } },
-       { { 1000000, 468000, 396000, 504000, 204000, NO_CAP } },
-       { {  975000, 468000, 396000, 504000, 204000, 792000 } },
-       { {  950000, 468000, 396000, 504000, 204000, 792000 } },
-       { {  925000, 468000, 396000, 504000, 204000, 792000 } },
-       { {  900000, 468000, 348000, 504000, 204000, 792000 } },
-       { {  875000, 468000, 348000, 504000, 136000, 600000 } },
-       { {  850000, 468000, 348000, 420000, 136000, 600000 } },
-       { {  825000, 396000, 348000, 420000, 136000, 600000 } },
-       { {  800000, 396000, 348000, 420000, 136000, 528000 } },
-       { {  775000, 396000, 348000, 420000, 136000, 528000 } },
+	{ { 2499000, NO_CAP, NO_CAP, NO_CAP, NO_CAP, NO_CAP } },
+	{ { 2397000, NO_CAP, NO_CAP, NO_CAP, NO_CAP, NO_CAP } },
+	{ { 2295000, NO_CAP, NO_CAP, NO_CAP, NO_CAP, NO_CAP } },
+	{ { 2269500, NO_CAP, NO_CAP, NO_CAP, NO_CAP, NO_CAP } },
+	{ { 2244000, NO_CAP, NO_CAP, NO_CAP, NO_CAP, NO_CAP } },
+	{ { 2218500, NO_CAP, NO_CAP, NO_CAP, NO_CAP, NO_CAP } },
+	{ { 2193000, NO_CAP, NO_CAP, NO_CAP, NO_CAP, NO_CAP } },
+	{ { 2167500, NO_CAP, NO_CAP, NO_CAP, NO_CAP, NO_CAP } },
+	{ { 2142000, NO_CAP, NO_CAP, NO_CAP, NO_CAP, NO_CAP } },
+	{ { 2116500, NO_CAP, NO_CAP, NO_CAP, NO_CAP, NO_CAP } },
+	{ { 2091000, NO_CAP, NO_CAP, NO_CAP, NO_CAP, NO_CAP } },
+	{ { 2065500, NO_CAP, NO_CAP, NO_CAP, NO_CAP, NO_CAP } },
+	{ { 2040000, NO_CAP, NO_CAP, NO_CAP, NO_CAP, NO_CAP } },
+	{ { 2014500, NO_CAP, NO_CAP, NO_CAP, NO_CAP, NO_CAP } },
+	{ { 1989000, NO_CAP, NO_CAP, NO_CAP, NO_CAP, NO_CAP } },
+	{ { 1963500, NO_CAP, NO_CAP, NO_CAP, NO_CAP, NO_CAP } },
+	{ { 1938000, NO_CAP, NO_CAP, NO_CAP, NO_CAP, NO_CAP } },
+	{ { 1912500, NO_CAP, NO_CAP, NO_CAP, NO_CAP, NO_CAP } },
+	{ { 1887000, NO_CAP, NO_CAP, NO_CAP, NO_CAP, NO_CAP } },
+	{ { 1861500, NO_CAP, NO_CAP, NO_CAP, NO_CAP, NO_CAP } },
+	{ { 1836000, NO_CAP, NO_CAP, NO_CAP, NO_CAP, NO_CAP } },
+	{ { 1810500, NO_CAP, NO_CAP, NO_CAP, NO_CAP, NO_CAP } },
+	{ { 1785000, NO_CAP, NO_CAP, NO_CAP, NO_CAP, NO_CAP } },
+	{ { 1759500, NO_CAP, NO_CAP, NO_CAP, NO_CAP, NO_CAP } },
+	{ { 1734000, NO_CAP, NO_CAP, NO_CAP, NO_CAP, NO_CAP } },
+	{ { 1708500, NO_CAP, NO_CAP, NO_CAP, NO_CAP, NO_CAP } },
+	{ { 1683000, NO_CAP, NO_CAP, NO_CAP, NO_CAP, NO_CAP } },
+	{ { 1657500, NO_CAP, NO_CAP, NO_CAP, NO_CAP, NO_CAP } },
+	{ { 1632000, NO_CAP, NO_CAP, NO_CAP, NO_CAP, NO_CAP } },
+	{ { 1606500, 790000, NO_CAP, NO_CAP, NO_CAP, NO_CAP } },
+	{ { 1581000, 776000, NO_CAP, NO_CAP, NO_CAP, NO_CAP } },
+	{ { 1555500, 762000, NO_CAP, NO_CAP, NO_CAP, NO_CAP } },
+	{ { 1530000, 749000, NO_CAP, NO_CAP, NO_CAP, NO_CAP } },
+	{ { 1504500, 735000, NO_CAP, NO_CAP, NO_CAP, NO_CAP } },
+	{ { 1479000, 721000, NO_CAP, NO_CAP, NO_CAP, NO_CAP } },
+	{ { 1453500, 707000, NO_CAP, NO_CAP, NO_CAP, NO_CAP } },
+	{ { 1428000, 693000, NO_CAP, NO_CAP, NO_CAP, NO_CAP } },
+	{ { 1402500, 679000, NO_CAP, NO_CAP, NO_CAP, NO_CAP } },
+	{ { 1377000, 666000, NO_CAP, NO_CAP, NO_CAP, NO_CAP } },
+	{ { 1351500, 652000, NO_CAP, NO_CAP, NO_CAP, NO_CAP } },
+	{ { 1326000, 638000, NO_CAP, NO_CAP, NO_CAP, NO_CAP } },
+	{ { 1300500, 624000, NO_CAP, NO_CAP, NO_CAP, NO_CAP } },
+	{ { 1275000, 610000, NO_CAP, NO_CAP, NO_CAP, NO_CAP } },
+	{ { 1249500, 596000, NO_CAP, NO_CAP, NO_CAP, NO_CAP } },
+	{ { 1224000, 582000, NO_CAP, NO_CAP, NO_CAP, 792000 } },
+	{ { 1198500, 569000, NO_CAP, NO_CAP, NO_CAP, 792000 } },
+	{ { 1173000, 555000, NO_CAP, NO_CAP, 360000, 792000 } },
+	{ { 1147500, 541000, NO_CAP, NO_CAP, 360000, 792000 } },
+	{ { 1122000, 527000, NO_CAP, 684000, 360000, 792000 } },
+	{ { 1096500, 513000, 444000, 684000, 360000, 792000 } },
+	{ { 1071000, 499000, 444000, 684000, 360000, 792000 } },
+	{ { 1045500, 486000, 444000, 684000, 360000, 792000 } },
+	{ { 1020000, 472000, 444000, 684000, 324000, 792000 } },
+	{ {  994500, 458000, 444000, 684000, 324000, 792000 } },
+	{ {  969000, 444000, 444000, 600000, 324000, 792000 } },
+	{ {  943500, 430000, 444000, 600000, 324000, 792000 } },
+	{ {  918000, 416000, 396000, 600000, 324000, 792000 } },
+	{ {  892500, 402000, 396000, 600000, 324000, 792000 } },
+	{ {  867000, 389000, 396000, 600000, 324000, 792000 } },
+	{ {  841500, 375000, 396000, 600000, 288000, 792000 } },
+	{ {  816000, 361000, 396000, 600000, 288000, 792000 } },
+	{ {  790500, 347000, 396000, 600000, 288000, 792000 } },
+	{ {  765000, 333000, 396000, 504000, 288000, 792000 } },
+	{ {  739500, 319000, 348000, 504000, 288000, 792000 } },
+	{ {  714000, 306000, 348000, 504000, 288000, 624000 } },
+	{ {  688500, 292000, 348000, 504000, 288000, 624000 } },
+	{ {  663000, 278000, 348000, 504000, 288000, 624000 } },
+	{ {  637500, 264000, 348000, 504000, 288000, 624000 } },
+	{ {  612000, 250000, 348000, 504000, 252000, 624000 } },
+	{ {  586500, 236000, 348000, 504000, 252000, 624000 } },
+	{ {  561000, 222000, 348000, 420000, 252000, 624000 } },
+	{ {  535500, 209000, 288000, 420000, 252000, 624000 } },
+	{ {  510000, 195000, 288000, 420000, 252000, 624000 } },
+	{ {  484500, 181000, 288000, 420000, 252000, 624000 } },
+	{ {  459000, 167000, 288000, 420000, 252000, 624000 } },
+	{ {  433500, 153000, 288000, 420000, 252000, 396000 } },
+	{ {  408000, 139000, 288000, 420000, 252000, 396000 } },
+	{ {  382500, 126000, 288000, 420000, 252000, 396000 } },
+	{ {  357000, 112000, 288000, 420000, 252000, 396000 } },
+	{ {  331500,  98000, 288000, 420000, 252000, 396000 } },
+	{ {  306000,  84000, 288000, 420000, 252000, 396000 } },
+	{ {  280500,  84000, 288000, 420000, 252000, 396000 } },
+	{ {  255000,  84000, 288000, 420000, 252000, 396000 } },
+	{ {  229500,  84000, 288000, 420000, 252000, 396000 } },
+	{ {  204000,  84000, 288000, 420000, 252000, 396000 } },
 };
 
 static struct balanced_throttle skin_throttle = {
@@ -854,14 +915,14 @@ static struct nct1008_platform_data flounder_nct72_pdata = {
 
 	.sensors = {
 		[LOC] = {
-			.tzp = &therm_est_activ_tzp,
+			.tzp = &board_tzp,
 			.shutdown_limit = 120, /* C */
 			.passive_delay = 1000,
 			.num_trips = 1,
 			.trips = {
 				{
 					.cdev_type = "therm_est_activ",
-					.trip_temp = 26000,
+					.trip_temp = 40000,
 					.trip_type = THERMAL_TRIP_ACTIVE,
 					.hysteresis = 1000,
 					.upper = THERMAL_NO_LIMIT,
