@@ -196,7 +196,7 @@ void __init tegra13x_vdd_cpu_align(int step_uv, int offset_uv)
 /* CPU DVFS tables */
 static unsigned long cpu_max_freq[] = {
 /* speedo_id	0	 1	  2	   3      */
-		2499000, 2499000,
+		2300000, 2300000,
 };
 
 static struct cpu_cvb_dvfs cpu_cvb_dvfs_table[] = {
