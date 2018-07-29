@@ -29,68 +29,11 @@
 #include <linux/platform/tegra/common.h>
 
 
-/* --- EDP consumers data --- */
-static unsigned int imx219_states[] = { 0, 411 };
-static unsigned int ov9760_states[] = { 0, 180 };
-static unsigned int sdhci_states[] = { 0, 966 };
-static unsigned int speaker_states[] = { 0, 641 };
-static unsigned int wifi_states[] = { 0, 2318 };
-
-/* default - 19x12 8" panel*/
-static unsigned int backlight_default_states[] = {
-	0, 110, 270, 430, 595, 765, 1055, 1340, 1655, 1970, 2380
-};
-
-static unsigned int tps61310_states[] = {
-	0, 110 ,3350
-};
-
-static unsigned int qcom_mdm_states[] = {
-	8, 2570, 1363, 2570, 3287
-};
-
-static struct sysedp_consumer_data flounder_sysedp_consumer_data[] = {
-	SYSEDP_CONSUMER_DATA("imx219", imx219_states),
-	SYSEDP_CONSUMER_DATA("ov9760", ov9760_states),
-	SYSEDP_CONSUMER_DATA("speaker", speaker_states),
-	SYSEDP_CONSUMER_DATA("wifi", wifi_states),
-	SYSEDP_CONSUMER_DATA("tegra-dsi-backlight.0", backlight_default_states),
-	SYSEDP_CONSUMER_DATA("sdhci-tegra.0", sdhci_states),
-	SYSEDP_CONSUMER_DATA("sdhci-tegra.3", sdhci_states),
-	SYSEDP_CONSUMER_DATA("tps61310", tps61310_states),
-	SYSEDP_CONSUMER_DATA("qcom-mdm-9k", qcom_mdm_states),
-};
-
-static struct sysedp_platform_data flounder_sysedp_platform_data = {
-	.consumer_data = flounder_sysedp_consumer_data,
-	.consumer_data_size = ARRAY_SIZE(flounder_sysedp_consumer_data),
-	.margin = 0,
-#if defined(CONFIG_ARCH_TEGRA_13x_SOC)
-	.min_budget = 0,
-#else
-	.min_budget = 4400,
-#endif
-};
-
-static struct platform_device flounder_sysedp_device = {
-	.name = "sysedp",
-	.id = -1,
-	.dev = { .platform_data = &flounder_sysedp_platform_data }
-};
-
-void __init flounder_new_sysedp_init(void)
-{
-	int r;
-
-	r = platform_device_register(&flounder_sysedp_device);
-	WARN_ON(r);
-}
-
 static struct tegra_sysedp_platform_data flounder_sysedp_dynamic_capping_platdata = {
-	.core_gain = 100,
+	.core_gain = 125,
 	.init_req_watts = 20000,
 	.pthrot_ratio = 75,
-	.cap_method = TEGRA_SYSEDP_CAP_METHOD_SIGNAL,
+	.cap_method = TEGRA_SYSEDP_CAP_METHOD_DIRECT,
 };
 
 static struct platform_device flounder_sysedp_dynamic_capping = {
