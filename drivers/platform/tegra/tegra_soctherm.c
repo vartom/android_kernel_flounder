@@ -2906,13 +2906,6 @@ static int soctherm_init_platform_data(struct soctherm_platform_data *plat)
 	soctherm_writel(hw_off_min_reg, TH_TS_PLLX_OFFSET_MIN);
 	soctherm_writel(en_hw_off_reg, TH_TS_PLLX_OFFSETTING);
 
-	/* configure low, med and heavy levels for CCROC NV_THERM */
-	if (IS_T13X) {
-		throttlectl_cpu_level_cfg(THROT_LEVEL_LOW);
-		throttlectl_cpu_level_cfg(THROT_LEVEL_MED);
-		throttlectl_cpu_level_cfg(THROT_LEVEL_HVY);
-	}
-
 	/* configure low, med and heavy levels for GK20a NV_THERM */
 	throttlectl_gpu_level_cfg(THROT_LEVEL_LOW);
 	throttlectl_gpu_level_cfg(THROT_LEVEL_MED);
@@ -2947,6 +2940,13 @@ static int soctherm_init_platform_data(struct soctherm_platform_data *plat)
 					therm->trips[k].trip_temp, j, i);
 		}
 #endif
+	}
+
+	/* configure low, med and heavy levels for CCROC NV_THERM */
+	if (IS_T13X) {
+		throttlectl_cpu_level_cfg(THROT_LEVEL_LOW);
+		throttlectl_cpu_level_cfg(THROT_LEVEL_MED);
+		throttlectl_cpu_level_cfg(THROT_LEVEL_HVY);
 	}
 
 	r = REG_SET(0, THROT_GLOBAL_ENB, 1);
@@ -4550,7 +4550,7 @@ static void soctherm_thermctl_parse(struct platform_device *pdev)
 
 static void soctherm_throttlectl_parse(struct platform_device *pdev)
 {
-	int ocn, val, prio;
+	int ocn, prio;
 	bool oc_type, cdev_type, low;
 	struct device_node *cpu, *gpu, *np = NULL;
 	struct thermal_cooling_device *cdev, **cdevp;
@@ -4697,24 +4697,19 @@ static void soctherm_throttlectl_parse(struct platform_device *pdev)
 
 		/* configure CPU throttle depth */
 		dev_cpu = &throt->devs[THROTTLE_DEV_CPU];
-		if (!of_property_read_u32(cpu, "depth", &val)) {
-			THROT_DEPTH(dev_cpu, val);
-		} else {
-			of_property_read_u32(cpu, "dividend", &val);
-			dev_cpu->dividend = val;
-			of_property_read_u32(cpu, "divisor", &val);
-			dev_cpu->divisor = val;
-			of_property_read_u32(cpu, "duration", &val);
-			dev_cpu->duration = val;
-			of_property_read_u32(cpu, "step", &val);
-			dev_cpu->step = val;
-		}
-		if (!dev_cpu->dividend && !dev_cpu->divisor) {
-			dev_err(&pdev->dev, "missing pskip-cfg from %s.\n",
+		if (of_property_read_string(cpu, "level", &lvl)) {
+			dev_err(&pdev->dev, "missing 'level' from %s.\n",
 				cpu->full_name);
 			continue;
 		}
 		dev_cpu->enable = 1;
+
+		if (!strcmp(lvl, "heavy_throttling"))
+			dev_cpu->throttling_depth = "heavy_throttling";
+		else if (!strcmp(lvl, "medium_throttling"))
+			dev_cpu->throttling_depth = "medium_throttling";
+		else if (!strcmp(lvl, "low_throttling"))
+			dev_cpu->throttling_depth = "low_throttling";
 
 		/* configure GPU throttle depth */
 		dev_gpu = &throt->devs[THROTTLE_DEV_GPU];
