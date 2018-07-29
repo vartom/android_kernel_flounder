@@ -1138,7 +1138,7 @@
 		nvidia,freq_step = <12750000>;
 		nvidia,edp_clk = "cpu_g";
 #ifdef TEGRA132_PACKAGE_IS_DSC
-		nvidia,hard_cap = <2500000 2300000>;
+		nvidia,hard_cap = <2300000 2300000>;
 #endif
 		nvidia,tegra-ppm-cdyn = <3900000 5900000>;
 		nvidia,tegra-ppm-leakage_weights = <1000 1000>;
