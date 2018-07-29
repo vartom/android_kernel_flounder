@@ -18,10 +18,10 @@
 #include "tegra132-platforms/tegra132-flounder-wireless.dtsi"
 #include "tegra132-flounder-power-tree.dtsi"
 #include "tegra124-platforms/tegra124-tn8-cpufreq.dtsi"
-#include "tegra132-platforms/tegra132-therm-est.dtsi"
 #include "tegra132-flounder-sysedp.dtsi"
-#include "tegra132-flounder-sysedp_therm.dtsi"
+#include "tegra132-platforms/tegra132-therm-est.dtsi"
 #include "tegra132-flounder-thermal.dtsi"
+#include "tegra132-flounder-sysedp_therm.dtsi"
 #include "tegra132-platforms/tegra132-thermal-nct72.dtsi"
 #include "tegra132-platforms/tegra132-thermal-Tboard-Tdiode.dtsi"
 
