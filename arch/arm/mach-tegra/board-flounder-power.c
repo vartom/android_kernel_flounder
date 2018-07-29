@@ -55,43 +55,10 @@
 #include "iomap.h"
 #include <linux/platform/tegra/tegra_cl_dvfs.h>
 
+#if defined(CONFIG_ARCH_TEGRA_21x_SOC)
+
 #define PMC_CTRL                0x0
 #define PMC_CTRL_INTR_LOW       (1 << 17)
-
-static struct tegra_suspend_platform_data flounder_suspend_data = {
-	.cpu_timer      = 500,
-	.cpu_off_timer  = 300,
-	.cpu_suspend_freq = 408000,
-	.suspend_mode   = TEGRA_SUSPEND_LP0,
-	.core_timer     = 0x157e,
-	.core_off_timer = 2000,
-	.corereq_high   = true,
-	.sysclkreq_high = true,
-	.cpu_lp2_min_residency = 1000,
-	.min_residency_vmin_fmin = 1000,
-	.min_residency_ncpu_fast = 8000,
-	.min_residency_ncpu_slow = 5000,
-	.min_residency_mclk_stop = 5000,
-	.min_residency_crail = 20000,
-};
-
-/*static struct power_supply_extcon_plat_data extcon_pdata = {
-	.extcon_name = "tegra-udc",
-};
-
-static struct platform_device power_supply_extcon_device = {
-	.name	= "power-supply-extcon",
-	.id	= -1,
-	.dev	= {
-		.platform_data = &extcon_pdata,
-	},
-};*/
-
-int __init flounder_suspend_init(void)
-{
-	tegra_init_suspend(&flounder_suspend_data);
-	return 0;
-}
 
 /************************ FLOUNDER CL-DVFS DATA *********************/
 #define FLOUNDER_DEFAULT_CVB_ALIGNMENT	10000
@@ -159,19 +126,6 @@ static int __init flounder_cl_dvfs_init(void)
 	e1736_fill_reg_map();
 	data = &e1736_cl_dvfs_data;
 
-/*	data->u.pmu_pwm.pinctrl_dev = tegra_get_pinctrl_device_handle();
-	if (!data->u.pmu_pwm.pinctrl_dev)
-		return -EINVAL;
-
-	data->u.pmu_pwm.pwm_pingroup =
-			pinctrl_get_selector_from_group_name(
-				data->u.pmu_pwm.pinctrl_dev,
-				"dvfs_pwm_px0");
-	if (data->u.pmu_pwm.pwm_pingroup < 0) {
-		pr_err("%s: Tegra pin dvfs_pwm_px0 not found\n", __func__);
-		return -EINVAL;
-	}*/
-
 	if (data) {
 		data->flags = TEGRA_CL_DVFS_DYN_OUTPUT_CFG;
 		tegra_cl_dvfs_device.dev.platform_data = data;
@@ -184,33 +138,12 @@ static inline int flounder_cl_dvfs_init()
 { return 0; }
 #endif
 
-
-int __init flounder_rail_alignment_init(void)
-{
-#ifdef CONFIG_ARCH_TEGRA_13x_SOC
-#else
-	tegra12x_vdd_cpu_align(FLOUNDER_DEFAULT_CVB_ALIGNMENT, 0);
-#endif
-	return 0;
-}
-
 int __init flounder_regulator_init(void)
 {
-/*	void __iomem *pmc = IO_ADDRESS(TEGRA_PMC_BASE);
-	u32 pmc_ctrl;
-
-	* TPS65913: Normal state of INT request line is LOW.
-	 * configure the power management controller to trigger PMU
-	 * interrupts when HIGH.
-	 *
-	pmc_ctrl = readl(pmc + PMC_CTRL);
-	writel(pmc_ctrl | PMC_CTRL_INTR_LOW, pmc + PMC_CTRL);*/
-
-/*	platform_device_register(&power_supply_extcon_device);*/
-
 	flounder_cl_dvfs_init();
 	return 0;
 }
+#endif
 
 static struct pid_thermal_gov_params soctherm_pid_params = {
 	.max_err_temp = 9000,
@@ -258,7 +191,7 @@ static struct soctherm_platform_data flounder_soctherm_data = {
 		[THERM_CPU] = {
 			.zone_enable = true,
 			.passive_delay = 1000,
-			.hotspot_offset = 6000,
+			.hotspot_offset = 10000,
 			.num_trips = 3,
 			.trips = {
 				{
@@ -271,147 +204,6 @@ static struct soctherm_platform_data flounder_soctherm_data = {
 				{
 					.cdev_type = "tegra-heavy",
 					.trip_temp = 99000,
-					.trip_type = THERMAL_TRIP_HOT,
-					.upper = THERMAL_NO_LIMIT,
-					.lower = THERMAL_NO_LIMIT,
-				},
-				{
-					.cdev_type = "cpu-balanced",
-					.trip_temp = 90000,
-					.trip_type = THERMAL_TRIP_PASSIVE,
-					.upper = THERMAL_NO_LIMIT,
-					.lower = THERMAL_NO_LIMIT,
-				},
-			},
-			.tzp = &soctherm_tzp,
-		},
-		[THERM_GPU] = {
-			.zone_enable = true,
-			.passive_delay = 1000,
-			.hotspot_offset = 6000,
-			.num_trips = 3,
-			.trips = {
-				{
-					.cdev_type = "tegra-shutdown",
-					.trip_temp = 101000,
-					.trip_type = THERMAL_TRIP_CRITICAL,
-					.upper = THERMAL_NO_LIMIT,
-					.lower = THERMAL_NO_LIMIT,
-				},
-				{
-					.cdev_type = "tegra-heavy",
-					.trip_temp = 99000,
-					.trip_type = THERMAL_TRIP_HOT,
-					.upper = THERMAL_NO_LIMIT,
-					.lower = THERMAL_NO_LIMIT,
-				},
-				{
-					.cdev_type = "gpu-balanced",
-					.trip_temp = 90000,
-					.trip_type = THERMAL_TRIP_PASSIVE,
-					.upper = THERMAL_NO_LIMIT,
-					.lower = THERMAL_NO_LIMIT,
-				},
-			},
-			.tzp = &soctherm_tzp,
-		},
-		[THERM_MEM] = {
-			.zone_enable = true,
-			.num_trips = 1,
-			.trips = {
-				{
-					.cdev_type = "tegra-shutdown",
-					.trip_temp = 101000, /* = GPU shut */
-					.trip_type = THERMAL_TRIP_CRITICAL,
-					.upper = THERMAL_NO_LIMIT,
-					.lower = THERMAL_NO_LIMIT,
-				},
-			},
-			.tzp = &soctherm_tzp,
-		},
-		[THERM_PLL] = {
-			.zone_enable = true,
-			.tzp = &soctherm_tzp,
-		},
-	},
-	.throttle = {
-		[THROTTLE_HEAVY] = {
-			.priority = 100,
-			.devs = {
-				[THROTTLE_DEV_CPU] = {
-					.enable = true,
-					.depth = 80,
-					/* see @PSKIP_CONFIG_NOTE */
-					.throttling_depth = "heavy_throttling",
-				},
-				[THROTTLE_DEV_GPU] = {
-					.enable = true,
-					.throttling_depth = "heavy_throttling",
-				},
-			},
-		},
-	},
-};
-
-/* Only the diffs from flounder_soctherm_data structure */
-static struct soctherm_platform_data t132ref_v1_soctherm_data = {
-	.therm = {
-		[THERM_CPU] = {
-			.zone_enable = true,
-			.passive_delay = 1000,
-			.hotspot_offset = 10000,
-		},
-		[THERM_PLL] = {
-			.zone_enable = true,
-			.passive_delay = 1000,
-			.num_trips = 3,
-			.trips = {
-				{
-					.cdev_type = "tegra-shutdown",
-					.trip_temp = 97000,
-					.trip_type = THERMAL_TRIP_CRITICAL,
-					.upper = THERMAL_NO_LIMIT,
-					.lower = THERMAL_NO_LIMIT,
-				},
-				{
-					.cdev_type = "tegra-heavy",
-					.trip_temp = 94000,
-					.trip_type = THERMAL_TRIP_HOT,
-					.upper = THERMAL_NO_LIMIT,
-					.lower = THERMAL_NO_LIMIT,
-				},
-				{
-					.cdev_type = "cpu-balanced",
-					.trip_temp = 84000,
-					.trip_type = THERMAL_TRIP_PASSIVE,
-					.upper = THERMAL_NO_LIMIT,
-					.lower = THERMAL_NO_LIMIT,
-				},
-			},
-			.tzp = &soctherm_tzp,
-		},
-	},
-};
-
-/* Only the diffs from ardbeg_soctherm_data structure */
-static struct soctherm_platform_data t132ref_v2_soctherm_data = {
-	.therm = {
-		[THERM_CPU] = {
-			.zone_enable = true,
-			.passive_delay = 1000,
-			.hotspot_offset = 10000,
-			.num_trips = 3,
-			.trips = {
-				{
-					.cdev_type = "tegra-shutdown",
-					.trip_temp = 105000,
-					.trip_type = THERMAL_TRIP_CRITICAL,
-					.upper = THERMAL_NO_LIMIT,
-					.lower = THERMAL_NO_LIMIT,
-				},
-				{
-					.cdev_type = "tegra-heavy",
-					.trip_temp = 102000,
 					.trip_type = THERMAL_TRIP_HOT,
 					.upper = THERMAL_NO_LIMIT,
 					.lower = THERMAL_NO_LIMIT,
@@ -448,13 +240,58 @@ static struct soctherm_platform_data t132ref_v2_soctherm_data = {
 				},
 				{
 					.cdev_type = "gpu-balanced",
-					.trip_temp = 89000,
+					.trip_temp = 85000,
 					.trip_type = THERMAL_TRIP_PASSIVE,
 					.upper = THERMAL_NO_LIMIT,
 					.lower = THERMAL_NO_LIMIT,
 				},
 			},
 			.tzp = &soctherm_tzp,
+		},
+		[THERM_MEM] = {
+			.zone_enable = true,
+			.num_trips = 1,
+			.trips = {
+				{
+					.cdev_type = "tegra-shutdown",
+					.trip_temp = 101000, /* = GPU shut */
+					.trip_type = THERMAL_TRIP_CRITICAL,
+					.upper = THERMAL_NO_LIMIT,
+					.lower = THERMAL_NO_LIMIT,
+				},
+			},
+			.tzp = &soctherm_tzp,
+		},
+		[THERM_PLL] = {
+			.zone_enable = true,
+			.num_trips = 1,
+			.trips = {
+				{
+					.cdev_type = "tegra-shutdown",
+					.trip_temp = 101000, /* = GPU shut */
+					.trip_type = THERMAL_TRIP_CRITICAL,
+					.upper = THERMAL_NO_LIMIT,
+					.lower = THERMAL_NO_LIMIT,
+				},
+			},
+			.tzp = &soctherm_tzp,
+		},
+	},
+	.throttle = {
+		[THROTTLE_HEAVY] = {
+			.priority = 100,
+			.devs = {
+				[THROTTLE_DEV_CPU] = {
+					.enable = true,
+					.depth = 80,
+					/* see @PSKIP_CONFIG_NOTE */
+					.throttling_depth = "medium_throttling",
+				},
+				[THROTTLE_DEV_GPU] = {
+					.enable = true,
+					.throttling_depth = "heavy_throttling",
+				},
+			},
 		},
 	},
 };
@@ -491,38 +328,23 @@ int __init flounder_soctherm_init(void)
 	cp_rev = tegra_fuse_calib_base_get_cp(NULL, NULL);
 	ft_rev = tegra_fuse_calib_base_get_ft(NULL, NULL);
 
-	/* TODO: remove this part once bootloader changes merged 
+	/* TODO: remove this part once bootloader changes merged */
 	tegra_gpio_disable(TEGRA_GPIO_PJ2);
-	tegra_gpio_disable(TEGRA_GPIO_PS7);*/
+	tegra_gpio_disable(TEGRA_GPIO_PS7);
 
 	cpu_edp_temp_margin = t13x_cpu_edp_temp_margin;
 	gpu_edp_temp_margin = t13x_gpu_edp_temp_margin;
-
-	if (!cp_rev) {
-		/* ATE rev is NEW: use v2 table */
-		flounder_soctherm_data.therm[THERM_CPU] =
-			t132ref_v2_soctherm_data.therm[THERM_CPU];
-		flounder_soctherm_data.therm[THERM_GPU] =
-			t132ref_v2_soctherm_data.therm[THERM_GPU];
-	} else {
-		/* ATE rev is Old or Mid: use PLLx sensor only */
-		flounder_soctherm_data.therm[THERM_CPU] =
-			t132ref_v1_soctherm_data.therm[THERM_CPU];
-		flounder_soctherm_data.therm[THERM_PLL] =
-			t132ref_v1_soctherm_data.therm[THERM_PLL];
-		therm_cpu = THERM_PLL; /* override CPU with PLL zone */
-	}
 
 	/* do this only for supported CP,FT fuses */
 	if ((cp_rev >= 0) && (ft_rev >= 0)) {
 		tegra_platform_edp_init(
 			flounder_soctherm_data.therm[therm_cpu].trips,
 			&flounder_soctherm_data.therm[therm_cpu].num_trips,
-			t13x_cpu_edp_temp_margin);
+			cpu_edp_temp_margin);
 		tegra_platform_gpu_edp_init(
 			flounder_soctherm_data.therm[THERM_GPU].trips,
 			&flounder_soctherm_data.therm[THERM_GPU].num_trips,
-			t13x_gpu_edp_temp_margin);
+			gpu_edp_temp_margin);
 		tegra_add_cpu_vmax_trips(
 			flounder_soctherm_data.therm[therm_cpu].trips,
 			&flounder_soctherm_data.therm[therm_cpu].num_trips);
