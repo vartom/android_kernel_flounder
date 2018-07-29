@@ -9,23 +9,13 @@
 		throttle@heavy {
 			status = "okay";
 			throttle_dev = <&{/soctherm@0x700E2000/throttle_dev@cpu_medium}
-					&{/soctherm@0x700E2000/throttle_dev@gpu_medium}>;
+					&{/soctherm@0x700E2000/throttle_dev@gpu_high}>;
 		};
 		throttle@light {
-			status = "okay";
+			status = "disabled";
 		};
 		throttle@oc1 {
 			status = "disabled";
-			device_type = "throttlectl";
-			oc-alarm-id = <1>;
-			priority = <50>;
-			mode = "brief";
-			intr;
-			active_low;
-			count_threshold = <100>;
-			filter = <5100000>;
-			throttle_dev = <&{/soctherm@0x700E2000/throttle_dev@cpu_medium}
-					&{/soctherm@0x700E2000/throttle_dev@gpu_medium}>;
 		};
 		throttle@oc2 {
 			status = "disabled";
@@ -37,7 +27,7 @@
 			status = "okay";
 			device_type = "throttlectl";
 			oc-alarm-id = <4>;
-			priority = <49>;
+			priority = <50>;
 			mode = "brief";
 			intr;
 			active_low;
@@ -47,30 +37,28 @@
 					&{/soctherm@0x700E2000/throttle_dev@gpu_low}>;
 		};
 		throttle_dev@cpu_high {
-			depth = <0x0>;
-			priority = <100>;
-			level = "high_throttling";
+			status = "okay";
+			depth = <80>;
+			level = "heavy_throttling";
 		};
 		throttle_dev@cpu_medium {
+			status = "okay";
+			depth = <75>;
 			level = "medium_throttling";
-			dividend = <63>;
-			divisor = <255>;
-			duration = <0>;
-			step = <0>;
 		};
 		throttle_dev@cpu_low {
+			status = "okay";
+			depth = <50>;
 			level = "low_throttling";
 		};
 		throttle_dev@gpu_high {
-			priority = <100>;
-			level = "high_throttling";
+			status = "okay";
+			level = "heavy_throttling";
 		};
 		throttle_dev@gpu_medium {
+			status = "okay";
 			level = "medium_throttling";
 
-		};
-		throttle_dev@gpu_low {
-			level = "low_throttling";
 		};
 	};
 
@@ -80,6 +68,7 @@
 			status 			= "okay";
 			polling-delay		= <0>;
 			polling-delay-passive	= <1000>;
+			hotspot_offset		= <10000>;
 			thermal-sensors		= <&{/soctherm@0x700E2000} 0>;
 			thermal-zone-params {
 				governor-name = "pid_thermal_gov";
@@ -136,6 +125,7 @@
 			status		 	= "okay";
 			polling-delay		= <0>;
 			polling-delay-passive	= <1000>;
+			hotspot_offset		= <5000>;
 			thermal-sensors		= <&{/soctherm@0x700E2000} 1>;
 			thermal-zone-params {
 				governor-name = "pid_thermal_gov";
@@ -222,7 +212,7 @@
 		};
 
 		PLL-therm {
-			status		 	= "okay";
+			status 			= "okay";
 			polling-delay		= <0>;
 			polling-delay-passive	= <1000>;
 			thermal-sensors		= <&{/soctherm@0x700E2000} 3>;
@@ -235,23 +225,12 @@
 				up_compensation = <20>;
 				down_compensation = <20>;
 			};
+
 			trips {
 				pll_critical {
-					temperature = <97000>;
+					temperature = <101000>;
 					hysteresis = <0>;
 					type = "critical";
-					writable;
-				};
-				pll_heavy {
-					temperature = <94000>;
-					hysteresis = <0>;
-					type = "hot";
-					writable;
-				};
-				pll_throttle {
-					temperature = <84000>;
-					hysteresis = <0>;
-					type = "passive";
 					writable;
 				};
 			};
@@ -260,18 +239,6 @@
 					trip = <&{/thermal-zones/PLL-therm/trips/pll_critical}>;
 					cdev-type = "tegra-shutdown";
 					cooling-device = <&{/soctherm@0x700E2000/throttle@critical}
-						THERMAL_NO_LIMIT THERMAL_NO_LIMIT>;
-				};
-				map1 {
-					trip = <&{/thermal-zones/PLL-therm/trips/pll_heavy}>;
-					cdev-type = "tegra-heavy";
-					cooling-device = <&{/soctherm@0x700E2000/throttle@heavy}
-						THERMAL_NO_LIMIT THERMAL_NO_LIMIT>;
-				};
-				map2 {
-					trip = <&{/thermal-zones/PLL-therm/trips/pll_throttle}>;
-					cdev-type = "gpu-balanced";
-					cooling-device = <&{/bthrot_cdev/cpu_balanced}
 						THERMAL_NO_LIMIT THERMAL_NO_LIMIT>;
 				};
 			};
