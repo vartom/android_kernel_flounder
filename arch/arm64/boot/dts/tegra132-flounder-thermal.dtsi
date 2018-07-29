@@ -60,6 +60,10 @@
 			level = "medium_throttling";
 
 		};
+		throttle_dev@gpu_low {
+			status = "okay";
+			level = "low_throttling";
+		};
 	};
 
 	thermal-zones {
