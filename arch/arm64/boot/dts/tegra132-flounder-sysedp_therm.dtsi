@@ -19,22 +19,6 @@
  */
 
 / {
-	sysedp_reactive_capping@1 {
-		status = "okay";
-		compatible = "nvidia,tegra124-sysedp_reactive_capping";
-		nvidia,max_capping_mw = <15000>;
-		nvidia,step_alarm_mw = <1000>;
-		nvidia,step_relax_mw = <500>;
-		nvidia,relax_ms = <250>;
-		nvidia,threshold_warning = "WARNING - SYSTEM Voltage Droop detected, please refer to the Power management application note";
-		interrupt-parent = <&soctherm>;
-		interrupts = <1 0x2002>;
-
-		sysedpc {
-			nvidia,name = "voltmon_oc1";
-		};
-	};
-
 	sysedp_reactive_capping@4 {
 		status = "okay";
 		compatible = "nvidia,tegra124-sysedp_reactive_capping";
@@ -84,56 +68,9 @@
 			32000  16800  708000  933000  14000  853000  933000   20064
 			33000  16800  756000  933000  14500  853000  933000   20947
 		>;
-		nvidia,core_gain = <100>;
+		nvidia,core_gain = <125>;
 		nvidia,init_req_watts = <20000>;
 		nvidia,throttle_depth = <75>;
-		nvidia,cap_method = <2>;
-	};
-
-	sysedp {
-		status = "okay";
-		compatible = "nvidia,tegra124-sysedp";
-		nvidia,margin = <0>;
-		nvidia,min_budget = <0>;
-		nvidia,initial_budget = <30000>;
-
-		consumers {
-			consumer1 {
-				nvidia,consumer_name = "ov9760";
-				nvidia,states = <0 180>;
-			};
-			consumer2 {
-				nvidia,consumer_name = "imx219";
-				nvidia,states = <0 411>;
-			};
-			consumer3 {
-				nvidia,consumer_name = "speaker";
-				nvidia,states = <0 641>;
-			};
-			consumer4 {
-				nvidia,consumer_name = "primary-wifi";
-				nvidia,states = <0 1020>;
-			};
-			consumer5 {
-				nvidia,consumer_name = "tegra-dsi-backlight.0";
-				nvidia,states = <0 110 270 430 595 765 1055 1340 1655 1970 2380>;
-			};
-			consumer6 {
-				nvidia,consumer_name = "sdhci-tegra.0";
-				nvidia,states = <0 966>;
-			};
-			consumer7 {
-				nvidia,consumer_name = "sdhci-tegra.3";
-				nvidia,states = <0 966>;
-			};
-			consumer8 {
-				nvidia,consumer_name = "tps61310";
-				nvidia,states = <0 110 3350>;
-			};
-			consumer9 {
-				nvidia,consumer_name = "dsi_0";
-				nvidia,states = <0 616>;
-			};
-		};
+		nvidia,cap_method = <1>;
 	};
 };

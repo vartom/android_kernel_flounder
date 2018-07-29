@@ -19,6 +19,53 @@
  */
 
 / {
+	sysedp {
+		status = "okay";
+		compatible = "nvidia,tegra124-sysedp";
+		nvidia,margin = <0>;
+		nvidia,min_budget = <4400>;
+		nvidia,initial_budget = <30000>;
+
+		consumers {
+			consumer1 {
+				nvidia,consumer_name = "ov9760";
+				nvidia,states = <0 180>;
+			};
+			consumer2 {
+				nvidia,consumer_name = "imx219";
+				nvidia,states = <0 411>;
+			};
+			consumer3 {
+				nvidia,consumer_name = "speaker";
+				nvidia,states = <0 641>;
+			};
+			consumer4 {
+				nvidia,consumer_name = "primary-wifi";
+				nvidia,states = <0 1020>;
+			};
+			consumer5 {
+				nvidia,consumer_name = "tegra-dsi-backlight.0";
+				nvidia,states = <0 110 270 430 595 765 1055 1340 1655 1970 2380>;
+			};
+			consumer6 {
+				nvidia,consumer_name = "sdhci-tegra.0";
+				nvidia,states = <0 966>;
+			};
+			consumer7 {
+				nvidia,consumer_name = "sdhci-tegra.3";
+				nvidia,states = <0 966>;
+			};
+			consumer8 {
+				nvidia,consumer_name = "tps61310";
+				nvidia,states = <0 110 3350>;
+			};
+			consumer9 {
+				nvidia,consumer_name = "dsi_0";
+				nvidia,states = <0 616>;
+			};
+		};
+	};
+
 	sysedp_batmon_calc {
 		compatible = "nvidia,tegra124-sysedp_batmon_calc";
 		ocv_lut = <
