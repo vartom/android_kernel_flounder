@@ -51,7 +51,7 @@
 		};
 
 		onsemi,nct72@4c {
-			vdd-supply = <&ldoln_reg>;
+			vdd-supply = <&vdd_hv_3v>;
 		};
 	};
 

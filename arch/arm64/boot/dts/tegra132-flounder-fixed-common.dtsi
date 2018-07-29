@@ -128,8 +128,24 @@
 			regulator-min-microvolt = <5000000>;
 			regulator-max-microvolt = <5000000>;
 			enable-active-high;
-			gpio = <&gpio 134 GPIO_ACTIVE_LOW>; /* TEGRA_PQ6 */
+		//	gpio = <&gpio 134 GPIO_ACTIVE_LOW>; /* TEGRA_PQ6 */
 
+		};
+
+		vdd_hv_3v: regulator@9 {
+			compatible = "regulator-fixed";
+			reg = <9>;
+			regulator-name = "vdd_hv_3v";
+			regulator-min-microvolt = <3000000>;
+			regulator-max-microvolt = <3000000>;
+			regulator-boot-on;
+			regulator-always-on;
+			consumers {
+				c1 {
+					regulator-consumer-supply = "vdd";
+					regulator-consumer-device = "0-004c";
+				};
+			};
 		};
 	};
 };
