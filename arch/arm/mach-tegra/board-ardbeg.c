@@ -1197,18 +1197,6 @@ static struct tegra_io_dpd pexclk2_io = {
 	.io_dpd_bit		= 6,
 };
 
-static void flounder_panel(void)
-{
-	struct tegra_panel *panel;
-
-	panel = &dsi_j_qxga_8_9;
-
-	if (panel) {
-		if (panel->register_bl_dev)
-			panel->register_bl_dev();
-	}
-};
-
 static void __init tegra_ardbeg_late_init(void)
 {
 	struct board_info board_info;
@@ -1277,7 +1265,6 @@ static void __init tegra_ardbeg_late_init(void)
 		ardbeg_emc_init();
 
 	isomgr_init();
-	flounder_panel();
 
 	if (!of_machine_is_compatible("nvidia,green-arrow" ))
 		ardbeg_touch_init();
