@@ -54,6 +54,7 @@ static int gpu_process_id;
 static int cpu_speedo_id;
 static int cpu_speedo_value;
 static int soc_speedo_id;
+static int core_min_mv;
 static int gpu_speedo_id;
 static int package_id;
 static int cpu_iddq_value;
@@ -103,12 +104,14 @@ static void rev_sku_to_speedo_ids(int rev, int sku)
 			soc_speedo_id = 0;
 			gpu_speedo_id = 1;
 			threshold_index = 0;
+			core_min_mv = 800;
 			break;
 		case 0x83:
 			cpu_speedo_id = 1;
 			soc_speedo_id = 0;
 			gpu_speedo_id = 2;
 			threshold_index = 0;
+			core_min_mv = 800;
 			break;
 		default:
 			pr_warn("Tegra13: Unknown SKU %d\n", sku);
@@ -116,6 +119,7 @@ static void rev_sku_to_speedo_ids(int rev, int sku)
 			soc_speedo_id = 0;
 			gpu_speedo_id = 0;
 			threshold_index = 0;
+			core_min_mv = 950;
 			break;
 		}
 	}
@@ -207,6 +211,11 @@ void tegra_init_speedo_data(void)
 		 cpu_process_id, core_process_id, gpu_process_id);
 	pr_info("Tegra13: CPU Speedo value %d, Soc Speedo value %d, Gpu Speedo value %d\n",
 		 cpu_speedo_value, soc_speedo_0_value, gpu_speedo_value);
+}
+
+int tegra_core_speedo_min_mv(void)
+{
+	return core_min_mv;
 }
 
 int tegra_cpu_process_id(void)
