@@ -1,7 +1,7 @@
 /*
  * drivers/video/tegra/dc/hdmi2.0.c
  *
- * Copyright (c) 2014-2016, NVIDIA CORPORATION, All rights reserved.
+ * Copyright (c) 2014-2017, NVIDIA CORPORATION, All rights reserved.
  * Author: Animesh Kishore <ankishore@nvidia.com>
  *
  * This software is licensed under the terms of the GNU General Public
@@ -140,17 +140,6 @@ static inline void tegra_hdmi_irq_disable(struct tegra_hdmi *hdmi)
 static inline bool tegra_hdmi_hpd_asserted(struct tegra_hdmi *hdmi)
 {
 	return tegra_dc_hpd(hdmi->dc);
-}
-
-static inline void tegra_hdmi_reset(struct tegra_hdmi *hdmi)
-{
-	if (tegra_platform_is_linsim())
-		return;
-
-	tegra_periph_reset_assert(hdmi->sor->sor_clk);
-	udelay(10);
-	tegra_periph_reset_deassert(hdmi->sor->sor_clk);
-	udelay(10);
 }
 
 static inline void _tegra_hdmi_ddc_enable(struct tegra_hdmi *hdmi)
@@ -583,7 +572,7 @@ static int tegra_hdmi_controller_disable(struct tegra_hdmi *hdmi)
 	tegra_dc_sor_detach(sor);
 	tegra_sor_power_lanes(sor, 4, false);
 	tegra_sor_hdmi_pad_power_down(sor);
-	tegra_hdmi_reset(hdmi);
+	tegra_sor_reset(hdmi->sor);
 	tegra_hdmi_put(dc);
 	cancel_delayed_work_sync(&hdmi->hdr_worker);
 	tegra_dc_put(dc);
@@ -701,6 +690,10 @@ static void tegra_hdmi_hpd_worker(struct work_struct *work)
 				goto fail;
 			} else {
 				if (match) {
+					tegra_nvhdcp_set_plug(hdmi->nvhdcp,
+						false);
+					tegra_nvhdcp_set_plug(hdmi->nvhdcp,
+						true);
 					dev_info(&hdmi->dc->ndev->dev, "hdmi: No EDID change after HPD bounce, taking no action.\n");
 					goto fail;
 				} else {
@@ -2109,10 +2102,10 @@ static void tegra_dc_hdmi_disable(struct tegra_dc *dc)
 #ifdef CONFIG_SWITCH
 	switch_set_state(&hdmi->audio_switch, 0);
 #endif
+	tegra_hda_reset_data();
 
 	tegra_hdmi_config_clk(hdmi, TEGRA_HDMI_SAFE_CLK);
 	tegra_hdmi_controller_disable(hdmi);
-	tegra_hda_reset_data();
 	return;
 }
 
@@ -2477,6 +2470,14 @@ static void tegra_dc_hdmi_postpoweron(struct tegra_dc *dc)
 	_tegra_hdmivrr_activate(tegra_dc_get_outdata(dc), true);
 }
 
+static void tegra_dc_hdmi_sor_sleep(struct tegra_dc *dc)
+{
+	struct tegra_hdmi *hdmi = tegra_dc_get_outdata(dc);
+
+	if (hdmi->sor->sor_state == SOR_ATTACHED)
+		tegra_dc_sor_sleep(hdmi->sor);
+}
+
 struct tegra_dc_out_ops tegra_dc_hdmi2_0_ops = {
 	.init = tegra_dc_hdmi_init,
 	.destroy = tegra_dc_hdmi_destroy,
@@ -2496,4 +2497,5 @@ struct tegra_dc_out_ops tegra_dc_hdmi2_0_ops = {
 	.vrr_update_monspecs = tegra_hdmivrr_update_monspecs,
 	.set_hdr = tegra_dc_hdmi_set_hdr,
 	.postpoweron = tegra_dc_hdmi_postpoweron,
+	.shutdown_interface = tegra_dc_hdmi_sor_sleep,
 };

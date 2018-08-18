@@ -3,7 +3,7 @@
  *  providing keys and microphone audio functionality
  *
  * Copyright (C) 2014 Google, Inc.
- * Copyright (c) 2015-2016, NVIDIA CORPORATION, All rights reserved.
+ * Copyright (c) 2015-2017, NVIDIA CORPORATION, All rights reserved.
  *
  * This software is licensed under the terms of the GNU General Public
  * License version 2, as published by the Free Software Foundation, and
@@ -22,6 +22,7 @@
 #include <linux/hardirq.h>
 #include <linux/iio/imu/tsfw_icm20628.h>
 #include <linux/jiffies.h>
+#include <linux/ratelimit.h>
 #include <linux/slab.h>
 #include <linux/time.h>
 #include <linux/wait.h>
@@ -82,6 +83,8 @@ MODULE_LICENSE("GPL v2");
 #define PACKET_TYPE_ADPCM 0
 #define PACKET_TYPE_MSBC  1
 
+/* timer callback occurs every 20ms, and silence max timeout is 5 seconds */
+#define MAX_SILENCE_COUNTER 250
 
 /* Normally SBC has a H2 header but because we want
  * to embed keycode support while audio is active without
@@ -178,6 +181,8 @@ struct shdr_device {
 	int hid_miss_war_timeout;
 };
 
+/* counter of how many continous silent timer callback in a row */
+static unsigned int silence_counter;
 static int num_remotes;
 static struct mutex snd_cards_lock;
 static int index[SNDRV_CARDS] = SNDRV_DEFAULT_IDX;  /* Index 0-MAX */
@@ -217,13 +222,16 @@ static struct switch_dev shdr_mic_switch = {
 #define DEBUG_WITH_MISC_DEVICE 0
 
 /* Debug feature to trace audio packets being received */
-#define DEBUG_AUDIO_RECEPTION 1
+#define DEBUG_AUDIO_RECEPTION 0
 
 /* Debug feature to trace tx audio packets */
 #define DEBUG_AUDIO_TX 0
 
 /* Debug feature to trace HID reports we see */
-#define DEBUG_HID_RAW_INPUT 0
+/* #define DEBUG_HID_RAW_INPUT */
+
+/* Debug timer related issue */
+/* #define DEBUG_TIMER */
 
 #if (DEBUG_WITH_MISC_DEVICE == 1)
 static int16_t large_pcm_buffer[1280*1024];
@@ -341,7 +349,7 @@ struct snd_atvr {
 	uint timeout_jiffies;
 	struct timer_list decoding_timer;
 	uint timer_state;
-	bool timer_enabled;
+	uint32_t timer_enabled;
 	uint timer_callback_count;
 
 	int16_t peak_level;
@@ -380,13 +388,19 @@ struct snd_atvr {
 	/* count of packets received from this device */
 	int packet_counter;
 	spinlock_t s_substream_lock;
+	spinlock_t timer_lock;
 	uint32_t substream_state;
 	bool pcm_stopped;
 };
 
 #define ATVR_REMOVE 1
+#define ATVR_TIMER_DISABLED 0
+#define ATVR_TIMER_ENABLED 1
+
 #define TS_HOSTCMD_REPORT_SIZE 33
 #define JAR_HOSTCMD_REPORT_SIZE 19
+
+static void atvr_hid_miss_stats_inc(void);
 
 static int atvr_mic_ctrl(struct hid_device *hdev, bool enable)
 {
@@ -863,6 +877,7 @@ static void audio_dec(struct hid_device *hdev, const uint8_t *raw_input,
 	struct shdr_device *shdr_dev = hid_get_drvdata(hdev);
 	struct snd_card *shdr_card;
 	struct snd_atvr *atvr_snd;
+	unsigned long flags;
 	int ret;
 
 	if (shdr_dev == NULL)
@@ -874,11 +889,12 @@ static void audio_dec(struct hid_device *hdev, const uint8_t *raw_input,
 
 	atvr_snd = shdr_card->private_data;
 
+	smp_rmb();
 	if (atvr_snd != NULL && atvr_snd->pcm_stopped == false) {
-		spin_lock(&atvr_snd->s_substream_lock);
+		spin_lock_irqsave(&atvr_snd->s_substream_lock, flags);
 
 		if (atvr_snd->substream_state & ATVR_REMOVE) {
-			spin_unlock(&atvr_snd->s_substream_lock);
+			spin_unlock_irqrestore(&atvr_snd->s_substream_lock, flags);
 			return;
 		}
 
@@ -898,9 +914,10 @@ static void audio_dec(struct hid_device *hdev, const uint8_t *raw_input,
 		} else {
 			dropped_packet = true;
 			atvr_snd->pcm_stopped = true;
+			smp_wmb();
 		}
 		atvr_snd->packet_counter++;
-		spin_unlock(&atvr_snd->s_substream_lock);
+		spin_unlock_irqrestore(&atvr_snd->s_substream_lock, flags);
 	}
 
 	if (dropped_packet)
@@ -1019,24 +1036,37 @@ static void snd_atvr_timer_callback(unsigned long data)
 	uint readable;
 	uint packets_read;
 	bool need_silence = false;
+	unsigned long flags;
 	struct snd_pcm_substream *substream = (struct snd_pcm_substream *)data;
 	struct snd_atvr *atvr_snd = snd_pcm_substream_chip(substream);
+#ifdef DEBUG_TIMER
+	struct timeval t0, t1;
+	int diff;
+#endif
 
 	/* timer_enabled will be false when stopping a stream. */
-	smp_rmb();
-	if (!atvr_snd->timer_enabled)
+	spin_lock_irqsave(&atvr_snd->timer_lock, flags);
+	if (!(atvr_snd->timer_enabled & ATVR_TIMER_ENABLED)) {
+		spin_unlock_irqrestore(&atvr_snd->timer_lock, flags);
 		return;
-
-	if (!spin_trylock(&atvr_snd->s_substream_lock)) {
-		pr_info("%s: trylock fail\n", __func__);
-		goto lock_err;
 	}
 
+	if (silence_counter > MAX_SILENCE_COUNTER) {
+		spin_unlock_irqrestore(&atvr_snd->timer_lock, flags);
+		printk_ratelimited(KERN_INFO "max silence timeout reached.\n");
+		return;
+	}
+	spin_unlock_irqrestore(&atvr_snd->timer_lock, flags);
+
+	spin_lock_irqsave(&atvr_snd->s_substream_lock, flags);
 	if (atvr_snd->substream_state & ATVR_REMOVE) {
-		spin_unlock(&atvr_snd->s_substream_lock);
+		spin_unlock_irqrestore(&atvr_snd->s_substream_lock, flags);
 		return;
 	}
 
+#ifdef DEBUG_TIMER
+	do_gettimeofday(&t0);
+#endif
 	atvr_snd->timer_callback_count++;
 
 	switch (atvr_snd->timer_state) {
@@ -1053,11 +1083,15 @@ static void snd_atvr_timer_callback(unsigned long data)
 
 	case TIMER_STATE_DURING_DECODE:
 		packets_read = snd_atvr_decode_from_fifo(substream);
+
 		if (packets_read > 0) {
 			/* Defer timeout */
 			atvr_snd->previous_jiffies = jiffies;
 			break;
 		}
+
+		smp_rmb();
+
 		if (atvr_snd->pcm_stopped) {
 			atvr_snd->timer_state = TIMER_STATE_AFTER_DECODE;
 			/* Decoder died. Overflowed?
@@ -1083,28 +1117,50 @@ static void snd_atvr_timer_callback(unsigned long data)
 				atvr_snd,
 				atvr_snd->write_index,
 				frames_to_silence);
-		spin_unlock(&atvr_snd->s_substream_lock);
+#ifdef DEBUG_TIMER
+		do_gettimeofday(&t1);
+#endif
+		spin_unlock_irqrestore(&atvr_snd->s_substream_lock, flags);
 		/* This can cause snd_atvr_pcm_trigger() to be called, which
 		 * may try to stop the timer. */
 		snd_atvr_handle_frame_advance(substream, frames_to_silence);
-	} else
-		spin_unlock(&atvr_snd->s_substream_lock);
+	} else {
+#ifdef DEBUG_TIMER
+		do_gettimeofday(&t1);
+#endif
+		spin_unlock_irqrestore(&atvr_snd->s_substream_lock, flags);
+	}
+#ifdef DEBUG_TIMER
+	diff = (t1.tv_sec - t0.tv_sec) * 1000 + (t1.tv_usec - t0.tv_usec) / 1000;
+	if (diff >= 3)
+		pr_err("callback took %d ms\n", diff);
+#endif
 
 lock_err:
-	smp_rmb();
-	if (atvr_snd->timer_enabled)
+	spin_lock_irqsave(&atvr_snd->timer_lock, flags);
+	if (need_silence)
+		silence_counter += 1;
+	else
+		silence_counter = 0;
+	if (atvr_snd->timer_enabled & ATVR_TIMER_ENABLED)
 		snd_atvr_schedule_timer(substream);
+	spin_unlock_irqrestore(&atvr_snd->timer_lock, flags);
 }
 
 static void snd_atvr_timer_start(struct snd_pcm_substream *substream)
 {
 	struct snd_atvr *atvr_snd = snd_pcm_substream_chip(substream);
-	atvr_snd->timer_enabled = true;
+	unsigned long flags;
+
+	spin_lock_irqsave(&atvr_snd->timer_lock, flags);
+	atvr_snd->timer_enabled = ATVR_TIMER_ENABLED;
+	silence_counter = 0;
+	spin_unlock_irqrestore(&atvr_snd->timer_lock, flags);
+
 	atvr_snd->previous_jiffies = jiffies;
 	atvr_snd->timeout_jiffies =
 		msecs_to_jiffies(SND_ATVR_RUNNING_TIMEOUT_MSEC);
 	atvr_snd->timer_callback_count = 0;
-	smp_wmb();
 	setup_timer(&atvr_snd->decoding_timer,
 		snd_atvr_timer_callback,
 		(unsigned long)substream);
@@ -1114,42 +1170,14 @@ static void snd_atvr_timer_start(struct snd_pcm_substream *substream)
 
 static void snd_atvr_timer_stop(struct snd_pcm_substream *substream)
 {
-	int ret;
 	struct snd_atvr *atvr_snd = snd_pcm_substream_chip(substream);
+	unsigned long flags;
 
-	/* Tell timer function not to reschedule itself if it runs. */
-	atvr_snd->timer_enabled = false;
-	smp_wmb();
-	if (!in_interrupt()) {
-		/*
-		 * The timer callback could call snd_pcm_period_elapsed()
-		 * which need snd_pcm_stream_lock_irqsave() on the substream,
-		 * while a snd_pcm_suspend() who already holds the same lock
-		 * eventually comes here and wait the timer to finish, forming
-		 * a deadlock.
-		 *
-		 * We could temporarily give up the lock and relock later.
-		 * However, that could break the original purpose of the lock.
-		 * Thus we just try delete the timer but do not block.
-		 * Instead, we check if previous timer is finished in
-		 * snd_atvr_timer_start() where timing has less stress.
-		 * In the rare case it is still not finished, we return EAGAIN
-		 * and let userspace try again later.
-		 */
-		ret = try_to_del_timer_sync(&atvr_snd->decoding_timer);
-		if (ret < 0)
-			pr_err("%s:%d - ERROR del_timer_sync failed, %d\n",
-				__func__, __LINE__, ret);
-	}
-	/*
-	 * Else if we are in an interrupt then we are being called from the
-	 * middle of the snd_atvr_timer_callback(). The timer will not get
-	 * rescheduled because atvr_snd->timer_enabled will be false
-	 * at the end of snd_atvr_timer_callback().
-	 * We do not need to "delete" the timer.
-	 * The del_timer functions just cancel pending timers.
-	 * There are no resources that need to be cleaned up.
-	 */
+	spin_lock_irqsave(&atvr_snd->timer_lock, flags);
+	silence_counter = 0;
+	if (atvr_snd->timer_enabled)
+		atvr_snd->timer_enabled = ATVR_TIMER_DISABLED;
+	spin_unlock_irqrestore(&atvr_snd->timer_lock, flags);
 }
 
 /* ===================================================================== */
@@ -1187,8 +1215,8 @@ static int snd_atvr_pcm_trigger(struct snd_pcm_substream *substream, int cmd)
 		atvr_snd->seq_index = 0;
 
 		atvr_snd->pcm_stopped = false;
+		smp_wmb();
 		snd_atvr_timer_start(substream);
-		smp_wmb(); /* so other thread will see s_substream_for_btle */
 		return 0;
 
 	case SNDRV_PCM_TRIGGER_STOP:
@@ -1199,7 +1227,7 @@ static int snd_atvr_pcm_trigger(struct snd_pcm_substream *substream, int cmd)
 			atvr_snd->packet_counter);
 #endif
 		atvr_snd->pcm_stopped = true;
-		smp_wmb(); /* so other thread will see s_substream_for_btle */
+		smp_wmb();
 		snd_atvr_timer_stop(substream);
 		return 0;
 	}
@@ -1308,7 +1336,9 @@ static int snd_atvr_pcm_open(struct snd_pcm_substream *substream)
 		runtime->hw.info &= ~(SNDRV_PCM_INFO_MMAP
 			| SNDRV_PCM_INFO_MMAP_VALID);
 
+#ifdef DEBUG_TIMER
 	snd_atvr_log("%s, built %s %s\n", __func__, __DATE__, __TIME__);
+#endif
 
 	return ret;
 }
@@ -1318,14 +1348,15 @@ static int snd_atvr_pcm_close(struct snd_pcm_substream *substream)
 	struct snd_atvr *atvr_snd = snd_pcm_substream_chip(substream);
 	int ret;
 
-	/* Make sure the timer is not running */
-	if (atvr_snd->timer_enabled)
-		snd_atvr_timer_stop(substream);
+	snd_atvr_timer_stop(substream);
+	del_timer_sync(&atvr_snd->decoding_timer);
 
+#ifdef DEBUG_TIMER
 	if (atvr_snd->timer_callback_count > 0)
 		snd_atvr_log("processed %d packets in %d timer callbacks\n",
 			atvr_snd->packet_counter,
 			atvr_snd->timer_callback_count);
+#endif
 
 	ret = atomic_fifo_init(&atvr_snd->fifo_controller,
 				   MAX_PACKETS_PER_BUFFER);
@@ -1436,9 +1467,14 @@ static int atvr_snd_initialize(struct hid_device *hdev,
 	int err;
 	int i;
 	int dev = 0;
-	struct hid_input *hidinput = list_first_entry(&hdev->inputs,
+	struct hid_input *hidinput = list_first_entry_or_null(&hdev->inputs,
 			struct hid_input, list);
-	struct input_dev *shdr_input_dev = hidinput->input;
+	struct input_dev *shdr_input_dev;
+
+	if (hidinput == NULL)
+		return -ENODEV;
+
+	shdr_input_dev = hidinput->input;
 
 	while (dev < SNDRV_CARDS && cards_in_use[dev])
 		dev++;
@@ -1464,6 +1500,7 @@ static int atvr_snd_initialize(struct hid_device *hdev,
 	atvr_snd->card_index = dev;
 	mutex_init(&atvr_snd->hdev_lock);
 	spin_lock_init(&atvr_snd->s_substream_lock);
+	spin_lock_init(&atvr_snd->timer_lock);
 	atvr_snd->substream_state = 0;
 	err = snd_atvr_alloc_audio_buffs(atvr_snd);
 
@@ -1541,6 +1578,7 @@ static void atvr_pepper_button_release(struct work_struct *work)
 
 	hid_report_raw_event(shdr_dev->hdev, 0, fake_button_up,
 			     sizeof(fake_button_up), 0);
+	atvr_hid_miss_stats_inc();
 }
 
 static int atvr_jarvis_break_events(struct hid_device *hdev,
@@ -1576,10 +1614,13 @@ static int atvr_jarvis_break_events(struct hid_device *hdev,
 		/*
 		 * data[1] & data[2] will be set whenever a button is pressed
 		 * and will be all zero when no button is pressed
+		 * Also, data[1] == 0 && data[2] == 0x80 indicates we are
+		 * sending a repeat of previous HID event. We should ignore
+		 * this case.
 		 */
 		if (data[1] == 0 && data[2] == 0)
 			cancel_delayed_work_sync(&shdr_dev->hid_miss_war_work);
-		else {
+		else if (data[1] != 0 || data[2] != 0x80) {
 			cancel_delayed_work_sync(&shdr_dev->hid_miss_war_work);
 			schedule_delayed_work(&shdr_dev->hid_miss_war_work,
 					      msecs_to_jiffies(timeout));
@@ -1640,7 +1681,7 @@ static int atvr_raw_event(struct hid_device *hdev, struct hid_report *report,
 
 	atvr_snd = shdr_card->private_data;
 
-#if (DEBUG_HID_RAW_INPUT == 1)
+#ifdef DEBUG_HID_RAW_INPUT
 	pr_info("%s: report->id = 0x%x, size = %d\n",
 		__func__, report->id, size);
 	if (size <= 22) {
@@ -1681,8 +1722,10 @@ static int atvr_raw_event(struct hid_device *hdev, struct hid_report *report,
 			key_data[2] &= ~KEYCODE_PRESENT_IN_AUDIO_PACKET_FLAG;
 			hid_report_raw_event(hdev, 0, key_data,
 					     sizeof(key_data), 0);
+#ifdef DEBUG_HID_RAW_INPUT
 			pr_info("%s: generated hid keycode 0x%02x%02x\n",
 				__func__, key_data[2], key_data[1]);
+#endif
 		}
 
 		/* send the audio part to the alsa audio decoder for mSBC */
@@ -1830,6 +1873,7 @@ static int atvr_probe(struct hid_device *hdev, const struct hid_device_id *id)
 
 	switch_set_state(&shdr_mic_switch, true);
 
+	silence_counter = 0;
 	pr_info("%s: remotes count %d->%d\n", __func__,
 		num_remotes, num_remotes+1);
 	num_remotes++;
@@ -1940,6 +1984,44 @@ static struct hid_driver atvr_driver = {
 	.remove = atvr_remove,
 };
 
+static int hid_miss_stats;
+static struct mutex hid_miss_stats_lock;
+
+static void atvr_hid_miss_stats_inc(void)
+{
+	mutex_lock(&hid_miss_stats_lock);
+	hid_miss_stats++;
+	mutex_unlock(&hid_miss_stats_lock);
+}
+
+static ssize_t atvr_show_hid_miss_stats(struct device_driver *driver, char *buf)
+{
+	int stats;
+
+	mutex_lock(&hid_miss_stats_lock);
+	stats = hid_miss_stats;
+	mutex_unlock(&hid_miss_stats_lock);
+
+	return sprintf(buf, "%d", stats);
+}
+
+static ssize_t atvr_store_hid_miss_stats(struct device_driver *driver,
+					 const char *buf, size_t count)
+{
+	int val;
+
+	if (!kstrtoint(buf, 0, &val) && val == 0) {
+		mutex_lock(&hid_miss_stats_lock);
+		hid_miss_stats = 0;
+		mutex_unlock(&hid_miss_stats_lock);
+	}
+
+	return count;
+}
+
+static DRIVER_ATTR(hid_miss_stats, S_IRUGO | S_IWUSR,
+		   atvr_show_hid_miss_stats, atvr_store_hid_miss_stats);
+
 static int atvr_init(void)
 {
 	int ret;
@@ -1950,9 +2032,19 @@ static int atvr_init(void)
 		pr_err("%s: failed to create shdr_mic_switch\n", __func__);
 
 	ret = hid_register_driver(&atvr_driver);
-	if (ret)
+	if (ret) {
 		pr_err("%s: can't register SHIELD Remote driver\n",
 			__func__);
+		goto err_hid_register;
+	}
+
+	mutex_init(&hid_miss_stats_lock);
+	ret = driver_create_file(&atvr_driver.driver,
+				 &driver_attr_hid_miss_stats);
+	if (ret) {
+		pr_err("%s: failed to create driver sysfs node\n", __func__);
+		goto err_attr_hid_miss_stats;
+	}
 
 #if (DEBUG_WITH_MISC_DEVICE == 1)
 	pcm_dev_node.minor = MISC_DYNAMIC_MINOR;
@@ -1990,6 +2082,14 @@ static int atvr_init(void)
 #endif
 
 	return ret;
+
+err_attr_hid_miss_stats:
+	hid_unregister_driver(&atvr_driver);
+	mutex_destroy(&hid_miss_stats_lock);
+err_hid_register:
+	switch_dev_unregister(&shdr_mic_switch);
+	mutex_destroy(&snd_cards_lock);
+	return ret;
 }
 
 static void atvr_exit(void)
@@ -2000,8 +2100,10 @@ static void atvr_exit(void)
 	misc_deregister(&pcm_dev_node);
 #endif
 
+	driver_remove_file(&atvr_driver.driver, &driver_attr_hid_miss_stats);
 	hid_unregister_driver(&atvr_driver);
 	mutex_destroy(&snd_cards_lock);
+	mutex_destroy(&hid_miss_stats_lock);
 }
 
 module_init(atvr_init);
