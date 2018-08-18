@@ -23,7 +23,7 @@
 		status = "okay";
 		compatible = "nvidia,tegra124-sysedp";
 		nvidia,margin = <0>;
-		nvidia,min_budget = <4400>;
+		nvidia,min_budget = <0>;
 		nvidia,initial_budget = <30000>;
 
 		consumers {
