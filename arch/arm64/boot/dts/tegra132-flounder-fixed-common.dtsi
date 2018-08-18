@@ -78,7 +78,8 @@
 			regulator-name = "avdd_lcd";
 			regulator-min-microvolt = <3300000>;
 			regulator-max-microvolt = <3300000>;
-			gpio = <&palmas_gpio 3 GPIO_ACTIVE_LOW>;
+			gpio = <&palmas_gpio 68 GPIO_ACTIVE_LOW>;
+			regulator-boot-on;
 			enable-active-high;
 			vin-supply = <&palmas_smps9>;
 
@@ -90,8 +91,9 @@
 			regulator-name = "vdd_lcd";
 			regulator-min-microvolt = <1200000>;
 			regulator-max-microvolt = <1200000>;
+			regulator-boot-on;
 			enable-active-high;
-			gpio = <&palmas_gpio 4 GPIO_ACTIVE_LOW>;
+			gpio = <&palmas_gpio 130 GPIO_ACTIVE_LOW>;
 			vin-supply = <&palmas_smps8>;
 
 		};
@@ -104,7 +106,7 @@
 			regulator-max-microvolt = <1200000>;
 			regulator-boot-on;
 			enable-active-high;
-			gpio = <&palmas_gpio 6 GPIO_ACTIVE_LOW>;
+			gpio = <&palmas_gpio 162 GPIO_ACTIVE_LOW>;
 			vin-supply = <&ldo2_reg>;
 
 		};
@@ -127,8 +129,9 @@
 			regulator-name = "en_lcd_bl";
 			regulator-min-microvolt = <5000000>;
 			regulator-max-microvolt = <5000000>;
+			regulator-boot-on;
 			enable-active-high;
-		//	gpio = <&gpio 134 GPIO_ACTIVE_LOW>; /* TEGRA_PQ6 */
+			gpio = <&gpio 136 GPIO_ACTIVE_LOW>; /* TEGRA_PQ6 */
 
 		};
 
