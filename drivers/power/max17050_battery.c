@@ -27,7 +27,7 @@
 #include <linux/pm.h>
 #include <linux/jiffies.h>
 
-#define MAX17050_DELAY		(20*HZ)
+#define MAX17050_DELAY		(30*HZ)
 #define MAX17050_BATTERY_FULL	(100)
 #define MAX17050_BATTERY_LOW	(15)
 
@@ -142,6 +142,9 @@ struct max17050_chip {
 	int health;
 	/* battery capacity */
 	int capacity_level;
+
+	int temperature;
+
 	/* battery temperature */
 	int batt_temp;
 	/* battery current */
@@ -171,7 +174,6 @@ static struct max17050_t_gain_off_table t_gain_off_lut = {
 
 static int max17050_write_word(struct i2c_client *client, int reg, u16 value)
 {
-	struct max17050_chip *chip = i2c_get_clientdata(client);
 	int retry;
 	uint8_t buf[3];
 
@@ -183,12 +185,6 @@ static int max17050_write_word(struct i2c_client *client, int reg, u16 value)
 			.buf = buf,
 		}
 	};
-
-	mutex_lock(&chip->mutex);
-	if (chip && chip->shutdown_complete) {
-		mutex_unlock(&chip->mutex);
-		return -ENODEV;
-	}
 
 	buf[0] = reg & 0xFF;
 	buf[1] = value & 0xFF;
@@ -204,17 +200,14 @@ static int max17050_write_word(struct i2c_client *client, int reg, u16 value)
 		dev_err(&client->dev, "%s(): Failed in writing register"
 				" 0x%02x after retry %d times\n"
 				, __func__, reg, MAX17050_I2C_RETRY_TIMES);
-		mutex_unlock(&chip->mutex);
 		return -EIO;
 	}
-	mutex_unlock(&chip->mutex);
 
 	return 0;
 }
 
 static int max17050_read_word(struct i2c_client *client, int reg)
 {
-	struct max17050_chip *chip = i2c_get_clientdata(client);
 	int retry;
 	uint8_t vals[2], buf[1];
 
@@ -233,12 +226,6 @@ static int max17050_read_word(struct i2c_client *client, int reg)
 		}
 	};
 
-	mutex_lock(&chip->mutex);
-	if (chip && chip->shutdown_complete) {
-		mutex_unlock(&chip->mutex);
-		return -ENODEV;
-	}
-
 	buf[0] = reg & 0xFF;
 
 	for (retry = 0; retry < MAX17050_I2C_RETRY_TIMES; retry++) {
@@ -251,12 +238,25 @@ static int max17050_read_word(struct i2c_client *client, int reg)
 		dev_err(&client->dev, "%s(): Failed in reading register"
 				" 0x%02x after retry %d times\n"
 				, __func__, reg, MAX17050_I2C_RETRY_TIMES);
-		mutex_unlock(&chip->mutex);
 		return -EIO;
 	}
 
-	mutex_unlock(&chip->mutex);
 	return (vals[1] << 8) | vals[0];
+}
+
+static int max17050_get_battery_soc(struct battery_gauge_dev *bg_dev)
+{
+	struct max17050_chip *chip = battery_gauge_get_drvdata(bg_dev);
+	int val;
+
+	val = max17050_read_word(chip->client, MAX17050_FG_RepSOC);
+	if (val < 0)
+		dev_err(&chip->client->dev, "%s: err %d\n", __func__, val);
+	else
+		val =  battery_gauge_get_adjusted_soc(chip->bg_dev,
+				5,
+				100, ((uint16_t)val >> 8) * 100);
+	return val;
 }
 
 /* Return value in uV */
@@ -265,9 +265,13 @@ static int max17050_get_ocv(struct max17050_chip *chip)
 	int reg;
 	int ocv;
 
+	if (chip->shutdown_complete)
+		return chip->temperature;
+
 	reg = max17050_read_word(chip->client, MAX17050_FG_VFOCV);
-	if (reg < 0)
+	if (reg < 0) {
 		return reg;
+	}
 	ocv = (reg >> 4) * 1250;
 	return ocv;
 }
@@ -278,6 +282,10 @@ static int max17050_get_property(struct power_supply *psy,
 {
 	struct max17050_chip *chip = container_of(psy,
 				struct max17050_chip, battery);
+
+	int ret = 0;
+
+ 	mutex_lock(&chip->mutex);
 
 	switch (psp) {
 	case POWER_SUPPLY_PROP_TECHNOLOGY:
@@ -311,11 +319,14 @@ static int max17050_get_property(struct power_supply *psy,
 		val->intval = chip->present;
 		break;
 	default:
-		return -EINVAL;
+		ret = -EINVAL;
+		break;
 	}
-	return 0;
-}
 
+	mutex_unlock(&chip->mutex);
+	return ret;
+}
+/*
 static void max17050_get_vcell(struct i2c_client *client)
 {
 	struct max17050_chip *chip = i2c_get_clientdata(client);
@@ -326,7 +337,7 @@ static void max17050_get_vcell(struct i2c_client *client)
 		dev_err(&client->dev, "%s: err %d\n", __func__, vcell);
 	else
 		chip->vcell = ((uint16_t)vcell >> 3) * 625;
-}
+}*/
 
 static void max17050_get_current(struct i2c_client *client)
 {
@@ -410,19 +421,25 @@ error:
 static void max17050_get_soc(struct i2c_client *client)
 {
 	struct max17050_chip *chip = i2c_get_clientdata(client);
+	int val;
 	int soc;
+
+	val = max17050_read_word(client, MAX17050_FG_VCELL);
+	if (val < 0)
+		dev_err(&client->dev, "%s: err %d\n", __func__, val);
+	else
+		chip->vcell = ((uint16_t)val >> 3) * 625;
 
 	soc = max17050_read_word(client, MAX17050_FG_RepSOC);
 	if (soc < 0)
 		dev_err(&client->dev, "%s: err %d\n", __func__, soc);
 	else
-		chip->soc = (uint16_t)soc >> 8;
+		chip->soc = battery_gauge_get_adjusted_soc(chip->bg_dev,
+				5,
+				100, ((uint16_t)soc >> 8) * 100);
 
-	if (chip->soc >= MAX17050_BATTERY_FULL && chip->charge_complete != 1)
-		chip->soc = MAX17050_BATTERY_FULL-1;
-
-	if (chip->status == POWER_SUPPLY_STATUS_FULL && chip->charge_complete) {
-		chip->soc = MAX17050_BATTERY_FULL;
+	if (chip->soc == MAX17050_BATTERY_FULL && chip->charge_complete) {
+		chip->status = POWER_SUPPLY_STATUS_FULL;
 		chip->capacity_level = POWER_SUPPLY_CAPACITY_LEVEL_FULL;
 		chip->health = POWER_SUPPLY_HEALTH_GOOD;
 	} else if (chip->soc < MAX17050_BATTERY_LOW) {
@@ -430,6 +447,7 @@ static void max17050_get_soc(struct i2c_client *client)
 		chip->health = POWER_SUPPLY_HEALTH_DEAD;
 		chip->capacity_level = POWER_SUPPLY_CAPACITY_LEVEL_CRITICAL;
 	} else {
+		chip->charge_complete = 0;
 		chip->status = chip->lasttime_status;
 		chip->health = POWER_SUPPLY_HEALTH_GOOD;
 		chip->capacity_level = POWER_SUPPLY_CAPACITY_LEVEL_NORMAL;
@@ -442,7 +460,13 @@ static void max17050_work(struct work_struct *work)
 
 	chip = container_of(work, struct max17050_chip, work.work);
 
-	max17050_get_vcell(chip->client);
+	mutex_lock(&chip->mutex);
+	if (chip->shutdown_complete) {
+		mutex_unlock(&chip->mutex);
+		return;
+	}
+
+//	max17050_get_vcell(chip->client);
 	max17050_get_current(chip->client);
 	max17050_get_temperature(chip->client);
 	max17050_get_soc(chip->client);
@@ -461,7 +485,9 @@ static void max17050_work(struct work_struct *work)
 		power_supply_changed(&chip->battery);
 	}
 
-	schedule_delayed_work(&chip->work, msecs_to_jiffies(20000));
+	mutex_unlock(&chip->mutex);
+	battery_gauge_report_battery_soc(chip->bg_dev, chip->soc);
+	schedule_delayed_work(&chip->work, MAX17050_DELAY);
 }
 
 static enum power_supply_property max17050_battery_props[] = {
@@ -495,26 +521,53 @@ static int max17050_update_battery_status(struct battery_gauge_dev *bg_dev,
 		enum battery_charger_status status)
 {
 	struct max17050_chip *chip = battery_gauge_get_drvdata(bg_dev);
+	int soc;
 
-	if (status == BATTERY_CHARGING)
-		chip->status = POWER_SUPPLY_STATUS_CHARGING;
-	else if (status == BATTERY_CHARGING_DONE) {
-		chip->charge_complete = 1;
-		chip->soc = MAX17050_BATTERY_FULL;
-		chip->status = POWER_SUPPLY_STATUS_FULL;
-		power_supply_changed(&chip->battery);
+	mutex_lock(&chip->mutex);
+	if (chip->shutdown_complete) {
+		mutex_unlock(&chip->mutex);
 		return 0;
+	}
+
+	soc = max17050_read_word(chip->client, MAX17050_FG_RepSOC);
+	if (soc < 0)
+		dev_err(&chip->client->dev, "%s: err %d\n", __func__, soc);
+	else
+		chip->soc = battery_gauge_get_adjusted_soc(chip->bg_dev,
+				5,
+				100, ((uint16_t)soc >> 8) * 100);
+
+	if (status == BATTERY_CHARGING) {
+		chip->charge_complete = 0;
+		chip->status = POWER_SUPPLY_STATUS_CHARGING;
+	} else if (status == BATTERY_CHARGING_DONE) {
+		if (chip->soc == MAX17050_BATTERY_FULL) {
+			chip->charge_complete = 1;
+			chip->status = POWER_SUPPLY_STATUS_FULL;
+			chip->capacity_level =
+				POWER_SUPPLY_CAPACITY_LEVEL_FULL;
+		}
+		goto done;
 	} else {
 		chip->status = POWER_SUPPLY_STATUS_DISCHARGING;
 		chip->charge_complete = 0;
 	}
 	chip->lasttime_status = chip->status;
+
+done:
+	mutex_unlock(&chip->mutex);
 	power_supply_changed(&chip->battery);
+
+	dev_info(&chip->client->dev,
+		"%s() Battery status: %d and SoC: %d%% UI status: %d\n",
+		__func__, status, chip->soc, chip->status);
+
 	return 0;
 }
 
 static struct battery_gauge_ops max17050_bg_ops = {
 	.update_battery_status = max17050_update_battery_status,
+	.get_battery_soc = max17050_get_battery_soc,
 };
 
 static struct battery_gauge_info max17050_bgi = {
@@ -549,6 +602,8 @@ static int max17050_probe(struct i2c_client *client,
 	chip->shutdown_complete = 0;
 	i2c_set_clientdata(client, chip);
 
+	max17050_get_soc(chip->client);
+
 	chip->battery.name		= "battery";
 	chip->battery.type		= POWER_SUPPLY_TYPE_BATTERY;
 	chip->battery.get_property	= max17050_get_property;
@@ -576,6 +631,9 @@ static int max17050_probe(struct i2c_client *client,
 	INIT_DEFERRABLE_WORK(&chip->work, max17050_work);
 	schedule_delayed_work(&chip->work, 0);
 
+	dev_info(&client->dev, "Battery Voltage %dmV and SoC %d%%\n",
+			chip->vcell, chip->soc);
+
 	return 0;
 bg_err:
 	power_supply_unregister(&chip->battery);
@@ -602,11 +660,11 @@ static void max17050_shutdown(struct i2c_client *client)
 {
 	struct max17050_chip *chip = i2c_get_clientdata(client);
 
-	cancel_delayed_work_sync(&chip->work);
 	mutex_lock(&chip->mutex);
 	chip->shutdown_complete = 1;
 	mutex_unlock(&chip->mutex);
 
+	cancel_delayed_work_sync(&chip->work);
 }
 
 #ifdef CONFIG_PM_SLEEP
@@ -630,6 +688,12 @@ static int max17050_suspend(struct device *dev)
 static int max17050_resume(struct device *dev)
 {
 	struct max17050_chip *chip = dev_get_drvdata(dev);
+
+	mutex_lock(&chip->mutex);
+	max17050_get_soc(chip->client);
+	power_supply_changed(&chip->battery);
+	mutex_unlock(&chip->mutex);
+	battery_gauge_report_battery_soc(chip->bg_dev, chip->soc);
 
 	schedule_delayed_work(&chip->work, msecs_to_jiffies(HZ));
 
